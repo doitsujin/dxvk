@@ -688,7 +688,7 @@ namespace dxvk {
 
   // We need to count the number of actual mips on surface initialization by going through
   // the mip chain, since the dwMipMapCount number may or may not be accurate. I am
-  // guessing it was intended more as a hint, not neceesarily a set number.
+  // guessing it was intended more as a hint, not necessarily a set number.
   template <typename SurfaceType, typename DescType>
   inline uint16_t DetermineMipMapCount(SurfaceType* surface) {
     SurfaceType* mipMap = surface;
@@ -723,7 +723,7 @@ namespace dxvk {
       }
     }
 
-    // Do not worry about maximum supported mip map levels validation,
+    // Don't worry about maximum supported mip map levels validation,
     // because D3D9 will handle this for us and cap them appropriately
     if (mipCount > 1) {
       //Logger::debug(str::format("DetermineMipMapCount: Found ", mipCount, " mip levels"));
@@ -1020,7 +1020,7 @@ namespace dxvk {
   inline DDCOLORKEY ColorKeyToARGB(const DDPIXELFORMAT* fmt, DWORD colorKey) {
     DDCOLORKEY rgbColorKey = { };
 
-    if (unlikely(!(fmt->dwFlags & DDPF_RGB)))
+    if (unlikely(fmt == nullptr || !(fmt->dwFlags & DDPF_RGB)))
       return rgbColorKey;
 
     DDCOLORKEY b = GetColorChannel(colorKey, fmt->dwBBitMask);

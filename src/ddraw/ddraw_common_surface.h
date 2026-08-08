@@ -141,8 +141,8 @@ namespace dxvk {
     }
 
     uint8_t GetColorBitCount() const {
-      return (m_desc2.dwFlags & DDSD_PIXELFORMAT) ? m_desc2.ddpfPixelFormat.dwRGBBitCount
-                                                  : m_desc.ddpfPixelFormat.dwRGBBitCount;
+      return (m_desc2.dwFlags & DDSD_PIXELFORMAT) ? m_desc2.ddpfPixelFormat.dwRGBBitCount :
+             (m_desc.dwFlags & DDSD_PIXELFORMAT)  ? m_desc.ddpfPixelFormat.dwRGBBitCount : 0u;
     }
 
     bool IsAlphaFormat() const {
@@ -155,11 +155,13 @@ namespace dxvk {
     }
 
     DDCOLORKEY GetColorKeyNormalized() const {
-      const DDPIXELFORMAT* pixelFormat = (m_desc2.dwFlags & DDSD_PIXELFORMAT) ? &m_desc2.ddpfPixelFormat : &m_desc.ddpfPixelFormat;
-      const DDCOLORKEY*    colorKey    = (m_desc2.dwFlags & DDSD_CKSRCBLT) ? &m_desc2.ddckCKSrcBlt : &m_desc.ddckCKSrcBlt;
+      const DDPIXELFORMAT* pixelFormat = (m_desc2.dwFlags & DDSD_PIXELFORMAT) ? &m_desc2.ddpfPixelFormat :
+                                         (m_desc.dwFlags & DDSD_PIXELFORMAT)  ? &m_desc.ddpfPixelFormat : nullptr;
+      const DDCOLORKEY*    colorKey    = (m_desc2.dwFlags & DDSD_CKSRCBLT) ? &m_desc2.ddckCKSrcBlt :
+                                         (m_desc.dwFlags & DDSD_CKSRCBLT)  ? &m_desc.ddckCKSrcBlt : nullptr;
 
       // Empire of the Ants relies on us using the "Low" color space DWORD
-      return ColorKeyToARGB(pixelFormat, colorKey->dwColorSpaceLowValue);
+      return ColorKeyToARGB(pixelFormat, colorKey != nullptr ? colorKey->dwColorSpaceLowValue : 0u);
     }
 
     bool IsFullSurfaceLock(const RECT* lockRect, const RECT* fullSurfaceRect) const {
@@ -413,11 +415,6 @@ namespace dxvk {
           || m_format9 == d3d9::D3DFMT_DXT5;
     }
 
-    bool Is8BitFormat() const {
-      return m_format9 == d3d9::D3DFMT_R3G3B2
-          || m_format9 == d3d9::D3DFMT_P8;
-    }
-
     // D3D7 is a bit more sane here, as always, so handle it separately
     HRESULT ValidateRTUsage7(bool isHALOrTNLHALDevice, bool isDeviceCreation) const {
       // Render targets require the DDSCAPS_3DDEVICE flag
@@ -469,6 +466,20 @@ namespace dxvk {
       }
 
       return DD_OK;
+    }
+
+    bool SkipD3D9Operations() const {
+      // Skip all D3D9 operations on P8 textures/surfaces, since DXVK doesn't support them
+      if (unlikely(m_format9 == d3d9::D3DFMT_P8)) {
+        static bool s_formatP8ErrorShown;
+
+        if (!std::exchange(s_formatP8ErrorShown, true))
+          Logger::warn("DDrawCommonSurface: Unsupported format D3DFMT_P8");
+
+        return true;
+      }
+
+      return false;
     }
 
     void ListSurfaceDetails() const {

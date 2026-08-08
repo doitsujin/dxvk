@@ -911,6 +911,10 @@ namespace dxvk {
   }
 
   HRESULT DDraw2Surface::InitializeOrUploadD3D9() {
+    // Currently ignores all P8 surfaces
+    if (unlikely(m_commonSurf->SkipD3D9Operations()))
+      return DD_OK;
+
     d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
 
     // Fast skip

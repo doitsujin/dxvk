@@ -83,42 +83,29 @@ namespace dxvk {
   }
 
   HRESULT DDrawCommonSurface::RefreshSurfaceDescripton(const bool refreshFormat) {
-    HRESULT hr;
-
-    DDSURFACEDESC2 desc2;
-    desc2.dwSize = sizeof(DDSURFACEDESC2);
-
     if (m_surf7 != nullptr) {
-      hr = m_surf7->GetProxied()->GetSurfaceDesc(&desc2);
+      DDSURFACEDESC2 desc2;
+      desc2.dwSize = sizeof(DDSURFACEDESC2);
+      HRESULT hr = m_surf7->GetProxied()->GetSurfaceDesc(&desc2);
       if (unlikely(FAILED(hr)))
         return hr;
       m_desc2 = desc2;
       RefreshStaticDescData(refreshFormat);
     } else if (m_surf4 != nullptr) {
-      hr = m_surf4->GetProxied()->GetSurfaceDesc(&desc2);
+      DDSURFACEDESC2 desc2;
+      desc2.dwSize = sizeof(DDSURFACEDESC2);
+      HRESULT hr = m_surf4->GetProxied()->GetSurfaceDesc(&desc2);
       if (unlikely(FAILED(hr)))
         return hr;
       m_desc2 = desc2;
       RefreshStaticDescData(refreshFormat);
     }
 
-    DDSURFACEDESC desc;
-    desc.dwSize = sizeof(DDSURFACEDESC);
-
+    // IDirectDrawSurface2/3 surfaces will always keep their IDirectDrawSurface parent surface around
     if (m_surf != nullptr) {
-      hr = m_surf->GetProxied()->GetSurfaceDesc(&desc);
-      if (unlikely(FAILED(hr)))
-        return hr;
-      m_desc = desc;
-      RefreshStaticDescData(refreshFormat);
-    } else if (m_surf2 != nullptr) {
-      hr = m_surf2->GetProxied()->GetSurfaceDesc(&desc);
-      if (unlikely(FAILED(hr)))
-        return hr;
-      m_desc = desc;
-      RefreshStaticDescData(refreshFormat);
-    } else if (m_surf3 != nullptr) {
-      hr = m_surf3->GetProxied()->GetSurfaceDesc(&desc);
+      DDSURFACEDESC desc;
+      desc.dwSize = sizeof(DDSURFACEDESC);
+      HRESULT hr = m_surf->GetProxied()->GetSurfaceDesc(&desc);
       if (unlikely(FAILED(hr)))
         return hr;
       m_desc = desc;
@@ -152,29 +139,17 @@ namespace dxvk {
   }
 
   HRESULT DDrawCommonSurface::InitializeD3D9(const bool initRenderTarget) {
+    if (unlikely(m_format9 == d3d9::D3DFMT_UNKNOWN)) {
+      Logger::err("DDrawCommonSurface::InitializeD3D9: Surface has an unknown format");
+      return DDERR_UNSUPPORTED;
+    }
+
     const DWORD dwWidth  = static_cast<DWORD>(m_rect.right);
     const DWORD dwHeight = static_cast<DWORD>(m_rect.bottom);
 
     if (unlikely(dwWidth == 0 || dwHeight == 0)) {
       Logger::err("DDrawCommonSurface::InitializeD3D9: Surface has 0 height or width");
       return DDERR_UNSUPPORTED;
-    }
-
-    if (unlikely(m_format9 == d3d9::D3DFMT_UNKNOWN)) {
-      Logger::err("DDrawCommonSurface::InitializeD3D9: Surface has an unknown format");
-      return DDERR_UNSUPPORTED;
-    }
-
-    // Don't initialize P8 textures/surfaces since we don't support them.
-    // Some applications do require them to be created by ddraw, otherwise
-    // they will simply fail to start, so just ignore them for now.
-    if (unlikely(m_format9 == d3d9::D3DFMT_P8)) {
-      static bool s_formatP8ErrorShown;
-
-      if (!std::exchange(s_formatP8ErrorShown, true))
-        Logger::warn("DDrawCommonSurface::InitializeD3D9: Unsupported format D3DFMT_P8");
-
-      return DD_OK;
     }
 
     d3d9::D3DPOOL pool;
@@ -184,21 +159,24 @@ namespace dxvk {
     //
     // Early DDraw/D3D didn't make the distinction between local and
     // non-local video memory, so also cater to sole DDSCAPS_VIDEOMEMORY surfaces
-    if (IsInLocalVideoMemory() || (IsInVideoMemory() && !IsInNonLocalVideoMemory()))
+    if (IsInLocalVideoMemory() || (IsInVideoMemory() && !IsInNonLocalVideoMemory())) {
       pool = d3d9::D3DPOOL_DEFAULT;
     // There's no explicit non-local video memory placement
     // per se in D3D9, but D3DPOOL_MANAGED is close enough
-    else if (IsManaged() || IsInNonLocalVideoMemory())
+    } else if (IsManaged() || IsInNonLocalVideoMemory()) {
       pool = d3d9::D3DPOOL_MANAGED;
-    else if (IsInSystemMemory())
+    } else if (IsInSystemMemory()) {
       // We can't know beforehand if a texture is or isn't going to be
       // used in SetTexture() calls, and textures placed in D3DPOOL_SYSTEMMEM
       // will not work in that context, so revert to D3DPOOL_MANAGED
       pool = IsTextureOrCubeMap() ? d3d9::D3DPOOL_MANAGED : d3d9::D3DPOOL_SYSTEMMEM;
-    else
+    } else {
       pool = d3d9::D3DPOOL_DEFAULT;
+    }
 
-    // Place all possible render targets in DEFAULT
+    // Place all possible render targets and depth stencils in DEFAULT,
+    // as per D3D9 requirements. In early D3D these can reside in system
+    // memory as well (for SWVP), but in practice this isn't crucial.
     //
     // Note: This is somewhat problematic for textures and cube maps
     // which will have D3DUSAGE_RENDERTARGET, but also need to have
@@ -209,9 +187,7 @@ namespace dxvk {
       //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_RENDERTARGET");
       pool  = d3d9::D3DPOOL_DEFAULT;
       usage |= D3DUSAGE_RENDERTARGET;
-    }
-    // All depth stencils will be created in DEFAULT
-    if (IsDepthStencil()) {
+    } else if (IsDepthStencil()) {
       //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_DEPTHSTENCIL");
       pool  = d3d9::D3DPOOL_DEFAULT;
       usage |= D3DUSAGE_DEPTHSTENCIL;
@@ -224,6 +200,7 @@ namespace dxvk {
         //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_DYNAMIC");
         usage |= D3DUSAGE_DYNAMIC;
       }
+      // D3DUSAGE_AUTOGENMIPMAP is also invalid in D3DPOOL_SYSTEMMEM, but we fixed that earlier
       if (unlikely(m_commonIntf->GetOptions()->autoGenMipMaps)) {
         //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_AUTOGENMIPMAP");
         usage |= D3DUSAGE_AUTOGENMIPMAP;
@@ -245,24 +222,23 @@ namespace dxvk {
 
     DetermineD3D9SurfaceType(initRenderTarget);
 
-    HRESULT hr = DDERR_GENERIC;
-
     switch (m_d3d9SurfaceType) {
-      case D3D9SurfaceType::BackBuffer:
-        hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
+      case D3D9SurfaceType::BackBuffer: {
+        HRESULT hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
         if (unlikely(unlikely(FAILED(hr)))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve D3D9 back buffer");
           return hr;
         }
         break;
+      }
       case D3D9SurfaceType::CubeTexture: {
         // Properly handle cube textures with auto-generated mip maps
         const UINT mipCount = usage & D3DUSAGE_AUTOGENMIPMAP ? 0 : m_mipCount;
 
-        hr = d3d9Device->CreateCubeTexture(dwWidth, mipCount, usage,
-                                           m_format9, pool, &m_cubeMap9, nullptr);
+        HRESULT hr = d3d9Device->CreateCubeTexture(dwWidth, mipCount, usage,
+                                                   m_format9, pool, &m_cubeMap9, nullptr);
         if (unlikely(FAILED(hr))) {
-          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 cube map");
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 cube texture");
           return hr;
         }
         // Always attach the positive X face to this surface
@@ -273,8 +249,8 @@ namespace dxvk {
         // Properly handle textures with auto-generated mip maps
         const UINT mipCount = usage & D3DUSAGE_AUTOGENMIPMAP ? 0 : m_mipCount;
 
-        hr = d3d9Device->CreateTexture(dwWidth, dwHeight, mipCount, usage,
-                                       m_format9, pool, &m_texture9, nullptr);
+        HRESULT hr = d3d9Device->CreateTexture(dwWidth, dwHeight, mipCount, usage,
+                                               m_format9, pool, &m_texture9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 texture");
           return hr;
@@ -283,32 +259,35 @@ namespace dxvk {
         m_texture9->GetSurfaceLevel(0, &m_surface9);
         break;
       }
-      case D3D9SurfaceType::DepthStencil:
-        hr = d3d9Device->CreateDepthStencilSurface(dwWidth, dwHeight, m_format9,
-                                                   multiSampleType, 0, FALSE, &m_surface9, nullptr);
+      case D3D9SurfaceType::DepthStencil: {
+        HRESULT hr = d3d9Device->CreateDepthStencilSurface(dwWidth, dwHeight, m_format9,
+                                                           multiSampleType, 0, FALSE, &m_surface9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 depth stencil");
           return hr;
         }
         break;
-      case D3D9SurfaceType::OffscreenPlainSurface:
-        hr = d3d9Device->CreateOffscreenPlainSurface(dwWidth, dwHeight, m_format9,
-                                                     pool, &m_surface9, nullptr);
+      }
+      case D3D9SurfaceType::OffscreenPlainSurface: {
+        HRESULT hr = d3d9Device->CreateOffscreenPlainSurface(dwWidth, dwHeight, m_format9,
+                                                             pool, &m_surface9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 offscreen plain surface");
           return hr;
         }
         break;
-      case D3D9SurfaceType::RenderTarget:
+      }
+      case D3D9SurfaceType::RenderTarget: {
         // Must be lockable for blitting to work. Note that D3D9 does not allow the creation of
         // lockable RTs when using MSAA, but we have a D3D7 exception in place.
-        hr = d3d9Device->CreateRenderTarget(dwWidth, dwHeight, m_format9,
-                                            multiSampleType, usage, TRUE, &m_surface9, nullptr);
+        HRESULT hr = d3d9Device->CreateRenderTarget(dwWidth, dwHeight, m_format9,
+                                                    multiSampleType, usage, TRUE, &m_surface9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 render target");
           return hr;
         }
         break;
+      }
       default:
         Logger::err("DDrawCommonSurface::InitializeD3D9: Unknown or undetermined D3D9 surface type");
         return DDERR_UNSUPPORTED;
