@@ -483,6 +483,22 @@ namespace dxvk {
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling))
       return nullptr;
 
+    std::string debugName;
+    if (unlikely(m_device->GetDXVKDevice()->debugFlags().test(DxvkDebugFlag::Markers))) {
+      std::string resourceType;
+      switch (m_type) {
+        case D3DRTYPE_SURFACE: resourceType = "Surface"; break;
+        case D3DRTYPE_VOLUME: resourceType = "Volume"; break;
+        case D3DRTYPE_TEXTURE: resourceType = "Texture"; break;
+        case D3DRTYPE_VOLUMETEXTURE: resourceType = "VolumeTexture"; break;
+        case D3DRTYPE_CUBETEXTURE: resourceType = "CubeTexture"; break;
+        default: resourceType = "Other"; break;
+      }
+      debugName = str::format(resourceType, " ", m_desc.Format, " - ", imageInfo.extent.width, "x",
+        imageInfo.extent.height, "x", imageInfo.extent.depth);
+      imageInfo.debugName = debugName.c_str();
+    }
+
     return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
