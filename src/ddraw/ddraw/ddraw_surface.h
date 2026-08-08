@@ -109,8 +109,6 @@ namespace dxvk {
 
     void DownloadSurfaceData();
 
-    void UpdateMipMapCount();
-
     void SetShadowSurface(Com<DDrawSurface>&& shadowSurf) {
       m_shadowSurf = shadowSurf;
     }
@@ -203,8 +201,6 @@ namespace dxvk {
     inline HRESULT UploadSurfaceData();
 
     inline HRESULT CreateDeviceInternal(REFIID riid, void** ppvObject);
-
-    inline DWORD DetermineBackBufferCount(IDirectDrawSurface* renderTarget);
 
     bool                      m_isChildObject = true;
 

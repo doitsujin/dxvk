@@ -52,8 +52,6 @@ namespace dxvk {
 
   private:
 
-    inline DWORD DetermineBackBufferCount(IDirectDrawSurface7* renderTarget);
-
     Com<IDxvkLegacyD3DInterfaceBridge> m_bridge;
 
     Com<D3DCommonInterface>            m_commonD3DIntf;

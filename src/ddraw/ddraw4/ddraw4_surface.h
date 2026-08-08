@@ -190,8 +190,6 @@ namespace dxvk {
 
   private:
 
-    inline void UpdateMipMapCount();
-
     inline HRESULT UploadSurfaceData();
 
     bool                    m_isChildObject = true;

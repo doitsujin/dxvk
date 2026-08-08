@@ -217,7 +217,7 @@ namespace dxvk {
       usage |= D3DUSAGE_DEPTHSTENCIL;
     }
 
-    // General usage flags
+    // General usage flags and mip map count
     if (IsTextureOrCubeMap()) {
       // Needed to ensure D3DPOOL_DEFAULT textures/cubemaps are lockable
       if (pool == d3d9::D3DPOOL_DEFAULT) {
@@ -227,6 +227,15 @@ namespace dxvk {
       if (unlikely(m_commonIntf->GetOptions()->autoGenMipMaps)) {
         //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_AUTOGENMIPMAP");
         usage |= D3DUSAGE_AUTOGENMIPMAP;
+      } else {
+        // Determine the mip map count based on the existing surface interface
+        if (m_surf7 != nullptr) {
+          m_mipCount = DetermineMipMapCount<IDirectDrawSurface7, DDSURFACEDESC2>(m_surf7->GetProxied());
+        } else if (m_surf4 != nullptr) {
+          m_mipCount = DetermineMipMapCount<IDirectDrawSurface4, DDSURFACEDESC2>(m_surf4->GetProxied());
+        } else if (m_surf != nullptr) {
+          m_mipCount = DetermineMipMapCount<IDirectDrawSurface, DDSURFACEDESC>(m_surf->GetProxied());
+        }
       }
     }
 
@@ -246,8 +255,11 @@ namespace dxvk {
           return hr;
         }
         break;
-      case D3D9SurfaceType::CubeTexture:
-        hr = d3d9Device->CreateCubeTexture(dwWidth, m_mipCount, usage,
+      case D3D9SurfaceType::CubeTexture: {
+        // Properly handle cube textures with auto-generated mip maps
+        const UINT mipCount = usage & D3DUSAGE_AUTOGENMIPMAP ? 0 : m_mipCount;
+
+        hr = d3d9Device->CreateCubeTexture(dwWidth, mipCount, usage,
                                            m_format9, pool, &m_cubeMap9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 cube map");
@@ -256,8 +268,12 @@ namespace dxvk {
         // Always attach the positive X face to this surface
         m_cubeMap9->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACE_POSITIVE_X, 0, &m_surface9);
         break;
-      case D3D9SurfaceType::Texture:
-        hr = d3d9Device->CreateTexture(dwWidth, dwHeight, m_mipCount, usage,
+      }
+      case D3D9SurfaceType::Texture: {
+        // Properly handle textures with auto-generated mip maps
+        const UINT mipCount = usage & D3DUSAGE_AUTOGENMIPMAP ? 0 : m_mipCount;
+
+        hr = d3d9Device->CreateTexture(dwWidth, dwHeight, mipCount, usage,
                                        m_format9, pool, &m_texture9, nullptr);
         if (unlikely(FAILED(hr))) {
           Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 texture");
@@ -266,6 +282,7 @@ namespace dxvk {
         // Attach level 0 to this surface
         m_texture9->GetSurfaceLevel(0, &m_surface9);
         break;
+      }
       case D3D9SurfaceType::DepthStencil:
         hr = d3d9Device->CreateDepthStencilSurface(dwWidth, dwHeight, m_format9,
                                                    multiSampleType, 0, FALSE, &m_surface9, nullptr);

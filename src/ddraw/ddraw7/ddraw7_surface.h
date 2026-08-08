@@ -199,8 +199,6 @@ namespace dxvk {
 
   private:
 
-    inline void UpdateMipMapCount();
-
     inline void InitializeAndAttachCubeFace(
         IDirectDrawSurface7* surf,
         d3d9::IDirect3DCubeTexture9* cubeTex9,

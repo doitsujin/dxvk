@@ -185,12 +185,7 @@ namespace dxvk {
     }
 
     uint16_t GetMipCount() const {
-      // Properly handle textures with auto-generated mip maps
-      return std::max<uint16_t>(1u, m_mipCount);
-    }
-
-    void SetMipCount(uint16_t mipCount) {
-      m_mipCount = mipCount;
+      return m_mipCount;
     }
 
     uint32_t GetBackBufferIndex() const {

@@ -1076,9 +1076,6 @@ namespace dxvk {
     m_commonSurf->RefreshD3D9Device();
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
-      if (m_commonSurf->IsTextureOrCubeMap())
-        UpdateMipMapCount();
-
       HRESULT hr = m_commonSurf->InitializeD3D9(true);
       if (unlikely(FAILED(hr))) {
         Logger::err(str::format("DDraw7Surface::InitializeD3D9RenderTarget: Failed to initialize surface nr. [[7-", std::hex, this, "]]"));
@@ -1118,9 +1115,6 @@ namespace dxvk {
       return DD_OK;
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
-      if (m_commonSurf->IsTextureOrCubeMap())
-        UpdateMipMapCount();
-
       const bool initRenderTarget = m_commonSurf->GetCommonD3DDevice()->IsCurrentRenderTarget(m_commonSurf.ptr());
 
       HRESULT hr = m_commonSurf->InitializeD3D9(initRenderTarget);
@@ -1152,48 +1146,6 @@ namespace dxvk {
                                                               m_commonSurf->IsDXTFormat());
       m_commonSurf->UnDirtyD3D9Surface();
     }
-  }
-
-  inline void DDraw7Surface::UpdateMipMapCount() {
-    // We need to count the number of actual mips on initialization by going through
-    // the mip chain, since the dwMipMapCount number may or may not be accurate. I am
-    // guessing it was intended more as a hint, not neceesarily a set number.
-    const DDSURFACEDESC2* desc2  = m_commonSurf->GetDesc2();
-
-    IDirectDrawSurface7* mipMap = m_proxy.ptr();
-    DDSURFACEDESC2 mipDesc2;
-    uint16_t mipCount = 1;
-
-    while (mipMap != nullptr) {
-      IDirectDrawSurface7* parentSurface = mipMap;
-      mipMap = nullptr;
-      parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces7Callback);
-      if (mipMap != nullptr) {
-        mipCount++;
-
-        mipDesc2 = { };
-        mipDesc2.dwSize = sizeof(DDSURFACEDESC2);
-        mipMap->GetSurfaceDesc(&mipDesc2);
-        // Ignore multiple 1x1 mips, which apparently can get generated if the
-        // application gets the dwMipMapCount wrong vs surface dimensions.
-        if (unlikely(mipDesc2.dwWidth == 1 && mipDesc2.dwHeight == 1))
-          break;
-      }
-    }
-
-    // Do not worry about maximum supported mip map levels validation,
-    // because D3D9 will handle this for us and cap them appropriately
-    if (mipCount > 1) {
-      //Logger::debug(str::format("DDraw7Surface::UpdateMipMapCount: Found ", mipCount, " mip levels"));
-
-      if (unlikely(mipCount != desc2->dwMipMapCount))
-        Logger::debug(str::format("DDraw7Surface::UpdateMipMapCount: Mismatch with declared ", desc2->dwMipMapCount, " mip levels"));
-    }
-
-    if (unlikely(m_commonIntf->GetOptions()->autoGenMipMaps))
-      mipCount = 0;
-
-    m_commonSurf->SetMipCount(mipCount);
   }
 
   inline void DDraw7Surface::InitializeAndAttachCubeFace(

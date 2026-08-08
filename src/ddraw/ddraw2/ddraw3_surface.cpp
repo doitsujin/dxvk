@@ -939,9 +939,6 @@ namespace dxvk {
       return DD_OK;
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
-      if (m_commonSurf->IsTexture())
-        m_parent->UpdateMipMapCount();
-
       const bool initRenderTarget = m_commonSurf->GetCommonD3DDevice()->IsCurrentRenderTarget(m_commonSurf.ptr());
 
       HRESULT hr = m_commonSurf->InitializeD3D9(initRenderTarget);

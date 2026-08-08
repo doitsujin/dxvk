@@ -686,6 +686,91 @@ namespace dxvk {
     return DDENUMRET_OK;
   }
 
+  // We need to count the number of actual mips on surface initialization by going through
+  // the mip chain, since the dwMipMapCount number may or may not be accurate. I am
+  // guessing it was intended more as a hint, not neceesarily a set number.
+  template <typename SurfaceType, typename DescType>
+  inline uint16_t DetermineMipMapCount(SurfaceType* surface) {
+    SurfaceType* mipMap = surface;
+    DescType mipDesc;
+    uint16_t mipCount = 1;
+
+    while (mipMap != nullptr) {
+      SurfaceType* parentSurface = mipMap;
+      mipMap = nullptr;
+
+      if constexpr (std::is_same<SurfaceType, IDirectDrawSurface7>::value) {
+        parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces7Callback);
+      } else if constexpr (std::is_same<SurfaceType, IDirectDrawSurface4>::value) {
+        parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces4Callback);
+      } else if constexpr (std::is_same<SurfaceType, IDirectDrawSurface>::value) {
+        parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfacesCallback);
+      } else {
+        Logger::err("DetermineMipMapCount: Unsupported surface type");
+        break;
+      }
+
+      if (mipMap != nullptr) {
+        mipCount++;
+
+        mipDesc = { };
+        mipDesc.dwSize = sizeof(DescType);
+        mipMap->GetSurfaceDesc(&mipDesc);
+        // Ignore multiple 1x1 mips, which apparently can get generated if the
+        // application gets the dwMipMapCount wrong vs surface dimensions.
+        if (unlikely(mipDesc.dwWidth == 1 && mipDesc.dwHeight == 1))
+          break;
+      }
+    }
+
+    // Do not worry about maximum supported mip map levels validation,
+    // because D3D9 will handle this for us and cap them appropriately
+    if (mipCount > 1) {
+      //Logger::debug(str::format("DetermineMipMapCount: Found ", mipCount, " mip levels"));
+
+      DescType desc;
+      desc.dwSize = sizeof(DescType);
+      surface->GetSurfaceDesc(&desc);
+
+      if (unlikely(mipCount != desc.dwMipMapCount))
+        Logger::debug(str::format("DetermineMipMapCount: Mismatch with declared ", desc.dwMipMapCount, " mip levels"));
+    }
+
+    return mipCount;
+  }
+
+  template <typename SurfaceType>
+  inline DWORD DetermineBackBufferCount(SurfaceType* renderTarget) {
+    DWORD backBufferCount = 0;
+
+    SurfaceType* backBuffer = renderTarget;
+
+    while (backBuffer != nullptr) {
+      SurfaceType* parentSurface = backBuffer;
+      backBuffer = nullptr;
+
+      if constexpr (std::is_same<SurfaceType, IDirectDrawSurface7>::value) {
+        parentSurface->EnumAttachedSurfaces(&backBuffer, ListBackBufferSurfaces7Callback);
+      } else if constexpr (std::is_same<SurfaceType, IDirectDrawSurface4>::value) {
+        parentSurface->EnumAttachedSurfaces(&backBuffer, ListBackBufferSurfaces4Callback);
+      } else if constexpr (std::is_same<SurfaceType, IDirectDrawSurface>::value) {
+        parentSurface->EnumAttachedSurfaces(&backBuffer, ListBackBufferSurfacesCallback);
+      } else {
+        Logger::err("DetermineBackBufferCount: Unsupported surface type");
+        break;
+      }
+
+      // The swapchain will eventually return to its origin
+      if (backBuffer == renderTarget)
+        break;
+
+      if (likely(backBuffer != nullptr))
+        backBufferCount++;
+    }
+
+    return std::max<DWORD>(1u, backBufferCount);
+  }
+
   inline void BlitToD3D9CubeMap(
         d3d9::IDirect3DCubeTexture9* cubeTex9,
         IDirectDrawSurface7* surface,
@@ -810,6 +895,7 @@ namespace dxvk {
           parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfacesCallback);
         } else {
           Logger::err("BlitToD3D9Texture: Unsupported surface type");
+          break;
         }
       } else {
         Logger::warn(str::format("BlitToD3D9Texture: Failed to lock D3D9 mip ", i));

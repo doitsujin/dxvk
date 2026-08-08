@@ -496,7 +496,7 @@ namespace dxvk {
 
     Logger::info(str::format("D3D5Interface::CreateDevice: Back buffer size: ", desc.dwWidth, "x", desc.dwHeight));
 
-    const DWORD backBufferCount = DetermineBackBufferCount(rt->GetProxied());
+    const DWORD backBufferCount = DetermineBackBufferCount<IDirectDrawSurface>(rt->GetProxied());
     Logger::info(str::format("D3D5Interface::CreateDevice: Back buffer count: ", backBufferCount));
 
     // Determine the supported AA sample count by querying the D3D9 interface
@@ -551,33 +551,6 @@ namespace dxvk {
     }
 
     return D3D_OK;
-  }
-
-  inline DWORD D3D5Interface::DetermineBackBufferCount(IDirectDrawSurface* renderTarget) {
-    DWORD backBufferCount = 0;
-
-    IDirectDrawSurface* backBuffer = renderTarget;
-    HRESULT hr;
-
-    while (backBuffer != nullptr) {
-      IDirectDrawSurface* parentSurface = backBuffer;
-      backBuffer = nullptr;
-
-      hr = parentSurface->EnumAttachedSurfaces(&backBuffer, ListBackBufferSurfacesCallback);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D5Interface::DetermineBackBufferCount: Unable to enumerate attached surfaces");
-        break;
-      }
-
-      // The swapchain will eventually return to its origin
-      if (backBuffer == renderTarget)
-        break;
-
-      if (likely(backBuffer != nullptr))
-        backBufferCount++;
-    }
-
-    return std::max<DWORD>(1u, backBufferCount);
   }
 
 }

@@ -984,9 +984,6 @@ namespace dxvk {
     m_commonSurf->RefreshD3D9Device();
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
-      if (m_commonSurf->IsTexture())
-        UpdateMipMapCount();
-
       HRESULT hr = m_commonSurf->InitializeD3D9(true);
       if (unlikely(FAILED(hr))) {
         Logger::err(str::format("DDrawSurface::InitializeD3D9RenderTarget: Failed to initialize surface nr. [[1-", std::hex, this, "]]"));
@@ -1023,9 +1020,6 @@ namespace dxvk {
       return DD_OK;
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
-      if (m_commonSurf->IsTexture())
-        UpdateMipMapCount();
-
       const bool initRenderTarget = m_commonSurf->GetCommonD3DDevice()->IsCurrentRenderTarget(m_commonSurf.ptr());
 
       HRESULT hr = m_commonSurf->InitializeD3D9(initRenderTarget);
@@ -1054,48 +1048,6 @@ namespace dxvk {
                                                             m_commonSurf->IsDXTFormat());
       m_commonSurf->UnDirtyD3D9Surface();
     }
-  }
-
-  void DDrawSurface::UpdateMipMapCount() {
-    // We need to count the number of actual mips on initialization by going through
-    // the mip chain, since the dwMipMapCount number may or may not be accurate. I am
-    // guessing it was intended more as a hint, not neceesarily a set number.
-    const DDSURFACEDESC* desc  = m_commonSurf->GetDesc();
-
-    IDirectDrawSurface* mipMap = m_proxy.ptr();
-    DDSURFACEDESC mipDesc;
-    uint16_t mipCount = 1;
-
-    while (mipMap != nullptr) {
-      IDirectDrawSurface* parentSurface = mipMap;
-      mipMap = nullptr;
-      parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfacesCallback);
-      if (mipMap != nullptr) {
-        mipCount++;
-
-        mipDesc = { };
-        mipDesc.dwSize = sizeof(DDSURFACEDESC2);
-        mipMap->GetSurfaceDesc(&mipDesc);
-        // Ignore multiple 1x1 mips, which apparently can get generated if the
-        // application gets the dwMipMapCount wrong vs surface dimensions.
-        if (unlikely(mipDesc.dwWidth == 1 && mipDesc.dwHeight == 1))
-          break;
-      }
-    }
-
-    // Do not worry about maximum supported mip map levels validation,
-    // because D3D9 will handle this for us and cap them appropriately
-    if (mipCount > 1) {
-      //Logger::debug(str::format("DDrawSurface::InitializeD3D9: Found ", mipCount, " mip levels"));
-
-      if (unlikely(mipCount != desc->dwMipMapCount))
-        Logger::debug(str::format("DDrawSurface::InitializeD3D9: Mismatch with declared ", desc->dwMipMapCount, " mip levels"));
-    }
-
-    if (unlikely(m_commonIntf->GetOptions()->autoGenMipMaps))
-      mipCount = 0;
-
-    m_commonSurf->SetMipCount(mipCount);
   }
 
   inline HRESULT DDrawSurface::UploadSurfaceData() {
@@ -1207,7 +1159,7 @@ namespace dxvk {
 
     Logger::info(str::format("DDrawSurface::CreateDeviceInternal: Back buffer size: ", desc->dwWidth, "x", desc->dwHeight));
 
-    const DWORD backBufferCount = DetermineBackBufferCount(m_proxy.ptr());
+    const DWORD backBufferCount = DetermineBackBufferCount<IDirectDrawSurface>(m_proxy.ptr());
     Logger::info(str::format("DDrawSurface::CreateDeviceInternal: Back buffer count: ", backBufferCount));
 
     D3D3Interface* d3d3Intf = m_commonIntf->GetOrCreateD3D3Interface();
@@ -1271,33 +1223,6 @@ namespace dxvk {
     }
 
     return DD_OK;
-  }
-
-  inline DWORD DDrawSurface::DetermineBackBufferCount(IDirectDrawSurface* renderTarget) {
-    DWORD backBufferCount = 0;
-
-    IDirectDrawSurface* backBuffer = renderTarget;
-    HRESULT hr;
-
-    while (backBuffer != nullptr) {
-      IDirectDrawSurface* parentSurface = backBuffer;
-      backBuffer = nullptr;
-
-      hr = parentSurface->EnumAttachedSurfaces(&backBuffer, ListBackBufferSurfacesCallback);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("DDrawSurface::DetermineBackBufferCount: Unable to enumerate attached surfaces");
-        break;
-      }
-
-      // The swapchain will eventually return to its origin
-      if (backBuffer == renderTarget)
-        break;
-
-      if (likely(backBuffer != nullptr))
-        backBufferCount++;
-    }
-
-    return std::max<DWORD>(1u, backBufferCount);
   }
 
 }
