@@ -8,6 +8,7 @@
 #include "dxgi_options.h"
 
 #include "../dxvk/dxvk_instance.h"
+#include "../util/util_hotpatch.h"
 
 namespace dxvk {
 
@@ -73,11 +74,13 @@ namespace dxvk {
             HMODULE               Module,
             IDXGIAdapter**        ppAdapter) final;
     
+    DXVK_HOTPATCHABLE
     HRESULT STDMETHODCALLTYPE CreateSwapChain(
             IUnknown*             pDevice,
             DXGI_SWAP_CHAIN_DESC* pDesc,
             IDXGISwapChain**      ppSwapChain) final;
     
+    DXVK_HOTPATCHABLE
     HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
             IUnknown*             pDevice,
             HWND                  hWnd,
@@ -86,6 +89,7 @@ namespace dxvk {
             IDXGIOutput*          pRestrictToOutput,
             IDXGISwapChain1**     ppSwapChain) final;
 
+    DXVK_HOTPATCHABLE
     HRESULT STDMETHODCALLTYPE CreateSwapChainForCoreWindow(
             IUnknown*             pDevice,
             IUnknown*             pWindow,
@@ -93,6 +97,7 @@ namespace dxvk {
             IDXGIOutput*          pRestrictToOutput,
             IDXGISwapChain1**     ppSwapChain) final;
     
+    DXVK_HOTPATCHABLE
     HRESULT STDMETHODCALLTYPE CreateSwapChainForComposition(
             IUnknown*             pDevice,
       const DXGI_SWAP_CHAIN_DESC1* pDesc,
