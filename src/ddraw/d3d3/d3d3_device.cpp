@@ -460,21 +460,26 @@ namespace dxvk {
     D3D3Viewport* d3d3Viewport = static_cast<D3D3Viewport*>(viewport);
 
     if (unlikely(m_currentViewport != d3d3Viewport)) {
+      D3DCommonViewport* commonViewport = d3d3Viewport->GetCommonViewport();
+
       // Validate that the viewport is attached to this (common) device
-      if (unlikely(m_commonD3DDevice != d3d3Viewport->GetCommonViewport()->GetCommonD3DDevice()))
+      if (unlikely(m_commonD3DDevice != commonViewport->GetCommonD3DDevice()))
         return DDERR_INVALIDPARAMS;
 
       if (likely(m_currentViewport != nullptr)) {
+        D3DCommonViewport* currentCommonViewport = m_currentViewport->GetCommonViewport();
         // Shouldn't be necessary, but play it safe, as there is some potential
         // for improper behavior if we skip deactivation during D3D5/6 interop
-        m_currentViewport->DeactivateLights();
-        m_currentViewport->GetCommonViewport()->SetIsCurrentViewport(false);
+        if (currentCommonViewport->HasLights())
+          currentCommonViewport->DeactivateLights();
+        currentCommonViewport->SetIsCurrentViewport(false);
       }
 
       m_currentViewport = d3d3Viewport;
 
-      m_currentViewport->GetCommonViewport()->SetIsCurrentViewport(true);
-      m_currentViewport->ApplyViewport();
+      commonViewport->SetIsCurrentViewport(true);
+      if (likely(commonViewport->IsViewportSet()))
+        commonViewport->ApplyViewport();
     }
 
     D3DEXECUTEDATA* executeData = d3d3ExecuteBuffer->GetExecuteDataInternal();
@@ -627,7 +632,7 @@ namespace dxvk {
 
                 std::vector<d3d9::D3DLIGHT9> lights9;
                 if (doLighting) {
-                  commonViewport->GetD3D9Lights(&lights9);
+                  commonViewport->GetD3D9ActiveLights(&lights9);
                   pvData.lights = &lights9;
                 } else {
                   pvData.lights = nullptr;

@@ -192,7 +192,7 @@ namespace dxvk {
 
       std::vector<d3d9::D3DLIGHT9> lights9;
       if (doLighting) {
-        commonViewport->GetD3D9Lights(&lights9);
+        commonViewport->GetD3D9ActiveLights(&lights9);
         pvData.lights = &lights9;
       } else {
         pvData.lights = nullptr;

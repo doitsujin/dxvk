@@ -161,7 +161,7 @@ namespace dxvk {
       return m_ds.ptr();
     }
 
-    void GetD3D9Lights(std::vector<d3d9::D3DLIGHT9>* lights9) {
+    void GetD3D9ActiveLights(std::vector<d3d9::D3DLIGHT9>* lights9) {
       for (const auto& [idx, light9] : m_lights) {
         if (m_lightsStates[idx])
           lights9->push_back(light9);

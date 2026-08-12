@@ -99,13 +99,18 @@ namespace dxvk {
     // D3DLIGHT structure lights are, apparently, considered to be active by default
     m_isActive            = isD3DLight2 ? (m_flags & D3DLIGHT_ACTIVE) : true;
 
+    D3DCommonViewport* commonViewport = nullptr;
+    if (m_viewport6 != nullptr) {
+      commonViewport = m_viewport6->GetCommonViewport();
+    } else if (m_viewport5 != nullptr) {
+      commonViewport = m_viewport5->GetCommonViewport();
+    } else if (m_viewport3 != nullptr) {
+      commonViewport = m_viewport3->GetCommonViewport();
+    }
+
     // Update the D3D9 light directly if it's actively being used
-    if (m_viewport6 != nullptr && m_viewport6->GetCommonViewport()->IsCurrentViewport())
-      m_viewport6->ApplyAndActivateLight(this->GetIndex(), this);
-    else if (m_viewport5 != nullptr && m_viewport5->GetCommonViewport()->IsCurrentViewport())
-      m_viewport5->ApplyAndActivateLight(this->GetIndex(), this);
-    else if (m_viewport3 != nullptr && m_viewport3->GetCommonViewport()->IsCurrentViewport())
-      m_viewport3->ApplyAndActivateLight(this->GetIndex(), this);
+    if (commonViewport != nullptr && commonViewport->IsCurrentViewport())
+      commonViewport->ApplyAndActivateLight(this);
 
     return D3D_OK;
   }

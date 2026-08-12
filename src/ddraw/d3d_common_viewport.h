@@ -47,6 +47,16 @@ namespace dxvk {
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 
+    void ApplyViewport();
+
+    void DeactivateLights();
+
+    void DeactivateLight(D3DLight* light);
+
+    void ApplyAndActivateLights();
+
+    void ApplyAndActivateLight(D3DLight* light);
+
     HRESULT TransformVertices(DWORD vertex_count, D3DTRANSFORMDATA *data, DWORD flags, DWORD *offscreen);
 
     d3d9::D3DVIEWPORT9* GetD3D9Viewport() {
@@ -185,11 +195,15 @@ namespace dxvk {
       return m_device6 != nullptr || m_device5 != nullptr || m_device3 != nullptr;
     }
 
-    void GetD3D9Lights(std::vector<d3d9::D3DLIGHT9>* lights9) {
-      for (auto light: m_lights) {
+    void GetD3D9ActiveLights(std::vector<d3d9::D3DLIGHT9>* lights9) {
+      for (auto light : m_lights) {
         if (light->IsActive())
           lights9->push_back(*light->GetD3D9Light());
       }
+    }
+
+    bool HasLights() const {
+      return m_lights.size() > 0;
     }
 
     std::vector<Com<D3DLight>>& GetLights() {

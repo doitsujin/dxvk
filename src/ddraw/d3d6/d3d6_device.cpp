@@ -453,20 +453,26 @@ namespace dxvk {
     if (unlikely(m_currentViewport == d3d6Viewport))
       return D3D_OK;
 
+    D3DCommonViewport* commonViewport = d3d6Viewport->GetCommonViewport();
+
     // Validate that the viewport is attached to this (common) device
-    if (unlikely(m_commonD3DDevice != d3d6Viewport->GetCommonViewport()->GetCommonD3DDevice()))
+    if (unlikely(m_commonD3DDevice != commonViewport->GetCommonD3DDevice()))
       return DDERR_INVALIDPARAMS;
 
     if (likely(m_currentViewport != nullptr)) {
-      m_currentViewport->DeactivateLights();
-      m_currentViewport->GetCommonViewport()->SetIsCurrentViewport(false);
+      D3DCommonViewport* currentCommonViewport = m_currentViewport->GetCommonViewport();
+      if (currentCommonViewport->HasLights())
+        currentCommonViewport->DeactivateLights();
+      currentCommonViewport->SetIsCurrentViewport(false);
     }
 
     m_currentViewport = d3d6Viewport.ptr();
 
-    m_currentViewport->GetCommonViewport()->SetIsCurrentViewport(true);
-    m_currentViewport->ApplyViewport();
-    m_currentViewport->ApplyAndActivateLights();
+    commonViewport->SetIsCurrentViewport(true);
+    if (likely(commonViewport->IsViewportSet()))
+      commonViewport->ApplyViewport();
+    if (commonViewport->HasLights())
+      commonViewport->ApplyAndActivateLights();
 
     return D3D_OK;
   }

@@ -63,14 +63,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetViewport2(D3DVIEWPORT2 *data);
 
-    HRESULT ApplyViewport();
-
-    HRESULT ApplyAndActivateLights();
-
-    HRESULT DeactivateLights();
-
-    HRESULT ApplyAndActivateLight(DWORD index, D3DLight* light);
-
     D3DCommonViewport* GetCommonViewport() const {
       return m_commonViewport.ptr();
     }

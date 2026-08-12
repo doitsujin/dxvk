@@ -102,6 +102,57 @@ namespace dxvk {
     }
   }
 
+  void D3DCommonViewport::ApplyViewport() {
+    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+
+    HRESULT hr = d3d9Device->SetViewport(&m_viewport9);
+    if (unlikely(FAILED(hr)))
+      Logger::err("D3DCommonViewport: Failed to set the D3D9 viewport");
+  }
+
+  void D3DCommonViewport::DeactivateLights() {
+    for (auto light : m_lights) {
+      if (light->IsActive())
+        DeactivateLight(light.ptr());
+    }
+  }
+
+  void D3DCommonViewport::DeactivateLight(D3DLight* light) {
+    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+
+    const DWORD light9Index = light->GetIndex();
+    //Logger::debug(str::format("D3DCommonViewport::DeactivateLight: Disabling light nr. ", light9Index));
+    HRESULT hr = d3d9Device->LightEnable(light9Index, FALSE);
+    if (unlikely(FAILED(hr)))
+      Logger::err("D3DCommonViewport::DeactivateLight: Failed D3D9 LightEnable call");
+  }
+
+  void D3DCommonViewport::ApplyAndActivateLights() {
+    for (auto light : m_lights)
+      ApplyAndActivateLight(light.ptr());
+  }
+
+  void D3DCommonViewport::ApplyAndActivateLight(D3DLight* light) {
+    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+
+    const DWORD light9Index = light->GetIndex();
+    HRESULT hr = d3d9Device->SetLight(light9Index, light->GetD3D9Light());
+    if (unlikely(FAILED(hr)))
+      Logger::err("D3DCommonViewport::ApplyAndActivateLight: Failed D3D9 SetLight call");
+
+    if (light->IsActive()) {
+      //Logger::debug(str::format("D3DCommonViewport::ApplyAndActivateLight: Enabling D3D9 light nr. ", light9Index));
+      hr = d3d9Device->LightEnable(light9Index, TRUE);
+      if (unlikely(FAILED(hr)))
+        Logger::err("D3DCommonViewport::ApplyAndActivateLight: Failed D3D9 LightEnable call (TRUE)");
+    } else {
+      //Logger::debug(str::format("D3DCommonViewport::ApplyAndActivateLight: Disabling D3D9 light nr. ", light9Index));
+      hr = d3d9Device->LightEnable(light9Index, FALSE);
+      if (unlikely(FAILED(hr)))
+        Logger::err("D3DCommonViewport::ApplyAndActivateLight: Failed D3D9 LightEnable call (FALSE)");
+    }
+  }
+
   HRESULT D3DCommonViewport::TransformVertices(DWORD vertex_count, D3DTRANSFORMDATA *data, DWORD flags, DWORD *offscreen) {
     if (unlikely(data == nullptr || offscreen == nullptr))
       return DDERR_INVALIDPARAMS;
