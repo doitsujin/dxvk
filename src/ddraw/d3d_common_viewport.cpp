@@ -19,91 +19,8 @@ namespace dxvk {
   D3DCommonViewport::~D3DCommonViewport() {
   }
 
-  D3D6Viewport* D3DCommonViewport::GetCurrentD3D6Viewport() {
-    if (likely(m_device6 != nullptr))
-      return m_device6->GetCurrentViewportInternal();
-
-    return nullptr;
-  }
-
-  D3D5Viewport* D3DCommonViewport::GetCurrentD3D5Viewport() {
-    if (likely(m_device5 != nullptr))
-      return m_device5->GetCurrentViewportInternal();
-
-    return nullptr;
-  }
-
-  D3D3Viewport* D3DCommonViewport::GetCurrentD3D3Viewport() {
-    if (likely(m_device3 != nullptr))
-      return m_device3->GetCurrentViewportInternal();
-
-    return nullptr;
-  }
-
-  DDrawCommonSurface* D3DCommonViewport::GetCommonRenderTarget() {
-    if (m_device6 != nullptr) {
-      DDraw4Surface* rt = m_device6->GetRenderTarget();
-      if (likely(rt != nullptr))
-        return rt->GetCommonSurface();
-    }
-    if (m_device5 != nullptr) {
-      DDrawSurface* rt = m_device5->GetRenderTarget();
-      if (likely(rt != nullptr))
-        return rt->GetCommonSurface();
-    }
-    if (m_device3 != nullptr) {
-      DDrawSurface* rt = m_device3->GetRenderTarget();
-      if (likely(rt != nullptr))
-        return rt->GetCommonSurface();
-    }
-
-    return nullptr;
-  }
-
-  DDrawCommonSurface* D3DCommonViewport::GetCommonDepthStencil() {
-    if (m_device6 != nullptr) {
-      DDraw4Surface* ds = m_device6->GetDepthStencil();
-      if (likely(ds != nullptr))
-        return ds->GetCommonSurface();
-    }
-    if (m_device5 != nullptr) {
-      DDrawSurface* ds = m_device5->GetDepthStencil();
-      if (likely(ds != nullptr))
-        return ds->GetCommonSurface();
-    }
-    if (m_device3 != nullptr) {
-      DDrawSurface* ds = m_device3->GetDepthStencil();
-      if (likely(ds != nullptr))
-        return ds->GetCommonSurface();
-    }
-
-    return nullptr;
-  }
-
-  D3DCommonDevice* D3DCommonViewport::GetCommonD3DDevice() {
-    if (m_device6 != nullptr) {
-      return m_device6->GetCommonD3DDevice();
-    } else if (m_device5 != nullptr) {
-      return m_device5->GetCommonD3DDevice();
-    } else if (m_device3 != nullptr) {
-      return m_device3->GetCommonD3DDevice();
-    }
-
-    return nullptr;
-  }
-
-  void D3DCommonViewport::UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface) {
-    if (m_device6 != nullptr) {
-      m_device6->UpdateSurfaceDirtyTracking(dirtyRenderTarget, dirtyDepthStencil, dirtyPrimarySurface);
-    } else if (m_device5 != nullptr) {
-      m_device5->UpdateSurfaceDirtyTracking(dirtyRenderTarget, dirtyDepthStencil, dirtyPrimarySurface);
-    } else if (m_device3 != nullptr) {
-      m_device3->UpdateSurfaceDirtyTracking(dirtyRenderTarget, dirtyDepthStencil, dirtyPrimarySurface);
-    }
-  }
-
   void D3DCommonViewport::ApplyViewport() {
-    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+    d3d9::IDirect3DDevice9* d3d9Device = m_commonD3DDevice->GetD3D9Device();
 
     HRESULT hr = d3d9Device->SetViewport(&m_viewport9);
     if (unlikely(FAILED(hr)))
@@ -118,7 +35,7 @@ namespace dxvk {
   }
 
   void D3DCommonViewport::DeactivateLight(D3DLight* light) {
-    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+    d3d9::IDirect3DDevice9* d3d9Device = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD light9Index = light->GetIndex();
     //Logger::debug(str::format("D3DCommonViewport::DeactivateLight: Disabling light nr. ", light9Index));
@@ -133,7 +50,7 @@ namespace dxvk {
   }
 
   void D3DCommonViewport::ApplyAndActivateLight(D3DLight* light) {
-    d3d9::IDirect3DDevice9* d3d9Device = GetCommonD3DDevice()->GetD3D9Device();
+    d3d9::IDirect3DDevice9* d3d9Device = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD light9Index = light->GetIndex();
     HRESULT hr = d3d9Device->SetLight(light9Index, light->GetD3D9Light());
@@ -182,14 +99,17 @@ namespace dxvk {
 
     // Ensure transform states aren't modified in flight
     D3DDeviceLock lock6, lock5, lock3;
-    if (m_device6 != nullptr)
-      lock6 = m_device6->LockDevice();
-    if (m_device5 != nullptr)
-      lock5 = m_device5->LockDevice();
-    if (m_device3 != nullptr)
-      lock3 = m_device3->LockDevice();
+    D3D6Device* d3d6Device = m_commonD3DDevice->GetD3D6Device();
+    if (d3d6Device != nullptr)
+      lock6 = d3d6Device->LockDevice();
+    D3D5Device* d3d5Device = m_commonD3DDevice->GetD3D5Device();
+    if (d3d5Device != nullptr)
+      lock5 = d3d5Device->LockDevice();
+    D3D3Device* d3d3Device = m_commonD3DDevice->GetD3D3Device();
+    if (d3d3Device != nullptr)
+      lock3 = d3d3Device->LockDevice();
 
-    d3d9::IDirect3DDevice9* m_device9 = GetCommonD3DDevice()->GetD3D9Device();
+    d3d9::IDirect3DDevice9* m_device9 = m_commonD3DDevice->GetD3D9Device();
 
     D3DMATRIX world9, view9, projection9;
     HRESULT hr;
@@ -273,6 +193,18 @@ namespace dxvk {
     }
 
     return D3D_OK;
+  }
+
+  void D3DCommonViewport::RefreshCommonD3DDevice() {
+    if (m_device6 != nullptr) {
+      m_commonD3DDevice = m_device6->GetCommonD3DDevice();
+    } else if (m_device5 != nullptr) {
+      m_commonD3DDevice = m_device5->GetCommonD3DDevice();
+    } else if (m_device3 != nullptr) {
+      m_commonD3DDevice = m_device3->GetCommonD3DDevice();
+    } else {
+      m_commonD3DDevice = nullptr;
+    }
   }
 
 }

@@ -44,7 +44,13 @@ namespace dxvk {
 
     DDraw7Surface* GetCurrentRenderTarget7() const;
 
+    DDrawCommonSurface* GetCommonRenderTarget() const;
+
+    DDrawCommonSurface* GetCommonDepthStencil() const;
+
     bool IsCurrentRenderTarget(DDrawCommonSurface* commonSurface) const;
+
+    void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 
     void SetInScene(bool inScene) {
       m_inScene = inScene;

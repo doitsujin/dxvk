@@ -151,8 +151,10 @@ namespace dxvk {
     if (unlikely(!m_commonViewport->HasDevice()))
       return D3DERR_VIEWPORTHASNODEVICE;
 
+    D3DCommonDevice* commonD3DDevice = m_commonViewport->GetCommonD3DDevice();
+
     // Use the full surface rect, since it is surface version agnostic
-    const RECT* surfRect = m_commonViewport->GetCommonRenderTarget()->GetFullSurfaceRect();
+    const RECT* surfRect = commonD3DDevice->GetCommonRenderTarget()->GetFullSurfaceRect();
     // D3D5 will fail when setting a viewport that's outside of the
     // current render target, though that works in D3D9
     HRESULT hr = ValidateViewportRT(data->dwX, data->dwY, data->dwWidth, data->dwHeight,
@@ -195,20 +197,17 @@ namespace dxvk {
 
     // Temporarily activate this viewport, if not already active
     d3d9::D3DVIEWPORT9 currentViewport9;
-    if (!m_commonViewport->IsCurrentViewport()) {
-      D3D5Viewport* currentViewport = m_commonViewport->GetCurrentD3D5Viewport();
-      if (currentViewport != nullptr) {
-        currentViewport9 = *currentViewport->GetCommonViewport()->GetD3D9Viewport();
-      } else {
-        d3d9Device->GetViewport(&currentViewport9);
-      }
+    const bool isCurrentViewport = m_commonViewport->IsCurrentViewport();
+
+    if (!isCurrentViewport) {
+      d3d9Device->GetViewport(&currentViewport9);
       d3d9Device->SetViewport(m_commonViewport->GetD3D9Viewport());
     }
 
     HRESULT hr = m_commonViewport->TransformVertices(vertex_count, data, flags, offscreen);
 
     // Restore the previously active viewport
-    if (!m_commonViewport->IsCurrentViewport()) {
+    if (!isCurrentViewport) {
       d3d9Device->SetViewport(&currentViewport9);
     }
 
@@ -289,8 +288,10 @@ namespace dxvk {
     DDrawCommonSurface* rt = nullptr;
     DDrawCommonSurface* ds = nullptr;
 
+    D3DCommonDevice* commonD3DDevice = m_commonViewport->GetCommonD3DDevice();
+
     if (clearRenderTarget) {
-      rt = m_commonViewport->GetCommonRenderTarget();
+      rt = commonD3DDevice->GetCommonRenderTarget();
       if (likely(rt != nullptr)) {
         // If this isn't a full surface clear, we need to first upload the DDraw surface
         if (unlikely(count > 1 || !rt->IsFullSurfaceLock(reinterpret_cast<RECT*>(rects), nullptr))) {
@@ -302,7 +303,7 @@ namespace dxvk {
       }
     }
     if (clearDepthStencil) {
-      ds = m_commonViewport->GetCommonDepthStencil();
+      ds = commonD3DDevice->GetCommonDepthStencil();
       if (likely(ds != nullptr)) {
         // If this isn't a full surface clear, we need to first upload the DDraw surface
         if (unlikely(count > 1 || !ds->IsFullSurfaceLock(reinterpret_cast<RECT*>(rects), nullptr))) {
@@ -314,18 +315,14 @@ namespace dxvk {
       }
     }
 
-    d3d9::IDirect3DDevice9* d3d9Device = m_commonViewport->GetCommonD3DDevice()->GetD3D9Device();
+    d3d9::IDirect3DDevice9* d3d9Device = commonD3DDevice->GetD3D9Device();
 
     // Temporarily activate this viewport in order to clear it
     d3d9::D3DVIEWPORT9 currentViewport9;
     const bool isCurrentViewport = m_commonViewport->IsCurrentViewport();
+
     if (!isCurrentViewport) {
-      D3D5Viewport* currentViewport = m_commonViewport->GetCurrentD3D5Viewport();
-      if (currentViewport != nullptr) {
-        currentViewport9 = *currentViewport->GetCommonViewport()->GetD3D9Viewport();
-      } else {
-        d3d9Device->GetViewport(&currentViewport9);
-      }
+      d3d9Device->GetViewport(&currentViewport9);
       d3d9Device->SetViewport(m_commonViewport->GetD3D9Viewport());
     }
 
@@ -354,7 +351,7 @@ namespace dxvk {
     if (clearDepthStencil && ds != nullptr)
       ds->UnDirtyDDrawSurface();
 
-    m_commonViewport->UpdateSurfaceDirtyTracking(clearRenderTarget, clearDepthStencil, false);
+    commonD3DDevice->UpdateSurfaceDirtyTracking(clearRenderTarget, clearDepthStencil, false);
 
     return D3D_OK;
   }
@@ -470,8 +467,10 @@ namespace dxvk {
     if (unlikely(!m_commonViewport->HasDevice()))
       return D3DERR_VIEWPORTHASNODEVICE;
 
+    D3DCommonDevice* commonD3DDevice = m_commonViewport->GetCommonD3DDevice();
+
     // Use the full surface rect, since it is surface version agnostic
-    const RECT* surfRect = m_commonViewport->GetCommonRenderTarget()->GetFullSurfaceRect();
+    const RECT* surfRect = commonD3DDevice->GetCommonRenderTarget()->GetFullSurfaceRect();
     // D3D5 will fail when setting a viewport that's outside of the
     // current render target, though that works in D3D9
     HRESULT hr = ValidateViewportRT(data->dwX, data->dwY, data->dwWidth, data->dwHeight,

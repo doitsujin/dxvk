@@ -260,11 +260,11 @@ namespace dxvk {
 
     auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d6Viewport);
     if (likely(it != m_viewports.end())) {
-      m_viewports.erase(it);
       d3d6Viewport->GetCommonViewport()->SetD3D6Device(nullptr);
       // Clear the current viewport if it is deleted from the device
       if (m_currentViewport.ptr() == d3d6Viewport)
         m_currentViewport = nullptr;
+      m_viewports.erase(it);
     } else {
       Logger::warn("D3D6Device::DeleteViewport: Viewport not found");
     }
