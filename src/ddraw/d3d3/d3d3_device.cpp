@@ -880,7 +880,9 @@ namespace dxvk {
         return hr;
       }
 
-      // D3DRS_ZENABLE isn't set based on depth stencil attachments in D3D3: "The default value is FALSE."
+      // The docs state D3DRS_ZENABLE isn't set based on depth stencil attachments in D3D3:
+      // "The default value is FALSE.", however some games apparently depend on it...
+      device9->SetRenderState(d3d9::D3DRS_ZENABLE, d3d9::D3DZB_TRUE);
     }
 
     return D3D_OK;

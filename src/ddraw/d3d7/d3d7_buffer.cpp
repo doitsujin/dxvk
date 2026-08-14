@@ -126,7 +126,6 @@ namespace dxvk {
     // Check and initialize the source buffer
     srcBuffer7->RefreshD3DDevice();
     if (unlikely(!srcBuffer7->IsInitialized())) {
-      Logger::warn("D3D7VertexBuffer::ProcessVertices: Uninitialized source buffer");
       HRESULT hrInit = srcBuffer7->InitializeD3D9();
       if (unlikely(FAILED(hrInit)))
         return hrInit;

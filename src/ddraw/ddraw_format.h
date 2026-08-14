@@ -781,14 +781,9 @@ namespace dxvk {
     surface->GetSurfaceDesc(&desc);
     const d3d9::D3DCUBEMAP_FACES face = GetCubemapFace(&desc);
     IDirectDrawSurface7* mipMap = surface;
+    IDirectDrawSurface7* parentSurface;
 
     for (uint16_t i = 0; i < mipLevels; i++) {
-      // Should never occur normally, but acts as a last ditch safety check
-      if (unlikely(mipMap == nullptr)) {
-        Logger::warn(str::format("BlitToD3D9CubeMap: Last found source mip ", i - 1));
-        break;
-      }
-
       d3d9::D3DLOCKED_RECT rect9mip;
       // D3DLOCK_DISCARD will get ignored for MANAGED/SYSTEMMEM, but will work on DEFAULT
       HRESULT hr9 = cubeTex9->LockRect(face, i, &rect9mip, NULL, D3DLOCK_DISCARD);
@@ -809,9 +804,11 @@ namespace dxvk {
             uint8_t* data7 = reinterpret_cast<uint8_t*>(descMip.lpSurface);
 
             const size_t copyPitch = std::min<size_t>(descMip.lPitch, rect9mip.Pitch);
-            for (uint32_t h = 0; h < descMip.dwHeight; h++)
-              memcpy(&data9[h * rect9mip.Pitch], &data7[h * descMip.lPitch], copyPitch);
-
+            for (uint32_t h = 0; h < descMip.dwHeight; h++) {
+              memcpy(data9, data7, copyPitch);
+              data9 += rect9mip.Pitch;
+              data7 += descMip.lPitch;
+            }
             //Logger::debug(str::format("BlitToD3D9CubeMap: Done blitting mip ", i, " row by row"));
           } else {
             const size_t size = static_cast<size_t>(descMip.dwHeight * descMip.lPitch);
@@ -823,13 +820,14 @@ namespace dxvk {
           Logger::warn(str::format("BlitToD3D9CubeMap: Failed to lock mip ", i));
         }
         cubeTex9->UnlockRect(face, i);
-
-        IDirectDrawSurface7* parentSurface = mipMap;
-        mipMap = nullptr;
-
-        parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces7Callback);
       } else {
         Logger::warn(str::format("BlitToD3D9CubeMap: Failed to lock D3D9 mip ", i));
+      }
+
+      // Skip the enumeration if we've reached the final mip
+      if (likely(i < mipLevels - 1)) {
+        parentSurface = mipMap;
+        parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces7Callback);
       }
     }
   }
@@ -841,14 +839,9 @@ namespace dxvk {
         const uint16_t mipLevels,
         const bool isDXTFormat) {
     SurfaceType* mipMap = surface;
+    SurfaceType* parentSurface;
 
     for (uint16_t i = 0; i < mipLevels; i++) {
-      // Should never occur normally, but acts as a last ditch safety check
-      if (unlikely(mipMap == nullptr)) {
-        Logger::warn(str::format("BlitToD3D9Texture: Last found source mip ", i - 1));
-        break;
-      }
-
       d3d9::D3DLOCKED_RECT rect9mip;
       // D3DLOCK_DISCARD will get ignored for MANAGED/SYSTEMMEM, but will work on DEFAULT
       HRESULT hr9 = texture9->LockRect(i, &rect9mip, NULL, D3DLOCK_DISCARD);
@@ -869,9 +862,11 @@ namespace dxvk {
             uint8_t* data7 = reinterpret_cast<uint8_t*>(descMip.lpSurface);
 
             const size_t copyPitch = std::min<size_t>(descMip.lPitch, rect9mip.Pitch);
-            for (uint32_t h = 0; h < descMip.dwHeight; h++)
-              memcpy(&data9[h * rect9mip.Pitch], &data7[h * descMip.lPitch], copyPitch);
-
+            for (uint32_t h = 0; h < descMip.dwHeight; h++) {
+              memcpy(data9, data7, copyPitch);
+              data9 += rect9mip.Pitch;
+              data7 += descMip.lPitch;
+            }
             //Logger::debug(str::format("BlitToD3D9Texture: Done blitting mip ", i, " row by row"));
           } else {
             const size_t size = static_cast<size_t>(descMip.dwHeight * descMip.lPitch);
@@ -883,10 +878,13 @@ namespace dxvk {
           Logger::warn(str::format("BlitToD3D9Texture: Failed to lock mip ", i));
         }
         texture9->UnlockRect(i);
+      } else {
+        Logger::warn(str::format("BlitToD3D9Texture: Failed to lock D3D9 mip ", i));
+      }
 
-        SurfaceType* parentSurface = mipMap;
-        mipMap = nullptr;
-
+      // Skip the enumeration if we've reached the final mip
+      if (likely(i < mipLevels - 1)) {
+        parentSurface = mipMap;
         if constexpr (std::is_same<SurfaceType, IDirectDrawSurface7>::value) {
           parentSurface->EnumAttachedSurfaces(&mipMap, ListMipChainSurfaces7Callback);
         } else if constexpr (std::is_same<SurfaceType, IDirectDrawSurface4>::value) {
@@ -897,8 +895,6 @@ namespace dxvk {
           Logger::err("BlitToD3D9Texture: Unsupported surface type");
           break;
         }
-      } else {
-        Logger::warn(str::format("BlitToD3D9Texture: Failed to lock D3D9 mip ", i));
       }
     }
   }
@@ -928,9 +924,11 @@ namespace dxvk {
           uint8_t* data7 = reinterpret_cast<uint8_t*>(desc.lpSurface);
 
           const size_t copyPitch = std::min<size_t>(desc.lPitch, rect9.Pitch);
-          for (uint32_t h = 0; h < desc.dwHeight; h++)
-            memcpy(&data9[h * rect9.Pitch], &data7[h * desc.lPitch], copyPitch);
-
+          for (uint32_t h = 0; h < desc.dwHeight; h++) {
+            memcpy(data9, data7, copyPitch);
+            data9 += rect9.Pitch;
+            data7 += desc.lPitch;
+          }
           //Logger::debug("BlitToD3D9Surface: Done blitting surface row by row");
         } else {
           const size_t size = static_cast<size_t>(desc.dwHeight * desc.lPitch);
@@ -971,9 +969,11 @@ namespace dxvk {
           uint8_t* data9 = reinterpret_cast<uint8_t*>(rect9.pBits);
 
           const size_t copyPitch = std::min<size_t>(desc.lPitch, rect9.Pitch);
-          for (uint32_t h = 0; h < desc.dwHeight; h++)
-            memcpy(&data7[h * desc.lPitch], &data9[h * rect9.Pitch], copyPitch);
-
+          for (uint32_t h = 0; h < desc.dwHeight; h++) {
+            memcpy(data7, data9, copyPitch);
+            data7 += desc.lPitch;
+            data9 += rect9.Pitch;
+          }
           //Logger::debug("BlitToDDrawSurface: Done blitting surface row by row");
         } else {
           const size_t size = static_cast<size_t>(desc.dwHeight * desc.lPitch);
