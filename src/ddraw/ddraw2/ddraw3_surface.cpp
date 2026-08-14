@@ -704,7 +704,21 @@ namespace dxvk {
     // Write back any dirty surface data from bound D3D9 back buffers or depth stencils
     DownloadSurfaceData();
 
-    return GetShadowOrProxied()->Lock(lpDestRect, lpDDSurfaceDesc, dwFlags, hEvent);
+    HRESULT hr = GetShadowOrProxied()->Lock(lpDestRect, lpDDSurfaceDesc, dwFlags, hEvent);
+    if (unlikely(FAILED(hr)))
+      return hr;
+
+    // For single surface locks, track the READONLY flag in order to skip dirtying
+    // on Unlock(). Reset the tracking in case of multiple simultaneous locks.
+    if (likely(!m_lockCount)) {
+      m_readOnlyLock = (dwFlags & DDLOCK_READONLY) && !(dwFlags & DDLOCK_WRITEONLY);
+    } else {
+      m_readOnlyLock = false;
+    }
+
+    m_lockCount++;
+
+    return DD_OK;
   }
 
   HRESULT STDMETHODCALLTYPE DDraw3Surface::ReleaseDC(HDC hDC) {
@@ -838,7 +852,14 @@ namespace dxvk {
     if (unlikely(FAILED(hr)))
       return hr;
 
-    m_commonSurf->DirtyDDrawSurface();
+    if (!m_readOnlyLock) {
+      m_commonSurf->DirtyDDrawSurface();
+    } else {
+      m_readOnlyLock = false;
+    }
+
+    if (likely(m_lockCount))
+      m_lockCount--;
 
     d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
     if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr)) {

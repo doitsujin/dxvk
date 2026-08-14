@@ -857,40 +857,41 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  // Not called when the device is created from a D3D5/6 device
-  void D3D3Device::InitializeDS() {
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    m_rt->InitializeD3D9RenderTarget();
+  HRESULT D3D3Device::InitializeRTAndDS() {
+    HRESULT hr = m_rt->InitializeD3D9RenderTarget();
+    if (unlikely(FAILED(hr)))
+      return hr;
 
     m_ds = m_rt->GetAttachedDepthStencil();
 
-    if (m_ds != nullptr) {
-      HRESULT hrDS = m_ds->InitializeD3D9DepthStencil();
-      if (unlikely(FAILED(hrDS))) {
-        Logger::err("D3D3Device::InitializeDS: Failed to initialize D3D9 DS");
-      } else {
-        const RECT* dsRect = m_ds->GetCommonSurface()->GetFullSurfaceRect();
-        Logger::info(str::format("D3D3Device::InitializeDS: Depth stencil: ", dsRect->right, "x", dsRect->bottom));
+    if (likely(m_ds != nullptr)) {
+      hr = m_ds->InitializeD3D9DepthStencil();
+      if (unlikely(FAILED(hr)))
+        return hr;
 
-        HRESULT hrDS9 = device9->SetDepthStencilSurface(m_ds->GetCommonSurface()->GetD3D9Surface());
-        if (unlikely(FAILED(hrDS9))) {
-          Logger::err("D3D3Device::InitializeDS: Failed to set D3D9 depth stencil");
-        } else {
-          // This needs to act like an auto depth stencil of sorts, so manually enable z-buffering
-          device9->SetRenderState(d3d9::D3DRS_ZENABLE, d3d9::D3DZB_TRUE);
-        }
+      const RECT* dsRect = m_ds->GetCommonSurface()->GetFullSurfaceRect();
+      Logger::info(str::format("D3D3Device: Depth stencil: ", dsRect->right, "x", dsRect->bottom));
+
+      d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
+
+      hr = device9->SetDepthStencilSurface(m_ds->GetCommonSurface()->GetD3D9Surface());
+      if (unlikely(FAILED(hr))) {
+        Logger::err("D3D3Device: Failed to set D3D9 depth stencil");
+        return hr;
       }
-    } else {
-      device9->SetDepthStencilSurface(nullptr);
-      // Should be superfluous, but play it safe
-      device9->SetRenderState(d3d9::D3DRS_ZENABLE, d3d9::D3DZB_FALSE);
+
+      // D3DRS_ZENABLE isn't set based on depth stencil attachments in D3D3: "The default value is FALSE."
     }
+
+    return D3D_OK;
   }
 
   void D3D3Device::UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface) {
     if (likely(dirtyRenderTarget))
       m_rt->GetCommonSurface()->DirtyD3D9Surface();
+
+    if (likely(dirtyDepthStencil && m_ds != nullptr))
+      m_ds->GetCommonSurface()->DirtyD3D9Surface();
 
     if (likely(dirtyPrimarySurface)) {
       DDrawCommonSurface* primarySurface = m_commonIntf->GetPrimarySurface();
@@ -899,9 +900,6 @@ namespace dxvk {
       if (likely(primarySurface != nullptr))
         primarySurface->DirtyD3D9Surface();
     }
-
-    if (likely(dirtyDepthStencil && m_ds != nullptr))
-      m_ds->GetCommonSurface()->DirtyD3D9Surface();
   }
 
   inline void D3D3Device::DDrawDirtySurfaceUpload() {
@@ -986,7 +984,7 @@ namespace dxvk {
       //case D3DRENDERSTATE_MONOENABLE:
       //case D3DRENDERSTATE_ROP2:
       //case D3DRENDERSTATE_PLANEMASK:
-      case D3DRENDERSTATE_ZWRITEENABLE:
+      //case D3DRENDERSTATE_ZWRITEENABLE:
       case D3DRENDERSTATE_ALPHATESTENABLE:
       case D3DRENDERSTATE_LASTPIXEL:
       //case D3DRENDERSTATE_TEXTUREMAG:
@@ -1128,6 +1126,11 @@ namespace dxvk {
       // "This render state is not supported by the software rasterizers, and is often ignored by hardware drivers."
       case D3DRENDERSTATE_PLANEMASK:
         return D3D_OK;
+
+      // Track the depth write state for D3D9 depth stencil surface dirtying
+      case D3DRENDERSTATE_ZWRITEENABLE:
+        m_commonD3DDevice->SetDepthWriteEnabled(static_cast<bool>(dwRenderState));
+        break;
 
       // Docs: "[...]  only the first two (D3DFILTER_NEAREST and
       // D3DFILTER_LINEAR) are valid with D3DRENDERSTATE_TEXTUREMAG."
@@ -1351,7 +1354,7 @@ namespace dxvk {
            GetFVFSize(D3DFVF_TLVERTEX));
 
       if (SUCCEEDED(hr)) {
-        UpdateSurfaceDirtyTracking(true, true, true);
+        UpdateSurfaceDirtyTracking(true, m_commonD3DDevice->IsDepthWriteEnabled(), true);
         m_stats.dwTrianglesDrawn += std::max<DWORD>(vertices.size() / 3, 0u);
       } else {
         Logger::err(str::format("D3D3Device::Execute: D3DOP_TRIANGLE failed to draw vertices: ", vertices.size()));
@@ -1387,7 +1390,7 @@ namespace dxvk {
            GetFVFSize(D3DFVF_TLVERTEX));
 
       if (SUCCEEDED(hr)) {
-        UpdateSurfaceDirtyTracking(true, true, true);
+        UpdateSurfaceDirtyTracking(true, m_commonD3DDevice->IsDepthWriteEnabled(), true);
         m_stats.dwLinesDrawn += std::max<DWORD>(vertices.size() / 2, 0u);
       } else {
         Logger::err(str::format("D3D3Device::Execute: D3DOP_LINE failed to draw vertices: ", vertices.size()));
@@ -1424,7 +1427,7 @@ namespace dxvk {
            GetFVFSize(D3DFVF_TLVERTEX));
 
       if (SUCCEEDED(hr)) {
-        UpdateSurfaceDirtyTracking(true, true, true);
+        UpdateSurfaceDirtyTracking(true, m_commonD3DDevice->IsDepthWriteEnabled(), true);
         m_stats.dwPointsDrawn += static_cast<DWORD>(vertices.size());
       } else {
         Logger::err(str::format("D3D3Device::Execute: D3DOP_POINT failed to draw vertices: ", vertices.size()));
@@ -1461,7 +1464,7 @@ namespace dxvk {
            GetFVFSize(D3DFVF_TLVERTEX));
 
       if (SUCCEEDED(hr)) {
-        UpdateSurfaceDirtyTracking(true, true, true);
+        UpdateSurfaceDirtyTracking(true, m_commonD3DDevice->IsDepthWriteEnabled(), true);
         m_stats.dwSpansDrawn += std::max<DWORD>(vertices.size() - 1, 0u);
       } else {
         Logger::err(str::format("D3D3Device::Execute: D3DOP_SPAN failed to draw vertices: ", vertices.size()));

@@ -82,7 +82,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE DeleteMatrix(D3DMATRIXHANDLE D3DMatHandle);
 
-    void InitializeDS();
+    HRESULT InitializeRTAndDS();
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 

@@ -107,7 +107,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetClipStatus(D3DCLIPSTATUS *clip_status);
 
-    void InitializeDS();
+    HRESULT InitializeRTAndDS();
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 

@@ -464,8 +464,11 @@ namespace dxvk {
 
       // Set the common device on the common interface
       m_commonIntf->SetCommonD3DDevice(device6->GetCommonD3DDevice());
-      // Now that we have a valid D3D9 device pointer, we can initialize the depth stencil (if any)
-      device6->InitializeDS();
+      // Now that we have a valid common D3D device on the DDraw interface,
+      // we can initialize the render target and depth stencil (if any)
+      hr = device6->InitializeRTAndDS();
+      if (unlikely(FAILED(hr)))
+        return hr;
 
       *lplpD3DDevice = device6.ref();
     } catch (const DxvkError& e) {

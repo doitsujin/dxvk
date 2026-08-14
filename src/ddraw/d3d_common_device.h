@@ -52,6 +52,14 @@ namespace dxvk {
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 
+    void SetDepthWriteEnabled(bool isDepthWriteEnabled) {
+      m_isDepthWriteEnabled = isDepthWriteEnabled;
+    }
+
+    bool IsDepthWriteEnabled() const {
+      return m_isDepthWriteEnabled;
+    }
+
     void SetInScene(bool inScene) {
       m_inScene = inScene;
     }
@@ -202,6 +210,9 @@ namespace dxvk {
   private:
 
     bool                        m_inScene             = false;
+    // D3DRENDERSTATE_ZWRITEENABLE, defaults to TRUE.
+    // Used only for D3D9 depth stencil surface dirtying.
+    bool                        m_isDepthWriteEnabled = true;
 
     DDrawCommonInterface*       m_commonIntf          = nullptr;
 

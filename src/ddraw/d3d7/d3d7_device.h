@@ -139,7 +139,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetInfo(DWORD info_id, void *info, DWORD info_size);
 
-    void InitializeDS();
+    HRESULT InitializeRTAndDS();
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 

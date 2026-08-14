@@ -130,7 +130,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE ValidateDevice(LPDWORD lpdwPasses);
 
-    void InitializeDS();
+    HRESULT InitializeRTAndDS();
 
     void UpdateSurfaceDirtyTracking(bool dirtyRenderTarget, bool dirtyDepthStencil, bool dirtyPrimarySurface);
 
