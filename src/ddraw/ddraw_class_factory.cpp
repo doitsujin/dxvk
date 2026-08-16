@@ -9,7 +9,6 @@ namespace dxvk {
   DDrawClassFactory::~DDrawClassFactory() {
   }
 
-
   HRESULT STDMETHODCALLTYPE DDrawClassFactory::QueryInterface(REFIID riid, void** ppvObject) {
     if (unlikely(ppvObject == nullptr))
       return E_POINTER;

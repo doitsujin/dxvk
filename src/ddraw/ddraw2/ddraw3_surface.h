@@ -173,8 +173,7 @@ namespace dxvk {
 
     inline HRESULT UploadSurfaceData();
 
-    bool                     m_readOnlyLock = false;
-    std::atomic<uint8_t>     m_lockCount    = 0u;
+    std::atomic<bool>        m_readOnlyLock  = false;
 
     Com<DDrawCommonSurface>  m_commonSurf;
 
