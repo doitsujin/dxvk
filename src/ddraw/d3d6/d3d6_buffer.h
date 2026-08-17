@@ -71,7 +71,7 @@ namespace dxvk {
       return m_desc.dwCaps & D3DVBCAPS_OPTIMIZED;
     }
 
-    bool                              m_locked        = false;
+    std::atomic<bool>                 m_locked        = false;
 
     DDrawCommonInterface*             m_commonIntf    = nullptr;
 

@@ -12,9 +12,12 @@
 namespace dxvk {
 
   D3D3Material::D3D3Material(
+        D3DCommonMaterial* commonMaterial,
         D3D3Interface* pParent)
-    : DDrawChildObject<D3D3Interface, IDirect3DMaterial>(pParent) {
-    m_commonMaterial = new D3DCommonMaterial();
+    : DDrawChildObject<D3D3Interface, IDirect3DMaterial>(pParent)
+    , m_commonMaterial ( commonMaterial ) {
+    if (m_commonMaterial == nullptr)
+      m_commonMaterial = new D3DCommonMaterial();
 
     m_commonMaterial->SetD3D3Material(this);
   }

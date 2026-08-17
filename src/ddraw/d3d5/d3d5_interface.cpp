@@ -264,7 +264,7 @@ namespace dxvk {
 
     InitReturnPtr(lplpDirect3DMaterial);
 
-    *lplpDirect3DMaterial = ref(new D3D5Material(this));
+    *lplpDirect3DMaterial = ref(new D3D5Material(nullptr, this));
 
     return D3D_OK;
   }

@@ -13,7 +13,7 @@ namespace dxvk {
 
   public:
 
-    D3D5Material(D3D5Interface* pParent);
+    D3D5Material(D3DCommonMaterial* commonMaterial, D3D5Interface* pParent);
 
     ~D3D5Material();
 

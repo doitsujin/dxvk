@@ -243,7 +243,7 @@ namespace dxvk {
     if (unlikely(lpD3DDevice == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    if (unlikely(IsLocked()))
+    if (unlikely(m_locked))
       return D3DERR_VERTEXBUFFERLOCKED;
 
     if (unlikely(IsOptimized()))
