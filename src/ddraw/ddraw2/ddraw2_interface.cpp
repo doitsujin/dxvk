@@ -280,8 +280,8 @@ namespace dxvk {
 
         // Shadow surface creation for the primary surface
         // (it needs to be based on the same incoming desc)
-        if (unlikely(m_commonIntf->GetOptions()->forceLegacyPresent &&
-                    !surface->GetCommonSurface()->SkipD3D9Operations())) {
+        if (m_commonIntf->GetOptions()->forceLegacyPresent &&
+           !surface->GetCommonSurface()->SkipD3D9Operations()) {
           DDSURFACEDESC shadowDesc = *lpDDSurfaceDesc;
           const DDSURFACEDESC* primaryDesc = surface->GetCommonSurface()->GetDesc();
 

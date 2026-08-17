@@ -309,7 +309,7 @@ namespace dxvk {
 
     m_commonSurf->DirtyDDrawSurface();
 
-    if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr)) {
+    if (m_shadowSurf != nullptr && d3d9Device != nullptr) {
       const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
                                 !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
                                  m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
@@ -381,7 +381,7 @@ namespace dxvk {
 
     m_commonSurf->DirtyDDrawSurface();
 
-    if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr)) {
+    if (m_shadowSurf != nullptr && d3d9Device != nullptr) {
       const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
                                 !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
                                  m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
@@ -770,15 +770,17 @@ namespace dxvk {
 
     m_commonSurf->DirtyDDrawSurface();
 
-    d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
-    if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr)) {
-      const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
-                                !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
-                                 m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
-                                 false : true;
-      if (shouldPresent) {
-        InitializeOrUploadD3D9();
-        d3d9Device->Present(NULL, NULL, NULL, NULL);
+    if (m_shadowSurf != nullptr) {
+      d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
+      if (likely(d3d9Device != nullptr)) {
+        const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
+                                  !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
+                                   m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
+                                   false : true;
+        if (shouldPresent) {
+          InitializeOrUploadD3D9();
+          d3d9Device->Present(NULL, NULL, NULL, NULL);
+        }
       }
     }
 
@@ -875,6 +877,9 @@ namespace dxvk {
       m_commonSurf->SetPalette(ddrawPalette);
     }
 
+    // Note: A palette update on a primary surface would cause immediate
+    // presentation, however we don't support P8 primary surfaces
+
     return DD_OK;
   }
 
@@ -886,15 +891,17 @@ namespace dxvk {
     if (!m_readOnlyLock) {
       m_commonSurf->DirtyDDrawSurface();
 
-      d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
-      if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr)) {
-        const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
-                                  !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
-                                   m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
-                                   false : true;
-        if (shouldPresent) {
-          InitializeOrUploadD3D9();
-          d3d9Device->Present(NULL, NULL, NULL, NULL);
+      if (m_shadowSurf != nullptr) {
+        d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
+        if (likely(d3d9Device != nullptr)) {
+          const bool shouldPresent = m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Auto ?
+                                    !m_commonSurf->GetCommonD3DDevice()->IsInScene() :
+                                     m_commonIntf->GetOptions()->legacyPresentGuard == D3DLegacyPresentGuard::Strict ?
+                                     false : true;
+          if (shouldPresent) {
+            InitializeOrUploadD3D9();
+            d3d9Device->Present(NULL, NULL, NULL, NULL);
+          }
         }
       }
     } else {
