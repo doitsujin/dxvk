@@ -51,10 +51,10 @@ namespace dxvk {
 
   private:
 
-    std::atomic<bool>    m_locked   = false;
-    std::atomic<bool>    m_executed = false;
+    std::atomic<bool>    m_locked      = false;
+    std::atomic<bool>    m_executed    = false;
 
-    D3DEXECUTEDATA       m_executeData;
+    D3DEXECUTEDATA       m_executeData = { };
 
     std::vector<uint8_t> m_buffer;
 

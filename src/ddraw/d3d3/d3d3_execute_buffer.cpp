@@ -6,11 +6,7 @@ namespace dxvk {
 
   D3D3ExecuteBuffer::D3D3ExecuteBuffer(D3D3Device* pParent, D3DEXECUTEBUFFERDESC* pDesc)
     : DDrawChildObject<D3D3Device, IDirect3DExecuteBuffer>(pParent) {
-    if (likely(pDesc->dwFlags & D3DDEB_BUFSIZE)) {
-      m_buffer.resize(pDesc->dwBufferSize);
-    } else {
-      Logger::warn("D3D3ExecuteBuffer: No buffer size specified during initialization");
-    }
+    m_buffer.resize(pDesc->dwBufferSize);
   }
 
   D3D3ExecuteBuffer::~D3D3ExecuteBuffer() {
@@ -42,9 +38,6 @@ namespace dxvk {
     if (unlikely(lpData == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    if (unlikely(m_buffer.size() == 0))
-      return DDERR_INVALIDPARAMS;
-
     *lpData = m_executeData;
 
     return D3D_OK;
@@ -65,11 +58,11 @@ namespace dxvk {
     if (unlikely(lpDesc == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    if (unlikely(m_locked))
-      return D3DERR_EXECUTE_LOCKED;
-
     if (unlikely(lpDesc->dwSize != sizeof(D3DEXECUTEBUFFERDESC)))
       return DDERR_INVALIDPARAMS;
+
+    if (unlikely(m_locked))
+      return D3DERR_EXECUTE_LOCKED;
 
     lpDesc->dwFlags = D3DDEB_BUFSIZE | D3DDEB_LPDATA;
     lpDesc->dwBufferSize = m_buffer.size();
@@ -91,13 +84,20 @@ namespace dxvk {
     if (unlikely(m_executed))
       lock = m_parent->LockDevice();
 
-    if (unlikely(lpData == nullptr || m_buffer.size() == 0))
+    if (unlikely(lpData == nullptr))
       return DDERR_INVALIDPARAMS;
 
+    if (unlikely(lpData->dwSize != sizeof(D3DEXECUTEDATA)))
+      return DDERR_INVALIDPARAMS;
+
+    // The checks below will protect against a m_buffer.size() of 0
     if (unlikely(lpData->dwInstructionOffset + lpData->dwInstructionLength > m_buffer.size()))
       return DDERR_INVALIDPARAMS;
 
-    if (unlikely(lpData->dwVertexOffset + lpData->dwVertexCount > m_buffer.size()))
+    if (unlikely(lpData->dwVertexOffset + lpData->dwVertexCount * sizeof(D3DVERTEX) > m_buffer.size()))
+      return DDERR_INVALIDPARAMS;
+
+    if (unlikely(lpData->dwHVertexOffset + lpData->dwVertexCount * sizeof(D3DTLVERTEX) > m_buffer.size()))
       return DDERR_INVALIDPARAMS;
 
     m_executeData = *lpData;

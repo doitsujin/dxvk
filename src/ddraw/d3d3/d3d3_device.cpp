@@ -420,21 +420,24 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  // No idea what this is supposed to do in practice, but there aren't any known uses anyway
   HRESULT STDMETHODCALLTYPE D3D3Device::Initialize(IDirect3D *d3d, GUID *lpGUID, D3DDEVICEDESC *desc) {
-    if (unlikely(d3d == nullptr))
-      return DDERR_INVALIDPARAMS;
-
-    return D3D_OK;
+    return DDERR_ALREADYINITIALIZED;
   }
 
   HRESULT STDMETHODCALLTYPE D3D3Device::CreateExecuteBuffer(D3DEXECUTEBUFFERDESC *desc, IDirect3DExecuteBuffer **buffer, IUnknown *pkOuter) {
     if (unlikely(desc == nullptr || buffer == nullptr))
       return DDERR_INVALIDPARAMS;
 
+    InitReturnPtr(buffer);
+
     if (unlikely(desc->dwSize != sizeof(D3DEXECUTEBUFFERDESC)))
       return DDERR_INVALIDPARAMS;
 
-    InitReturnPtr(buffer);
+    // "The D3DEXECUTEBUFFERDESC structure describes the execute buffer to be created.
+    //  At a minimum, the application must specify the size required."
+    if (unlikely(!(desc->dwFlags & D3DDEB_BUFSIZE)))
+      return DDERR_INVALIDPARAMS;
 
     *buffer = ref(new D3D3ExecuteBuffer(this, desc));
 
