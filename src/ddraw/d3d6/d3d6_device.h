@@ -173,7 +173,8 @@ namespace dxvk {
 
         if (m_legacyProjection != nullptr) {
           device9->GetTransform(d3d9::D3DTS_PROJECTION, &m_projectionMatrix);
-          device9->MultiplyTransform(d3d9::D3DTS_PROJECTION, m_legacyProjection);
+          device9->SetTransform(d3d9::D3DTS_PROJECTION, m_legacyProjection);
+          device9->MultiplyTransform(d3d9::D3DTS_PROJECTION, &m_projectionMatrix);
         }
       }
     }

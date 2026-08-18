@@ -1513,13 +1513,15 @@ namespace dxvk {
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
+    const bool isTransformed = vertex_type & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (vertex_type & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(vertex_type);
     HRESULT hr = device9->DrawPrimitiveUP(
@@ -1530,7 +1532,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawPrimitive: Failed D3D9 call to DrawPrimitiveUP");
@@ -1557,13 +1560,15 @@ namespace dxvk {
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
+    const bool isTransformed = fvf & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (fvf & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(fvf);
     HRESULT hr = device9->DrawIndexedPrimitiveUP(
@@ -1578,7 +1583,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawIndexedPrimitive: Failed D3D9 call to DrawIndexedPrimitiveUP");
@@ -1634,13 +1640,15 @@ namespace dxvk {
     // Transform strided vertex data to a standard vertex buffer stream
     PackedVertexBuffer pvb = TransformStridedtoUP(fvf, strided_data, vertex_count);
 
+    const bool isTransformed = fvf & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (fvf & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(fvf);
     HRESULT hr = device9->DrawPrimitiveUP(
@@ -1651,7 +1659,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawPrimitiveStrided: Failed D3D9 call to DrawPrimitiveUP");
@@ -1681,13 +1690,15 @@ namespace dxvk {
     // Transform strided vertex data to a standard vertex buffer stream
     PackedVertexBuffer pvb = TransformStridedtoUP(fvf, strided_data, vertex_count);
 
+    const bool isTransformed = fvf & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (fvf & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(fvf);
     HRESULT hr = device9->DrawIndexedPrimitiveUP(
@@ -1702,7 +1713,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawIndexedPrimitiveStrided: Failed D3D9 call to DrawIndexedPrimitiveUP");
@@ -1741,15 +1753,18 @@ namespace dxvk {
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
+    const DWORD fvf = vb6->GetFVF();
+    const bool isTransformed = fvf & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
-                              (vb6->GetFVF() & D3DFVF_NORMAL) &&
+                              (fvf & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
-    device9->SetFVF(vb6->GetFVF());
+    device9->SetFVF(fvf);
     device9->SetStreamSource(0, vb6->GetD3D9VertexBuffer(), 0, vb6->GetStride());
     HRESULT hr = device9->DrawPrimitive(
                       d3d9::D3DPRIMITIVETYPE(primitive_type),
@@ -1758,7 +1773,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawPrimitiveVB: Failed D3D9 call to DrawPrimitive");
@@ -1802,13 +1818,16 @@ namespace dxvk {
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
+    const DWORD fvf = vb6->GetFVF();
+    const bool isTransformed = fvf & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
-                              (vb6->GetFVF() & D3DFVF_NORMAL) &&
+                              (fvf & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     uint8_t ibIndex = 0;
     // Fit index buffer uploads into the smallest buffer size possible
@@ -1826,7 +1845,7 @@ namespace dxvk {
     ib9->Unlock();
 
     device9->SetIndices(ib9);
-    device9->SetFVF(vb6->GetFVF());
+    device9->SetFVF(fvf);
     device9->SetStreamSource(0, vb6->GetD3D9VertexBuffer(), 0, vb6->GetStride());
     HRESULT hr = device9->DrawIndexedPrimitive(
                       d3d9::D3DPRIMITIVETYPE(primitive_type),
@@ -1838,7 +1857,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D6Device::DrawIndexedPrimitiveVB: Failed D3D9 call to DrawIndexedPrimitive");

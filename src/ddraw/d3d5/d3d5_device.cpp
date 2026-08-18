@@ -1444,13 +1444,15 @@ namespace dxvk {
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD vertex_type5 = ConvertVertexType(vertex_type);
+    const bool isTransformed = vertex_type5 & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (vertex_type5 & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(vertex_type5);
     HRESULT hr = device9->DrawPrimitiveUP(
@@ -1461,7 +1463,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D5Device::DrawPrimitive: Failed D3D9 call to DrawPrimitiveUP");
@@ -1489,13 +1492,15 @@ namespace dxvk {
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD fvf5 = ConvertVertexType(fvf);
+    const bool isTransformed = fvf5 & D3DFVF_XYZRHW;
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
                               (fvf5 & D3DFVF_NORMAL) &&
                               m_commonD3DDevice->GetCurrentMaterialHandle() != 0;
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
-    HandlePreDrawLegacyProjection(device9, flags);
+    if (!isTransformed)
+      HandlePreDrawLegacyProjection(device9, flags);
 
     device9->SetFVF(fvf5);
     HRESULT hr = device9->DrawIndexedPrimitiveUP(
@@ -1510,7 +1515,8 @@ namespace dxvk {
 
     if (!useLighting)
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, TRUE);
-    HandlePostDrawLegacyProjection(device9);
+    if (!isTransformed)
+      HandlePostDrawLegacyProjection(device9);
 
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D5Device::DrawIndexedPrimitive: Failed D3D9 call to DrawIndexedPrimitiveUP");
