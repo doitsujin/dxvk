@@ -72,18 +72,10 @@ d3d9_dll = shared_library(dxvk_name_prefix+'d3d9', d3d9_src, glsl_generator.proc
   kwargs              : dxvk_so_version,
 )
 
-d3d9_static = static_library(dxvk_name_prefix+'d3d9', d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
-  dependencies        : [ dxbc_spirv_dep, dxvk_dep ],
-  include_directories : dxvk_include_path,
-  link_args           : d3d9_ld_args,
-  link_depends        : [ d3d9_link_depends ],
-  kwargs              : dxvk_so_version,
+d3d9_dep = declare_dependency(
+  link_with           : [ d3d9_dll ],
+  include_directories : [ dxvk_include_path ],
 )
-
-#d3d9_dep = declare_dependency(
-#  link_with           : [ d3d9_dll ],
-#  include_directories : [ dxvk_include_path ],
-#)
 
 if platform != 'windows'
   pkg.generate(d3d9_dll,
