@@ -52,7 +52,7 @@ ddraw_link_depends  = []
 ddraw_extra_dep     = []
 
 if platform == 'windows'
-  ddraw_extra_dep     += [ cpp.find_library('version') ]
+  ddraw_extra_dep     += [ cpp.find_library('version'), lib_d3d9 ]
 else
   lib_d3d9 = d3d9_dep
   ddraw_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'ddraw.sym') ]
@@ -67,7 +67,6 @@ ddraw_dll = shared_library(dxvk_name_prefix+'ddraw', ddraw_src, ddraw_res,
   link_args           : ddraw_ld_args,
   link_depends        : [ ddraw_link_depends ],
   kwargs              : dxvk_so_version,
-  link_with           : [ d3d9_static ],
 )
 
 ddraw_dep = declare_dependency(
