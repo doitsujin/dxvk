@@ -4,6 +4,7 @@
 #include "ddraw_format.h"
 
 #include "ddraw_common_interface.h"
+#include "d3d_common_device.h"
 
 #include "ddraw_clipper.h"
 #include "ddraw_palette.h"
@@ -343,8 +344,16 @@ namespace dxvk {
 
     bool IsTexture() const {
       return m_desc2.ddsCaps.dwCaps & DDSCAPS_TEXTURE
+          || m_desc.ddsCaps.dwCaps  & DDSCAPS_TEXTURE;
+    }
+
+    bool IsBindableAsTexture() const {
+      // Surfaces which aren't explicitly marked as textures are only bindable on software devices
+      const bool isBindableSurface = !m_commonD3DDevice->IsHALOrTNLHALDevice() && m_hasTextureHandle;
+
+      return m_desc2.ddsCaps.dwCaps & DDSCAPS_TEXTURE
           || m_desc.ddsCaps.dwCaps  & DDSCAPS_TEXTURE
-          || m_hasTextureHandle;
+          || isBindableSurface;
     }
 
     bool IsTextureMip() const {
@@ -355,13 +364,6 @@ namespace dxvk {
 
     bool IsCubeMap() const {
       return m_desc2.ddsCaps.dwCaps2 & DDSCAPS2_CUBEMAP;
-    }
-
-    bool IsTextureOrCubeMap() const {
-      return m_desc2.ddsCaps.dwCaps  & DDSCAPS_TEXTURE
-          || m_desc2.ddsCaps.dwCaps2 & DDSCAPS2_CUBEMAP
-          || m_desc.ddsCaps.dwCaps   & DDSCAPS_TEXTURE
-          || m_hasTextureHandle;
     }
 
     bool IsOverlay() const {
@@ -530,7 +532,7 @@ namespace dxvk {
       } else if (IsCubeMap()) {
         m_d3d9SurfaceType = D3D9SurfaceType::CubeTexture;
       // Textures
-      } else if (IsTexture()) {
+      } else if (IsBindableAsTexture()) {
         m_d3d9SurfaceType = D3D9SurfaceType::Texture;
       // Depth Stencil
       } else if (IsDepthStencil()) {

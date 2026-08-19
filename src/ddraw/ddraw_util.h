@@ -693,7 +693,7 @@ namespace dxvk {
                               | D3DPMISCCAPS_MASKZ;
 
     prim.dwRasterCaps         = D3DPRASTERCAPS_ANISOTROPY
-                              | D3DPRASTERCAPS_ANTIALIASEDGES // Technically not implemented in D3D9
+                           // | D3DPRASTERCAPS_ANTIALIASEDGES // Not implemented in D3D9
                            // | D3DPRASTERCAPS_ANTIALIASSORTDEPENDENT
                            // | D3DPRASTERCAPS_ANTIALIASSORTINDEPENDENT
                               | D3DPRASTERCAPS_DITHER
@@ -904,7 +904,7 @@ namespace dxvk {
                               | D3DPMISCCAPS_MASKZ;
 
     prim.dwRasterCaps         = D3DPRASTERCAPS_ANISOTROPY
-                              | D3DPRASTERCAPS_ANTIALIASEDGES // Technically not implemented in D3D9
+                           // | D3DPRASTERCAPS_ANTIALIASEDGES // Not implemented in D3D9
                            // | D3DPRASTERCAPS_ANTIALIASSORTDEPENDENT
                            // | D3DPRASTERCAPS_ANTIALIASSORTINDEPENDENT
                               | D3DPRASTERCAPS_DITHER
@@ -1145,7 +1145,7 @@ namespace dxvk {
                               | D3DPMISCCAPS_MASKZ;
 
     prim.dwRasterCaps         = D3DPRASTERCAPS_ANISOTROPY
-                              | D3DPRASTERCAPS_ANTIALIASEDGES // Technically not implemented in D3D9
+                           // | D3DPRASTERCAPS_ANTIALIASEDGES // Not implemented in D3D9
                            // | D3DPRASTERCAPS_ANTIALIASSORTDEPENDENT
                            // | D3DPRASTERCAPS_ANTIALIASSORTINDEPENDENT
                               | D3DPRASTERCAPS_DITHER

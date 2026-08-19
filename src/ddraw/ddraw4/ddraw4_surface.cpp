@@ -1138,7 +1138,7 @@ namespace dxvk {
 
     //Logger::debug(str::format("DDraw4Surface::UploadSurfaceData: Uploading nr. [[4-", std::hex, this, "]]"));
 
-    D3D9SurfaceType d3d9SurfaceType = m_commonSurf->GetD3D9SurfaceType();
+    const D3D9SurfaceType d3d9SurfaceType = m_commonSurf->GetD3D9SurfaceType();
 
     switch (d3d9SurfaceType) {
       case D3D9SurfaceType::Texture:

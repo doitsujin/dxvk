@@ -74,8 +74,6 @@ namespace dxvk {
 
     bool IsHALOrTNLHALDevice() const {
       return m_deviceGUID == IID_IDirect3DHALDevice ||
-             // Functionally identical to a HAL device
-             m_deviceGUID == IID_WineD3DDevice ||
              m_deviceGUID == IID_IDirect3DTnLHalDevice;
     }
 

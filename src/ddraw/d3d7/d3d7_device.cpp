@@ -1327,41 +1327,55 @@ namespace dxvk {
     //if (unlikely(m_textures[stage] == surface7))
       //return D3D_OK;
 
-    d3d9::IDirect3DTexture9*     tex9  = commonSurface->GetD3D9Texture();
-    d3d9::IDirect3DCubeTexture9* cube9 = commonSurface->GetD3D9CubeTexture();
+    const D3D9SurfaceType d3d9SurfaceType = commonSurface->GetD3D9SurfaceType();
 
-    if (likely(tex9 != nullptr)) {
-      hr = device9->SetTexture(stage, tex9);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D7Device::SetTexture: Failed to bind D3D9 texture");
-        return hr;
-      }
+    switch (d3d9SurfaceType) {
+      default:
+      case D3D9SurfaceType::Texture: {
+        d3d9::IDirect3DTexture9* tex9 = commonSurface->GetD3D9Texture();
 
-      if (likely(stage == 0)) {
-        const bool colorKeyEnable = m_commonD3DDevice->GetColorKeyEnable();
-        const bool validColorKey = commonSurface->HasValidColorKey();
-        m_bridge->SetColorKeyState(colorKeyEnable && validColorKey);
-        if (colorKeyEnable && validColorKey) {
-          DDCOLORKEY normalizedColorKey = commonSurface->GetColorKeyNormalized();
-          m_bridge->SetColorKey(normalizedColorKey.dwColorSpaceLowValue,
-                                normalizedColorKey.dwColorSpaceHighValue);
+        // If a surface without a D3D9 texture gets bound, simply unbind the current texture.
+        // This is needed to handle the binding of surfaces which aren't explicitly marked as textures.
+        hr = device9->SetTexture(stage, tex9);
+        if (unlikely(FAILED(hr))) {
+          Logger::warn("D3D7Device::SetTexture: Failed to bind D3D9 texture");
+          return hr;
         }
-      }
-    } else if (likely(cube9 != nullptr)) {
-      hr = device9->SetTexture(stage, cube9);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D7Device::SetTexture: Failed to bind D3D9 cube texture");
-        return hr;
+
+        if (likely(tex9 != nullptr)) {
+          if (likely(stage == 0)) {
+            const bool colorKeyEnable = m_commonD3DDevice->GetColorKeyEnable();
+            const bool validColorKey = commonSurface->HasValidColorKey();
+            m_bridge->SetColorKeyState(colorKeyEnable && validColorKey);
+            if (colorKeyEnable && validColorKey) {
+              DDCOLORKEY normalizedColorKey = commonSurface->GetColorKeyNormalized();
+              m_bridge->SetColorKey(normalizedColorKey.dwColorSpaceLowValue,
+                                    normalizedColorKey.dwColorSpaceHighValue);
+            }
+          }
+        }
+
+        break;
       }
 
-      if (likely(stage == 0)) {
-        const bool colorKeyEnable = m_commonD3DDevice->GetColorKeyEnable();
-        const bool validColorKey = commonSurface->HasValidColorKey();
-        if (unlikely(colorKeyEnable && validColorKey))
-          Logger::warn("D3D7Device::SetTexture: Unsupported use of cube texture color key");
+      case D3D9SurfaceType::CubeTexture: {
+        d3d9::IDirect3DCubeTexture9* cube9 = commonSurface->GetD3D9CubeTexture();
+
+        hr = device9->SetTexture(stage, cube9);
+        if (unlikely(FAILED(hr))) {
+          Logger::warn("D3D7Device::SetTexture: Failed to bind D3D9 cube texture");
+          return hr;
+        }
+
+        if (likely(stage == 0)) {
+          const bool colorKeyEnable = m_commonD3DDevice->GetColorKeyEnable();
+          const bool validColorKey = commonSurface->HasValidColorKey();
+          if (unlikely(colorKeyEnable && validColorKey))
+            Logger::warn("D3D7Device::SetTexture: Unsupported use of cube texture color key");
+        }
+
+        break;
       }
-    } else {
-      Logger::err("D3D7Device::SetTexture: Found no valid D3D9 texture");
     }
 
     m_textures[stage] = surface7;

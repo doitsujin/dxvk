@@ -1,7 +1,5 @@
 #include "ddraw_common_surface.h"
 
-#include "d3d_common_device.h"
-
 #include "ddraw7/ddraw7_surface.h"
 #include "ddraw4/ddraw4_surface.h"
 #include "ddraw2/ddraw3_surface.h"
@@ -169,7 +167,7 @@ namespace dxvk {
       // We can't know beforehand if a texture is or isn't going to be
       // used in SetTexture() calls, and textures placed in D3DPOOL_SYSTEMMEM
       // will not work in that context, so revert to D3DPOOL_MANAGED
-      pool = IsTextureOrCubeMap() ? d3d9::D3DPOOL_MANAGED : d3d9::D3DPOOL_SYSTEMMEM;
+      pool = IsBindableAsTexture() || IsCubeMap() ? d3d9::D3DPOOL_MANAGED : d3d9::D3DPOOL_SYSTEMMEM;
     } else {
       pool = d3d9::D3DPOOL_DEFAULT;
     }
@@ -194,7 +192,7 @@ namespace dxvk {
     }
 
     // General usage flags and mip map count
-    if (IsTextureOrCubeMap()) {
+    if (IsBindableAsTexture() || IsCubeMap()) {
       // Needed to ensure D3DPOOL_DEFAULT textures/cubemaps are lockable
       if (pool == d3d9::D3DPOOL_DEFAULT) {
         //Logger::debug("DDrawCommonSurface::InitializeD3D9: Usage: D3DUSAGE_DYNAMIC");

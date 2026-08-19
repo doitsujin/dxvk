@@ -1959,13 +1959,15 @@ namespace dxvk {
 
     d3d9::IDirect3DTexture9* tex9 = commonSurface->GetD3D9Texture();
 
-    if (likely(tex9 != nullptr)) {
-      hr = device9->SetTexture(stage, tex9);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D6Device::SetTexture: Failed to bind D3D9 texture");
-        return hr;
-      }
+    // If a surface without a D3D9 texture gets bound, simply unbind the current texture.
+    // This is needed to handle the binding of surfaces which aren't explicitly marked as textures.
+    hr = device9->SetTexture(stage, tex9);
+    if (unlikely(FAILED(hr))) {
+      Logger::warn("D3D6Device::SetTexture: Failed to bind D3D9 texture");
+      return hr;
+    }
 
+    if (likely(tex9 != nullptr)) {
       if (likely(stage == 0)) {
         // "Any alpha values in the texture replace the alpha values in the colors that would
         //  have been used with no texturing; if the texture does not contain an alpha component,
@@ -1984,8 +1986,6 @@ namespace dxvk {
                                 normalizedColorKey.dwColorSpaceHighValue);
         }
       }
-    } else {
-      Logger::err("D3D6Device::SetTexture: Found no valid D3D9 texture");
     }
 
     m_textures[stage] = texture6;
@@ -2212,13 +2212,15 @@ namespace dxvk {
 
     d3d9::IDirect3DTexture9* tex9 = commonSurface->GetD3D9Texture();
 
-    if (likely(tex9 != nullptr)) {
-      hr = device9->SetTexture(0, tex9);
-      if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D6Device::SetTextureInternal: Failed to bind D3D9 texture");
-        return hr;
-      }
+    // If a surface without a D3D9 texture gets bound, simply unbind the current texture.
+    // This is needed to handle the binding of surfaces which aren't explicitly marked as textures.
+    hr = device9->SetTexture(0, tex9);
+    if (unlikely(FAILED(hr))) {
+      Logger::warn("D3D6Device::SetTextureInternal: Failed to bind D3D9 texture");
+      return hr;
+    }
 
+    if (likely(tex9 != nullptr)) {
       // "Any alpha values in the texture replace the alpha values in the colors that would
       //  have been used with no texturing; if the texture does not contain an alpha component,
       //  alpha values at the vertices in the source are interpolated between vertices."
@@ -2235,8 +2237,6 @@ namespace dxvk {
         m_bridge->SetColorKey(normalizedColorKey.dwColorSpaceLowValue,
                               normalizedColorKey.dwColorSpaceHighValue);
       }
-    } else {
-      Logger::err("D3D6Device::SetTextureInternal: Found no valid D3D9 texture");
     }
 
     m_commonD3DDevice->SetCurrentTextureHandle(textureHandle);
