@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <new>
 #include <initializer_list>
 #include <type_traits>
 #include <utility>
