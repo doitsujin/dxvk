@@ -10918,6 +10918,9 @@ namespace dxvk {
   std::pair<uint64_t, uint64_t> DxvkContext::parseFrameCaptureEnv() {
     auto string = env::getEnvVar("DXVK_CAPTURE_FRAMES");
 
+    if (string.empty())
+      return std::make_pair(0u, 0u);
+
     try {
       size_t index = 0u;
 
