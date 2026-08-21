@@ -951,7 +951,7 @@ namespace dxvk {
      * depth buffer resolves                      */
     { R"(\\Fallout( -)? New Vegas.*\\(FalloutNV)?(Launcher)?\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
-      { "d3d9.hideNvidiaGpu",               "True" },
+      { "d3d9.customVendorId",              "1002" },
     }} },
     /* Dungeons and Dragons: Dragonshard          *
      * Massive FPS decreases in some scenes       */
