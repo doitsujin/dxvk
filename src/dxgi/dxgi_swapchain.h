@@ -112,7 +112,7 @@ namespace dxvk {
             UINT                      Height,
             DXGI_FORMAT               NewFormat,
             UINT                      SwapChainFlags) final;
-
+    
     DXVK_HOTPATCHABLE
     HRESULT STDMETHODCALLTYPE ResizeBuffers1(
             UINT                      BufferCount,
