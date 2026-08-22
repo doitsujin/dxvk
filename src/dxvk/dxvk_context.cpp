@@ -3957,7 +3957,10 @@ namespace dxvk {
     DxvkImageUsageInfo imageUsage = { };
     imageUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    ensureImageCompatibility(image, imageUsage);
+    if (!ensureImageCompatibility(image, imageUsage)) {
+      Logger::err("DxvkContext: copyImageToBufferCs: Failed to make image shader-readable.");
+      return;
+    }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = buffer->info().debugName;
