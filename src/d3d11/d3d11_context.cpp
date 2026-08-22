@@ -579,7 +579,10 @@ namespace dxvk {
         imageUsage.viewFormatCount = 1;
         imageUsage.viewFormats = &cDstFormat;
 
-        ctx->ensureImageCompatibility(cDstView->image(), imageUsage);
+        if (!ctx->ensureImageCompatibility(cDstView->image(), imageUsage)) {
+          Logger::err("D3D11: Failed to recreate image for ClearUAV");
+          return;
+        }
 
         // If necessary, recreate the view
         Rc<DxvkImageView> view = cDstView;
