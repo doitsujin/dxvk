@@ -1417,7 +1417,10 @@ namespace dxvk {
       usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       usage.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-      ctx->ensureImageCompatibility(cView->image(), usage);
+      if (!(ctx->ensureImageCompatibility(cView->image(), usage))) {
+        Logger::err("D3D11: Failed to relocate video output view");
+        return;
+      }
 
       DxvkRenderTargets rt;
       rt.color[0].view = cView;
@@ -1464,7 +1467,10 @@ namespace dxvk {
       usage.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
       usage.access = VK_ACCESS_SHADER_READ_BIT;
 
-      ctx->ensureImageCompatibility(cImage, usage);
+      if (!(ctx->ensureImageCompatibility(cImage, usage))) {
+        Logger::err("D3D11: Failed to relocate video input view");
+        return;
+      }
 
       VkViewport viewport;
       viewport.x        = 0.0f;
