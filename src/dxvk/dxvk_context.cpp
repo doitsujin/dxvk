@@ -1516,12 +1516,8 @@ namespace dxvk {
     }
 
     // Some images have to stay in their place, we can't do much in that case.
-    if (!image->canRelocate()) {
-      Logger::err(str::format("DxvkContext: Cannot relocate image:",
-        "\n  Current usage:   0x", std::hex, image->info().usage, ", flags: 0x", image->info().flags, ", ", std::dec, image->info().viewFormatCount, " view formats"
-        "\n  Requested usage: 0x", std::hex, usageInfo.usage, ", flags: 0x", usageInfo.flags, ", ", std::dec, usageInfo.viewFormatCount, " view formats"));
+    if (!image->canRelocate())
       return false;
-    }
 
     // Enable mutable format bit as necessary. We do not require
     // setting this explicitly so that the caller does not have
