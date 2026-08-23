@@ -64,6 +64,8 @@ d3d11_src = [
 d3d11_shaders = files([
   'shaders/d3d11_video_blit_frag.frag',
   'shaders/d3d11_video_blit_vert.vert',
+  'shaders/d3d11_composition_frag.frag',
+  'shaders/d3d11_composition_vert.vert',
 ])
 
 d3d11_ld_args      = []
