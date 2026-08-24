@@ -1633,6 +1633,9 @@ namespace dxvk {
             VkDeviceSize              subresourceAlignment,
             VkDeviceSize              sourceOffset);
 
+    void acquireShadowAttachment(const DxvkAttachment& attachment);
+    void releaseShadowAttachment(const DxvkAttachment& attachment);
+
     VkAttachmentStoreOp determineClearStoreOp(
             VkAttachmentLoadOp        loadOp) const;
 
@@ -1856,7 +1859,6 @@ namespace dxvk {
 
       return DxvkAccessFlags();
     }
-
 
     void emitMemoryBarrier(
             VkPipelineStageFlags      srcStages,

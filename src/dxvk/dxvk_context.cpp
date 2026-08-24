@@ -1968,6 +1968,28 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::acquireShadowAttachment(const DxvkAttachment& attachment) {
+    copyBufferToImage(attachment.view->image(),
+      vk::pickSubresourceLayers(attachment.view->imageSubresources(), 0u),
+      VkOffset3D(),
+      attachment.view->mipLevelExtent(0u),
+      attachment.shadow->buffer(),
+      attachment.shadow->info().offset, 0u, 0u,
+      attachment.view->info().format);
+  }
+
+
+  void DxvkContext::releaseShadowAttachment(const DxvkAttachment& attachment) {
+    copyImageToBuffer(
+      attachment.shadow->buffer(),
+      attachment.shadow->info().offset, 0u, 0u,
+      attachment.view->info().format,
+      attachment.view->image(),
+      vk::pickSubresourceLayers(attachment.view->imageSubresources(), 0u),
+      VkOffset3D(), attachment.view->mipLevelExtent(0u));
+  }
+
+
   VkAttachmentStoreOp DxvkContext::determineClearStoreOp(
           VkAttachmentLoadOp        loadOp) const {
     if (loadOp == VK_ATTACHMENT_LOAD_OP_NONE)
