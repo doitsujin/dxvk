@@ -1636,6 +1636,9 @@ namespace dxvk {
     void acquireShadowAttachment(const DxvkAttachment& attachment);
     void releaseShadowAttachment(const DxvkAttachment& attachment);
 
+    void acquireShadowAttachments();
+    void releaseShadowAttachments();
+
     VkAttachmentStoreOp determineClearStoreOp(
             VkAttachmentLoadOp        loadOp) const;
 
