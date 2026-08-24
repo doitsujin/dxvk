@@ -197,6 +197,9 @@ namespace dxvk {
     auto rtv = dynamic_cast<D3D11RenderTargetView*>(pResourceView);
     auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pResourceView);
 
+    if (rtv && rtv->GetBufferView())
+      return;
+
     Rc<DxvkImageView> view;
     if (dsv) view = dsv->GetImageView();
     if (rtv) view = rtv->GetImageView();
