@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_buffer.h"
 #include "dxvk_image.h"
 #include "dxvk_graphics_state.h"
 #include "dxvk_pipelayout.h"
@@ -26,9 +27,10 @@ namespace dxvk {
    */
   struct DxvkAttachment {
     Rc<DxvkImageView> view = nullptr;
+    Rc<DxvkBufferView> shadow = nullptr;
 
-    bool operator == (const DxvkAttachment& other) const { return view == other.view; }
-    bool operator != (const DxvkAttachment& other) const { return view != other.view; }
+    bool operator == (const DxvkAttachment& other) const { return view == other.view && shadow == other.shadow; }
+    bool operator != (const DxvkAttachment& other) const { return view != other.view || shadow != other.shadow; }
   };
   
   
