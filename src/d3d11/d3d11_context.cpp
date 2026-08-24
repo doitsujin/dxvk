@@ -3679,6 +3679,7 @@ namespace dxvk {
     for (UINT i = 0; i < m_state.om.rtvs.size(); i++) {
       if (m_state.om.rtvs[i] != nullptr) {
         attachments.color[i].view = m_state.om.rtvs[i]->GetImageView();
+        attachments.color[i].shadow = m_state.om.rtvs[i]->GetBufferView();
         sampleCount = m_state.om.rtvs[i]->GetSampleCount();
       }
     }
