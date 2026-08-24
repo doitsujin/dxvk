@@ -368,6 +368,13 @@ namespace dxvk {
         util::invertComponentMapping(attachment.view->info().unpackSwizzle()));
     }
 
+    // If this is a buffer attachment and we can clear the view
+    // directly, do that instead and ignore the image entirely.
+    if (attachment.shadow && attachment.shadow->info().format) {
+      clearBufferView(attachment.shadow, 0u, attachment.view->mipLevelExtent(0u).width, clearValue.color);
+      return;
+    }
+
     // Check whether the render target view is an attachment
     // of the current framebuffer and is included entirely.
     // If not, we need to create a temporary framebuffer.
