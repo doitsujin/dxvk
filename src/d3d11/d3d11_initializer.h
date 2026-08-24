@@ -58,7 +58,10 @@ namespace dxvk {
 
     void InitUavCounter(
             D3D11UnorderedAccessView*   pUav);
-    
+
+    void InitRtvImage(
+            D3D11RenderTargetView*      pRtv);
+
     void InitShaderIcb(
             D3D11CommonShader*          pShader,
             size_t                      IcbSize,

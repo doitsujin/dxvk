@@ -86,12 +86,20 @@ namespace dxvk {
         viewInfo.layerIndex = pDesc->Texture3D.FirstWSlice;
         viewInfo.layerCount = pDesc->Texture3D.WSize;
         break;
-      
+
+      case D3D11_RTV_DIMENSION_BUFFER:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
+        break;
+
       default:
         throw DxvkError("D3D11: Invalid view dimension for RTV");
     }
     
-    if (texture->GetPlaneCount() > 1)
+    if (texture && texture->GetPlaneCount() > 1)
       viewInfo.aspects = vk::getPlaneAspect(GetPlaneSlice(pDesc));
 
     // Normalize view type so that we won't accidentally
@@ -112,9 +120,54 @@ namespace dxvk {
     m_info.Image.MinLayer  = viewInfo.layerIndex;
     m_info.Image.NumLevels = viewInfo.mipCount;
     m_info.Image.NumLayers = viewInfo.layerCount;
-    
-    // Create the underlying image view object
-    m_view = texture->GetImage()->createView(viewInfo);
+
+    if (texture) {
+      // Simply create view for existing image
+      m_view = texture->GetImage()->createView(viewInfo);
+    } else {
+      // If we're creating a buffer RTV, we need to explicitly
+      // create a 1D image that we can actually render to
+      DxvkImageCreateInfo imageInfo = {};
+      imageInfo.type = VK_IMAGE_TYPE_1D;
+      imageInfo.format = viewInfo.format;
+      imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+      imageInfo.extent = VkExtent3D { pDesc->Buffer.NumElements, 1u, 1u };
+      imageInfo.numLayers = 1u;
+      imageInfo.mipLevels = 1u;
+      imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                      | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                      | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      imageInfo.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                       | VK_PIPELINE_STAGE_TRANSFER_BIT;
+      imageInfo.access = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                       | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                       | VK_ACCESS_TRANSFER_READ_BIT
+                       | VK_ACCESS_TRANSFER_WRITE_BIT;
+      imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+      Rc<DxvkImage> image = pDevice->GetDXVKDevice()->createImage(
+        imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      m_view = image->createView(viewInfo);
+
+      // Create view for backing buffer storage. If the implementation
+      // supports the format for storage buffers, we can even create a
+      // typed view to simplify clearing the buffer.
+      auto formatSize = image->formatInfo()->elementSize;
+      auto formatFeatures = pDevice->GetDXVKDevice()->adapter()->getFormatFeatures(viewInfo.format);
+
+      DxvkBufferViewKey bufferInfo = {};
+      bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+      bufferInfo.offset = pDesc->Buffer.FirstElement * formatSize;
+      bufferInfo.size = pDesc->Buffer.NumElements * formatSize;
+
+      if (formatFeatures.buffer & VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT) {
+        bufferInfo.format = viewInfo.format;
+        bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      }
+
+      m_buffer = GetCommonBuffer(pResource)->GetBuffer()->createView(bufferInfo);
+    }
   }
   
   
@@ -282,7 +335,11 @@ namespace dxvk {
         pDesc->Texture3D.FirstWSlice = 0;
         pDesc->Texture3D.WSize       = resourceDesc.Depth;
       } return S_OK;
-      
+
+      // Needs explicit format and all that
+      case D3D11_RESOURCE_DIMENSION_BUFFER:
+        return E_INVALIDARG;
+
       default:
         Logger::err(str::format(
           "D3D11: Unsupported dimension for render target view: ",
@@ -357,6 +414,11 @@ namespace dxvk {
       case D3D11_RESOURCE_DIMENSION_BUFFER: {
         if (pDesc->ViewDimension != D3D11_RTV_DIMENSION_BUFFER) {
           Logger::err("D3D11: Incompatible view dimension for Buffer");
+          return E_INVALIDARG;
+        }
+
+        if (!pDesc->Format) {
+          Logger::err("D3D11: Buffer RTV must specify format");
           return E_INVALIDARG;
         }
       } break;

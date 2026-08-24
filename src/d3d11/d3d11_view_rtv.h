@@ -47,10 +47,14 @@ namespace dxvk {
       return type;
     }
     
+    Rc<DxvkBufferView> GetBufferView() const {
+      return m_buffer;
+    }
+
     Rc<DxvkImageView> GetImageView() const {
       return m_view;
     }
-    
+
     UINT GetSampleCount() const {
       return UINT(m_view->image()->info().sampleCount);
     }
@@ -80,6 +84,7 @@ namespace dxvk {
     D3D11_RENDER_TARGET_VIEW_DESC1    m_desc;
     D3D11_VK_VIEW_INFO                m_info;
     Rc<DxvkImageView>                 m_view;
+    Rc<DxvkBufferView>                m_buffer;
     D3D10RenderTargetView             m_d3d10;
 
     D3DDestructionNotifier            m_destructionNotifier;

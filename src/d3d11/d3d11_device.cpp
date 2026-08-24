@@ -567,11 +567,6 @@ namespace dxvk {
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
     
-    if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      Logger::warn("D3D11: Cannot create render target view for a buffer");
-      return S_OK; // It is required to run Battlefield 3 and Battlefield 4.
-    }
-    
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
     D3D11_RENDER_TARGET_VIEW_DESC1 desc;
@@ -602,7 +597,12 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      *ppRTView = ref(new D3D11RenderTargetView(this, pResource, &desc));
+      auto rtv = ref(new D3D11RenderTargetView(this, pResource, &desc));
+
+      if (desc.ViewDimension == D3D11_RTV_DIMENSION_BUFFER)
+        m_initializer->InitRtvImage(rtv);
+
+      *ppRTView = rtv;
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
