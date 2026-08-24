@@ -1600,7 +1600,10 @@ namespace dxvk {
         Rc<DxvkImageView> view = cImage->createView(viewKey);
 
         if (cOffset == VkOffset3D() && cExtent == cImage->mipLevelExtent(viewKey.mipIndex)) {
-          ctx->clearRenderTarget(view, cSubresource.aspectMask, cClearValue, 0u);
+          DxvkAttachment attachment = {};
+          attachment.view = view;
+
+          ctx->clearRenderTarget(attachment, cSubresource.aspectMask, cClearValue, 0u);
         } else {
           ctx->clearImageView(view, cOffset, cExtent,
             cSubresource.aspectMask, cClearValue);
@@ -1980,7 +1983,10 @@ namespace dxvk {
           cAspectMask = aspectMask,
           cImageView  = imageView
         ] (DxvkContext* ctx) {
-          ctx->clearRenderTarget(cImageView,
+          DxvkAttachment attachment = {};
+          attachment.view = cImageView;
+
+          ctx->clearRenderTarget(attachment,
             cAspectMask, cClearValue, 0u);
         });
       }

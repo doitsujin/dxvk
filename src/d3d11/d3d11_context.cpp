@@ -226,7 +226,10 @@ namespace dxvk {
 
     if (rtv || dsv) {
       EmitCs([cView = view] (DxvkContext* ctx) {
-        ctx->clearRenderTarget(cView, 0, VkClearValue(), cView->info().aspects);
+        DxvkAttachment attachment = {};
+        attachment.view = cView;
+
+        ctx->clearRenderTarget(attachment, 0, VkClearValue(), cView->info().aspects);
       });
     }
   }
@@ -448,16 +451,16 @@ namespace dxvk {
 
     AddCost(GpuCostEstimate::Transfer);
 
-    auto view  = rtv->GetImageView();
-    auto color = ConvertColorValue(ColorRGBA, view->formatInfo());
+    DxvkAttachment attachment = {};
+    attachment.view = rtv->GetImageView();
+    attachment.shadow = rtv->GetBufferView();
 
     EmitCs([
-      cClearValue = color,
-      cImageView  = std::move(view)
+      cClearValue = ConvertColorValue(ColorRGBA, attachment.view->formatInfo()),
+      cAttachment = std::move(attachment)
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(cImageView,
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        cClearValue, 0u);
+      ctx->clearRenderTarget(cAttachment,
+        VK_IMAGE_ASPECT_COLOR_BIT, cClearValue, 0u);
     });
   }
 
@@ -695,12 +698,15 @@ namespace dxvk {
     clearValue.depthStencil.depth   = Depth;
     clearValue.depthStencil.stencil = Stencil;
 
+    DxvkAttachment attachment = {};
+    attachment.view = dsv->GetImageView();
+
     EmitCs([
       cClearValue = clearValue,
       cAspectMask = aspectMask,
-      cImageView  = dsv->GetImageView()
+      cAttachment = std::move(attachment)
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(cImageView,
+      ctx->clearRenderTarget(cAttachment,
         cAspectMask, cClearValue, 0u);
     });
   }
@@ -4064,21 +4070,14 @@ namespace dxvk {
       cView       = std::move(View),
       cClearValue = clearValue
     ] (DxvkContext* ctx, const VkRect2D* rects, size_t count) {
-      constexpr VkImageUsageFlags rtUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       VkImageAspectFlags clearAspect = cView->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
 
       for (size_t i = 0; i < count; i++) {
         VkOffset3D offset = { rects[i].offset.x, rects[i].offset.y, 0 };
         VkExtent3D extent = { rects[i].extent.width, rects[i].extent.height, 1u };
 
-        if (extent.width && extent.height) {
-          bool isFullSize = cView->mipLevelExtent(0) == extent;
-
-          if ((cView->info().usage & rtUsage) && isFullSize)
-            ctx->clearRenderTarget(cView, clearAspect, cClearValue, 0u);
-          else
-            ctx->clearImageView(cView, offset, extent, clearAspect, cClearValue);
-        }
+        if (extent.width && extent.height)
+          ctx->clearImageView(cView, offset, extent, clearAspect, cClearValue);
       }
     });
 

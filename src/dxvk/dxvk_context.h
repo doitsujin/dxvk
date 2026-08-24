@@ -456,13 +456,13 @@ namespace dxvk {
     /**
      * \brief Clears an active render target
      * 
-     * \param [in] imageView Render target view to clear
+     * \param [in] attachment Render target to clear
      * \param [in] clearAspects Image aspects to clear
      * \param [in] clearValue The clear value
      * \param [in] discardAspects Image aspects to discard
      */
     void clearRenderTarget(
-      const Rc<DxvkImageView>&    imageView,
+      const DxvkAttachment&       attachment,
             VkImageAspectFlags    clearAspects,
             VkClearValue          clearValue,
             VkImageAspectFlags    discardAspects);
