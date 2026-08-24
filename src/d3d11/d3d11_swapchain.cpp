@@ -844,7 +844,10 @@ namespace dxvk {
         cScrollRect   = *pPresentParameters->pScrollRect,
         cScrollOffset = *pPresentParameters->pScrollOffset
       ] (DxvkContext* ctx) mutable {
-        ctx->clearRenderTarget(cDstView, 0u, VkClearValue(), VK_IMAGE_ASPECT_COLOR_BIT);
+        DxvkAttachment attachment = {};
+        attachment.view = cDstView;
+
+        ctx->clearRenderTarget(attachment, 0u, VkClearValue(), VK_IMAGE_ASPECT_COLOR_BIT);
 
         DxvkRenderTargets rts = {};
         rts.color[0].view = std::move(cDstView);

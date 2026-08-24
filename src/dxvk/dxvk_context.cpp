@@ -358,14 +358,14 @@ namespace dxvk {
   
   
   void DxvkContext::clearRenderTarget(
-    const Rc<DxvkImageView>&    imageView,
+    const DxvkAttachment&       attachment,
           VkImageAspectFlags    clearAspects,
           VkClearValue          clearValue,
           VkImageAspectFlags    discardAspects) {
     // Make sure the color components are ordered correctly
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       clearValue.color = util::swizzleClearColor(clearValue.color,
-        util::invertComponentMapping(imageView->info().unpackSwizzle()));
+        util::invertComponentMapping(attachment.view->info().unpackSwizzle()));
     }
 
     // Check whether the render target view is an attachment
@@ -373,8 +373,8 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
 
-    if (m_state.om.framebufferInfo.isFullSize(imageView))
-      attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
+    if (m_state.om.framebufferInfo.isFullSize(attachment.view))
+      attachmentIndex = m_state.om.framebufferInfo.findAttachment(attachment.view);
 
     if (attachmentIndex < 0) {
       // Suspend works here because we'll end up with one of these scenarios:
@@ -396,18 +396,23 @@ namespace dxvk {
     // useful to adjust store ops for tilers, and ensures that pending resolves
     // are handled correctly.
     if (discardAspects)
-      this->deferDiscard(imageView, discardAspects);
+      this->deferDiscard(attachment.view, discardAspects);
 
     if (clearAspects)
-      this->deferClear(imageView, clearAspects, clearValue);
+      this->deferClear(attachment.view, clearAspects, clearValue);
 
     // Invalidate implicit resolves
-    if (imageView->isMultisampled()) {
-      auto subresources = imageView->imageSubresources();
+    if (attachment.view->isMultisampled()) {
+      auto subresources = attachment.view->imageSubresources();
       subresources.aspectMask = clearAspects;
 
-      m_implicitResolves.invalidate(*imageView->image(), subresources);
+      m_implicitResolves.invalidate(*attachment.view->image(), subresources);
     }
+
+    // On the off-chance that this is a buffer attachment, update the buffer.
+    // Don't care about optimizing deferred clears, this is extremely rare.
+    if (unlikely(attachment.shadow))
+      releaseShadowAttachment(attachment);
   }
   
   
@@ -4144,7 +4149,10 @@ namespace dxvk {
     // Use regular render target clear path if we're clearing the
     // entire view to hit some additional optimizations.
     if (extent == imageView->mipLevelExtent(0u)) {
-      clearRenderTarget(imageView, aspect, value, 0u);
+      DxvkAttachment attachment = {};
+      attachment.view = imageView;
+
+      clearRenderTarget(attachment, aspect, value, 0u);
       return;
     }
 
@@ -4767,8 +4775,10 @@ namespace dxvk {
     if (dstImage->mipLevelExtent(dstSubresource.mipLevel, dstSubresource.aspectMask) != dstExtent)
       return false;
 
-    clearRenderTarget(dstImage->createView(viewInfo),
-      srcSubresource.aspectMask, clear->clearValue, 0u);
+    DxvkAttachment attachment = {};
+    attachment.view = dstImage->createView(viewInfo);
+
+    clearRenderTarget(attachment, srcSubresource.aspectMask, clear->clearValue, 0u);
     return true;
   }
 
