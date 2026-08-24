@@ -1990,6 +1990,26 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::acquireShadowAttachments() {
+    for (uint32_t i = 0u; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+      const auto& attachment = m_state.om.framebufferInfo.getAttachment(i);
+
+      if (unlikely(attachment.shadow))
+        acquireShadowAttachment(attachment);
+    }
+  }
+
+
+  void DxvkContext::releaseShadowAttachments() {
+    for (uint32_t i = 0u; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+      const auto& attachment = m_state.om.framebufferInfo.getAttachment(i);
+
+      if (unlikely(attachment.shadow))
+        releaseShadowAttachment(attachment);
+    }
+  }
+
+
   VkAttachmentStoreOp DxvkContext::determineClearStoreOp(
           VkAttachmentLoadOp        loadOp) const {
     if (loadOp == VK_ATTACHMENT_LOAD_OP_NONE)
@@ -6111,6 +6131,7 @@ namespace dxvk {
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
 
+      acquireShadowAttachments();
       prepareShaderReadableImages(true);
 
       // Make sure all graphics state gets reapplied on the next draw
@@ -6209,6 +6230,8 @@ namespace dxvk {
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalRenderPass);
+
+      releaseShadowAttachments();
     } else if (!suspend) {
       // We may be ending a previously suspended render pass
       m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
