@@ -77,6 +77,24 @@ namespace dxvk {
   }
 
 
+  void D3D11Initializer::InitRtvImage(
+          D3D11RenderTargetView*      pRtv) {
+    // Buffer RTVs own their associated image,
+    // so we need to initialize it properly
+    if (!pRtv->GetBufferView())
+      return;
+
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    m_transferCommands += 1;
+
+    EmitCs([
+      cImageView = pRtv->GetImageView()
+    ] (DxvkContext* ctx) {
+      ctx->initImage(cImageView->image(), VK_IMAGE_LAYOUT_UNDEFINED);
+    });
+  }
+
+
   void D3D11Initializer::InitShaderIcb(
           D3D11CommonShader*          pShader,
           size_t                      IcbSize,
