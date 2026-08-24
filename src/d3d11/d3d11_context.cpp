@@ -731,6 +731,12 @@ namespace dxvk {
         ClearImageView(std::move(imgView), Color, pRect, NumRects);
     } else if (rtv) {
       Rc<DxvkImageView> imgView = rtv->GetImageView();
+      Rc<DxvkBufferView> bufView = rtv->GetBufferView();
+
+      if (bufView) {
+        Logger::err("D3D11: ClearView on buffer RTV not supported.");
+        return;
+      }
 
       if (imgView)
         ClearImageView(std::move(imgView), Color, pRect, NumRects);
