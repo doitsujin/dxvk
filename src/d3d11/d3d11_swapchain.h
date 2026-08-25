@@ -92,6 +92,8 @@ namespace dxvk {
 
   private:
 
+    using DirtyRectList = small_vector<VkRectLayerKHR, 4>;
+
     enum BindingIds : uint32_t {
       Image = 0,
       Gamma = 1,
@@ -138,6 +140,7 @@ namespace dxvk {
     dxvk::mutex               m_frameStatisticsLock;
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
+    bool                      m_hasHud = false;
     Rc<hud::HudLatencyItem>   m_latencyHud;
 
     Rc<DxvkImageView> GetBackBufferView();
@@ -176,6 +179,10 @@ namespace dxvk {
       const DXGI_PRESENT_PARAMETERS* pPresentParameters) const;
 
     void CreateCompositionShaders();
+
+    DirtyRectList NormalizeDirtyRects(const DXGI_PRESENT_PARAMETERS* pPresentParameters) const;
+
+    void AddDirtyRect(DirtyRectList& List, RECT Rect) const;
 
     std::string GetApiName() const;
 

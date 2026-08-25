@@ -423,8 +423,18 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     }
 
+    DirtyRectList dirtyRects;
+
     if (incrementalPresent) {
       CompositeIncrementalPresent(immediateContext, pPresentParameters);
+
+      // Redraw everything if the HUD is active since we don't
+      // keep track of the exact screen areas there. Likewise,
+      // nope out if there is any scaling going on.
+      VkExtent3D swapExtent = { m_desc.Width, m_desc.Height, 1u };
+
+      if (!m_hasHud && backBuffer->info().extent == swapExtent )
+        dirtyRects = NormalizeDirtyRects(pPresentParameters);
     } else {
       // Nuke incremental present image out of existence to
       // save memory, also to pick the correct source image
@@ -455,7 +465,8 @@ namespace dxvk {
       cPresenter      = m_presenter,
       cLatency        = m_latency,
       cColorSpace     = m_colorSpace,
-      cFrameId        = m_frameId
+      cFrameId        = m_frameId,
+      cDirtyRects     = std::move(dirtyRects)
     ] (DxvkContext* ctx) {
       // Update back buffer color space as necessary
       if (cSwapImage->image()->info().colorSpace != cColorSpace) {
@@ -477,7 +488,8 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr, nullptr);
 
-      cDevice->presentImage(cPresenter, cLatency, cFrameId, 0, nullptr, nullptr);
+      cDevice->presentImage(cPresenter, cLatency, cFrameId,
+        cDirtyRects.size(), cDirtyRects.data(), nullptr);
     });
 
     if (m_backBuffers.size() > 1u)
@@ -636,6 +648,7 @@ namespace dxvk {
         m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
     }
 
+    m_hasHud = hud && !hud->empty();
     m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
   }
 
@@ -1040,6 +1053,65 @@ namespace dxvk {
     fsInfo.bindings = fsBindings.data();
     fsInfo.debugName = "DXGI_FS";
     m_compositionFs = new DxvkSpirvShader(fsInfo, d3d11_composition_frag);
+  }
+
+
+  D3D11SwapChain::DirtyRectList D3D11SwapChain::NormalizeDirtyRects(const DXGI_PRESENT_PARAMETERS* pPresentParameters) const {
+    DirtyRectList result;
+
+    if (pPresentParameters->pScrollRect && pPresentParameters->pScrollOffset
+     && (pPresentParameters->pScrollOffset->x || pPresentParameters->pScrollOffset->y))
+      AddDirtyRect(result, *pPresentParameters->pScrollRect);
+
+    for (uint32_t i = 0u; i < pPresentParameters->DirtyRectsCount; i++)
+      AddDirtyRect(result, pPresentParameters->pDirtyRects[i]);
+
+    return result;
+  }
+
+
+  void D3D11SwapChain::AddDirtyRect(DirtyRectList& List, RECT Rect) const {
+    // Clamp rect to screen area, and ignore if the result is empty
+    Rect.left = std::max<int32_t>(Rect.left, 0);
+    Rect.top = std::max<int32_t>(Rect.top, 0);
+    Rect.right = std::min<int32_t>(Rect.right, m_desc.Width);
+    Rect.bottom = std::min<int32_t>(Rect.bottom, m_desc.Height);
+
+    if (Rect.left >= Rect.right || Rect.top >= Rect.bottom)
+      return;
+
+    // Scan existing list and remove any rects that overlap,
+    // merging the overlapping rectangles into the new rect.
+    auto iter = List.begin();
+
+    while (iter != List.end()) {
+      RECT next = {};
+      next.left = iter->offset.x;
+      next.right = iter->offset.x + iter->extent.width;
+      next.top = iter->offset.y;
+      next.bottom = iter->offset.y + iter->extent.height;
+
+      bool overlap = next.left < Rect.right && Rect.left < next.right
+                  && next.top < Rect.bottom && Rect.top < next.bottom;
+
+      if (overlap) {
+        iter = List.erase(iter);
+
+        Rect.left = std::min(Rect.left, next.left);
+        Rect.top = std::min(Rect.top, next.top);
+        Rect.right = std::max(Rect.right, next.right);
+        Rect.bottom = std::max(Rect.bottom, next.bottom);
+      } else {
+        iter++;
+      }
+    }
+
+    // No more overlapping rectangles in list, add new one.
+    auto& vkRect = List.emplace_back();
+    vkRect.offset.x = Rect.left;
+    vkRect.offset.y = Rect.top;
+    vkRect.extent.width = Rect.right - Rect.left;
+    vkRect.extent.height = Rect.bottom - Rect.top;
   }
 
 
