@@ -172,7 +172,8 @@ namespace dxvk {
             entry.latency.tracker->notifyQueuePresentBegin(entry.latency.frameId);
 
           entry.result = entry.present.presenter->presentImage(
-            entry.present.frameId, entry.latency.tracker);
+            entry.present.frameId, entry.latency.tracker,
+            entry.present.rects.size(), entry.present.rects.data());
 
           if (entry.latency.tracker) {
             entry.latency.tracker->notifyQueuePresentEnd(

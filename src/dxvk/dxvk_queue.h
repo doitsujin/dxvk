@@ -46,6 +46,7 @@ namespace dxvk {
   struct DxvkPresentInfo {
     Rc<Presenter>       presenter;
     uint64_t            frameId;
+    small_vector<VkRectLayerKHR, 4u> rects;
   };
 
 
