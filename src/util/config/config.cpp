@@ -1389,6 +1389,14 @@ namespace dxvk {
     { R"(\\Smash up Derby\\cars\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
+    /* DCS World - the game sometimes binds a resource view *
+     * after it has already released its last reference to  *
+     * it, crashing the game when we dereference the freed   *
+     * view object (application-side use-after-free, see     *
+     * https://github.com/doitsujin/dxvk/issues/5856)         */
+    { R"(\\DCS\.exe$)", {{
+      { "d3d11.viewUAFGuard",               "True" },
+    }} },
     /* Age of Pirates: Caribbean Tales            *
      * Crashes due to a texture UAF otherwise     */
     { R"(\\(Age of Pirates|Sea Dogs).*Caribbean Tales\\ENGINE\.exe$)", {{
