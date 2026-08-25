@@ -544,7 +544,7 @@ namespace dxvk {
     if (!instance.options().enableUnifiedImageLayout)
       m_featuresSupported.khrUnifiedImageLayouts.unifiedImageLayouts = VK_FALSE;
 
-    if (env::is32BitHostPlatform() || !env::isWineVulkan() || safeMode) {
+    if (env::is32BitHostPlatform() || !env::isWineVulkan() || safeMode || !instance.options().enableNvCudaInterop) {
       // CUDA interop is unnecessary on 32-bit, no games use it. These extensions
       // can also cause device creation errors for unknown reasons.
       m_featuresSupported.nvxBinaryImport = VK_FALSE;
