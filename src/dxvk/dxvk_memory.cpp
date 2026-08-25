@@ -224,8 +224,12 @@ namespace dxvk {
       VkResult vr = vk->vkCreateImageView(
         vk->device(), &viewInfo, nullptr, &descriptor.legacy.image.imageView);
 
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+      // Not fatal on descriptor heap path
+      if (vr && (renderTargetUsage || !m_device->canUseDescriptorHeap()))
+        throw DxvkError(str::format("Failed to create image view: ", vr));
+
+      if (vr)
+        Logger::warn(str::format("Failed to create legacy image view: ", vr));
     }
 
     if (shaderResourceUsage && m_device->canUseDescriptorHeap()) {

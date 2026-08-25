@@ -225,8 +225,12 @@ namespace dxvk {
     if (!m_device->canUseDescriptorHeap() || m_device->hasCudaInterop()) {
       VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
 
-      if (vr)
+      // Not fatal on descriptor heap path
+      if (vr && !m_device->canUseDescriptorHeap())
         throw DxvkError(str::format("Failed to create sampler object: ", vr));
+
+      if (vr)
+        Logger::warn(str::format("Failed to create legacy sampler object: ", vr));
     }
 
     if (m_device->canUseDescriptorHeap()) {
