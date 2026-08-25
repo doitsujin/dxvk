@@ -83,6 +83,9 @@ namespace dxvk {
     /// Enables NV_raw_access_chains extension on Nvidia
     bool enableNvRawAccessChains = true;
 
+    /// Enables CUDA interop extensions if available
+    bool enableNvCudaInterop = true;
+
     /// Enable descriptor update templates
     bool enableDescriptorUpdateTemplates = env::is32BitHostPlatform();
 
