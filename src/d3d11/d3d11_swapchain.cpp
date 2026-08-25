@@ -899,8 +899,6 @@ namespace dxvk {
       ctx->setViewports(1u, &viewport);
     });
 
-    // If we're scrolling, draw the back buffer to the offset
-    // scroll region first, then draw the scrolled image itself
     if (scroll) {
       pContext->EmitCs([
         cScrollView   = m_compositionScroll->createView(shaderViewInfo),
@@ -909,44 +907,36 @@ namespace dxvk {
         cScrollOffset = *pPresentParameters->pScrollOffset,
         cResolution   = resolution
       ] (DxvkContext* ctx) mutable {
-        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, std::move(cBufferView));
+        CompositionArgs args = {};
+        args.srcOffset = { cScrollRect.left - cScrollOffset.x, cScrollRect.top - cScrollOffset.y };
+        args.dstOffset = { cScrollRect.left, cScrollRect.top };
+        args.extent.width = cScrollRect.right - cScrollRect.left;
+        args.extent.height = cScrollRect.bottom - cScrollRect.top;
+        args.resolution = cResolution;
 
         VkDrawIndirectCommand draw = {};
         draw.vertexCount = 4u;
         draw.instanceCount = 1u;
 
-        if (cScrollOffset.x) {
-          CompositionArgs args = {};
-          args.srcOffset.x = cScrollOffset.x > 0 ? cScrollRect.left - cScrollOffset.x : cScrollRect.right;
-          args.srcOffset.y = cScrollRect.top;
-          args.dstOffset = args.srcOffset;
-          args.extent.width = std::abs(cScrollOffset.x);
-          args.extent.height = cScrollRect.bottom - cScrollRect.top;
-          args.resolution = cResolution;
+        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, std::move(cBufferView));
+        ctx->pushData(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(args), &args);
+        ctx->draw(1u, &draw);
 
-          ctx->pushData(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(args), &args);
-          ctx->draw(1u, &draw);
-        }
-
-        if (cScrollOffset.y) {
-          CompositionArgs args = {};
-          args.srcOffset.x = cScrollOffset.x > 0 ? cScrollRect.left - cScrollOffset.x : cScrollRect.left;
-          args.srcOffset.y = cScrollOffset.y > 0 ? cScrollRect.top - cScrollOffset.y : cScrollRect.bottom;
-          args.dstOffset = args.srcOffset;
-          args.extent.width = std::abs(cScrollOffset.x) + cScrollRect.right - cScrollRect.left;
-          args.extent.height = std::abs(cScrollOffset.y);
-          args.resolution = cResolution;
-
-          ctx->pushData(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(args), &args);
-          ctx->draw(1u, &draw);
-        }
-
-        CompositionArgs args = {};
         args.srcOffset = { 0, 0 };
         args.dstOffset = { cScrollRect.left, cScrollRect.top };
-        args.extent.width = cScrollRect.right - cScrollRect.left;
-        args.extent.height = cScrollRect.bottom - cScrollRect.top;
+        args.extent.width = cScrollRect.right - cScrollRect.left - std::abs(cScrollOffset.x);
+        args.extent.height = cScrollRect.bottom - cScrollRect.top - std::abs(cScrollOffset.y);
         args.resolution = cResolution;
+
+        if (cScrollOffset.x > 0) {
+          args.srcOffset.x += cScrollOffset.x;
+          args.dstOffset.x += cScrollOffset.x;
+        }
+
+        if (cScrollOffset.y > 0) {
+          args.srcOffset.y += cScrollOffset.y;
+          args.dstOffset.y += cScrollOffset.y;
+        }
 
         ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, std::move(cScrollView));
         ctx->pushData(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(args), &args);
