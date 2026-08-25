@@ -171,7 +171,11 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::presentImage(uint64_t frameId, const Rc<DxvkLatencyTracker>& tracker) {
+  VkResult Presenter::presentImage(
+          uint64_t                frameId,
+    const Rc<DxvkLatencyTracker>& tracker,
+          uint32_t                rectCount,
+    const VkRectLayerKHR*         rects) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
@@ -189,6 +193,14 @@ namespace dxvk {
     VkSwapchainPresentModeInfoKHR modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR };
     modeInfo.swapchainCount = 1;
     modeInfo.pPresentModes  = &m_presentMode;
+
+    VkPresentRegionKHR region = {};
+    region.rectangleCount = rectCount;
+    region.pRectangles = rects;
+
+    VkPresentRegionsKHR regionInfo = { VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR };
+    regionInfo.swapchainCount = 1;
+    regionInfo.pRegions = &region;
 
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
@@ -208,6 +220,9 @@ namespace dxvk {
       modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
       fenceInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &fenceInfo));
     }
+
+    if (m_hasIncrementalPresent && !m_presentRepaint && m_acquireStatus == VK_SUCCESS && rectCount)
+      regionInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &regionInfo));
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
@@ -267,6 +282,8 @@ namespace dxvk {
     }
 
     m_presentPending = false;
+    m_presentRepaint = false;
+
     m_surfaceCond.notify_one();
     return status;
   }
@@ -857,9 +874,16 @@ namespace dxvk {
     m_hasPresentId = presentId2Caps.presentId2Supported || m_device->features().khrPresentId.presentId;
     m_hasPresentWait = presentWait2Caps.presentWait2Supported || m_device->features().khrPresentWait.presentWait;
 
+    // Only support incremental present if the surface isn't transformed. Spec says
+    // that present rects are defined with respect to the current surface transform,
+    // not with the pre-transform set on the swap chain.
+    if (m_device->features().khrIncrementalPresent)
+      m_hasIncrementalPresent = caps.surfaceCapabilities.currentTransform == VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+
     if (m_signal && m_hasPresentWait && !m_frameThread.joinable())
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
 
+    m_presentRepaint = true;
     return VK_SUCCESS;
   }
 
@@ -1231,6 +1255,7 @@ namespace dxvk {
     m_acquireStatus = VK_NOT_READY;
 
     m_presentPending = false;
+    m_presentRepaint = false;
 
     m_hdrMetadataDirty = true;
 
@@ -1239,6 +1264,7 @@ namespace dxvk {
 
     m_hasPresentId = false;
     m_hasPresentWait = false;
+    m_hasIncrementalPresent = false;
   }
 
 

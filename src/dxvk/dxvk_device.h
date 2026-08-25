@@ -650,12 +650,16 @@ namespace dxvk {
      * \param [in] presenter The presenter
      * \param [in] tracker Latency tracker
      * \param [in] frameId Frame ID
+     * \param [in] rectCount Number of dirty rectangles,
+     * \param [in] rects Dirty rectangles
      * \param [out] status Present status
      */
     void presentImage(
       const Rc<Presenter>&            presenter,
       const Rc<DxvkLatencyTracker>&   tracker,
             uint64_t                  frameId,
+            uint32_t                  rectCount,
+      const VkRectLayerKHR*           rects,
             DxvkSubmitStatus*         status);
     
     /**
