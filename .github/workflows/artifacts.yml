@@ -5,8 +5,12 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   artifacts-mingw-w64:
     runs-on: ubuntu-latest
+    container: archlinux/archlinux:base-devel
 
     steps:
+    - name: Install dependencies
+      run: pacman -Syu --needed --noconfirm git meson mingw-w64-gcc glslang
+    
     - name: Checkout code
       id: checkout-code
       uses: actions/checkout@v6
@@ -19,12 +23,10 @@ jobs:
 
     - name: Build release
       id: build-release
-      uses: WinterSnowfall/arch-mingw-github-action@v2
-      with:
-        command: |
-          export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
-          ./package-release.sh ${VERSION_NAME} build --no-package
-          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+      run: |
+        export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
+        ./package-release.sh ${VERSION_NAME} build --no-package
+        echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
 
     - name: Upload artifacts
       id: upload-artifacts
