@@ -9182,47 +9182,54 @@ namespace dxvk {
         destroy.hResource = open.hResource;
         D3DKMTDestroyAllocation(&destroy);
 
-        if (desc.dxgi.size != sizeof(desc.d3d9) || desc.dxgi.version != 1) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid size: ",
-                                   desc.dxgi.size, " or version: ", desc.dxgi.version));
-          return false;
-        }
-        if (desc.d3d9.type != type) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid type: ", desc.d3d9.type));
-          return false;
-        }
-        if (desc.d3d9.dxgi.width != textureDesc.Width || desc.d3d9.dxgi.height != textureDesc.Height) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid dimensions: ", desc.d3d9.dxgi.width, "x", desc.d3d9.dxgi.height));
-          return false;
-        }
-        if (desc.d3d9.format != static_cast<D3DFORMAT>(textureDesc.Format)) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid format: ", desc.d3d9.format));
-          return false;
-        }
-        if (textureDesc.Usage & ~desc.d3d9.usage) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid usage: ", desc.d3d9.usage));
-          return false;
-        }
-        if (type == D3DRTYPE_TEXTURE && desc.d3d9.texture.levels != textureDesc.MipLevels) {
-          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid mip levels: ", desc.d3d9.texture.levels));
-          return false;
+        if (desc.dxgi.size == sizeof(desc.d3d9) && desc.dxgi.version == 1) {
+          if (desc.d3d9.type != type) {
+            Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid type: ", desc.d3d9.type));
+            return false;
+          }
+          if (desc.d3d9.dxgi.width != textureDesc.Width || desc.d3d9.dxgi.height != textureDesc.Height) {
+            Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid dimensions: ", desc.d3d9.dxgi.width, "x", desc.d3d9.dxgi.height));
+            return false;
+          }
+          if (desc.d3d9.format != static_cast<D3DFORMAT>(textureDesc.Format)) {
+            Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid format: ", desc.d3d9.format));
+            return false;
+          }
+          if (textureDesc.Usage & ~desc.d3d9.usage) {
+            Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid usage: ", desc.d3d9.usage));
+            return false;
+          }
+          if (type == D3DRTYPE_TEXTURE && desc.d3d9.texture.levels != textureDesc.MipLevels) {
+            Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid mip levels: ", desc.d3d9.texture.levels));
+            return false;
+          }
+
+          Logger::debug(str::format("Found D3D9 desc: ", desc.d3d9.type));
+          Logger::debug(str::format("  dxgi.width: ", desc.d3d9.dxgi.width));
+          Logger::debug(str::format("  dxgi.height: ", desc.d3d9.dxgi.height));
+          Logger::debug(str::format("  format: ", desc.d3d9.format));
+          Logger::debug(str::format("  usage: ", desc.d3d9.usage));
+          if (desc.d3d9.type == D3DRTYPE_TEXTURE) {
+            Logger::debug(str::format("  texture.width: ", desc.d3d9.texture.width));
+            Logger::debug(str::format("  texture.height: ", desc.d3d9.texture.height));
+            Logger::debug(str::format("  texture.depth: ", desc.d3d9.texture.depth));
+            Logger::debug(str::format("  texture.levels: ", desc.d3d9.texture.levels));
+          } else if (desc.d3d9.type == D3DRTYPE_SURFACE) {
+            Logger::debug(str::format("  surface.width: ", desc.d3d9.surface.width));
+            Logger::debug(str::format("  surface.height: ", desc.d3d9.surface.height));
+          }
+
+          return true;
         }
 
-        Logger::debug(str::format("Found D3D9 desc: ", desc.d3d9.type));
-        Logger::debug(str::format("  dxgi.width: ", desc.d3d9.dxgi.width));
-        Logger::debug(str::format("  dxgi.height: ", desc.d3d9.dxgi.height));
-        Logger::debug(str::format("  format: ", desc.d3d9.format));
-        Logger::debug(str::format("  usage: ", desc.d3d9.usage));
-        if (desc.d3d9.type == D3DRTYPE_TEXTURE) {
-          Logger::debug(str::format("  texture.width: ", desc.d3d9.texture.width));
-          Logger::debug(str::format("  texture.height: ", desc.d3d9.texture.height));
-          Logger::debug(str::format("  texture.depth: ", desc.d3d9.texture.depth));
-          Logger::debug(str::format("  texture.levels: ", desc.d3d9.texture.levels));
-        } else if (desc.d3d9.type == D3DRTYPE_SURFACE) {
-          Logger::debug(str::format("  surface.width: ", desc.d3d9.surface.width));
-          Logger::debug(str::format("  surface.height: ", desc.d3d9.surface.height));
+        if (desc.dxgi.size >= sizeof(desc.d3d11) && desc.dxgi.version == 4) {
+          Logger::info("D3D9DeviceEx::ValidateSharedTexture: Found D3D11 texture, skipping validation.");
+          return true;
         }
-        return true;
+
+        Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid size: ",
+                                  desc.dxgi.size, " or version: ", desc.dxgi.version));
+        return false;
       }
     }
 
