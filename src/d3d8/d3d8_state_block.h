@@ -37,15 +37,19 @@ namespace dxvk {
   };
 
   struct D3D8VBOP {
-    IDirect3DVertexBuffer8* buffer = nullptr;
-    UINT                    stride = 0;
+    Com<D3D8VertexBuffer, false> buffer = nullptr;
+    UINT                         stride = 0;
   };
 
+  // Captured bindings hold private references, mirroring the device's own
+  // m_textures/m_streams/m_indices: a state block may outlive the application's
+  // last public reference to a captured resource, and Apply() would otherwise
+  // rebind a dangling pointer.
   struct D3D8CapturableState {
-    std::array<D3D8VBOP, d8caps::MAX_STREAMS>                      streams;
-    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES> textures;
+    std::array<D3D8VBOP, d8caps::MAX_STREAMS>                         streams;
+    std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES> textures;
 
-    IDirect3DIndexBuffer8* indices = nullptr;
+    Com<D3D8IndexBuffer, false> indices = nullptr;
     UINT  baseVertexIndex    = 0;
     DWORD vertexShaderHandle = 0;
     DWORD pixelShaderHandle  = 0;
@@ -89,7 +93,7 @@ namespace dxvk {
     HRESULT Apply();
 
     inline HRESULT SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
-      m_state.indices = pIndexData;
+      m_state.indices = static_cast<D3D8IndexBuffer*>(pIndexData);
       m_state.baseVertexIndex = BaseVertexIndex;
       m_captures.flags.set(D3D8CapturedStateFlag::Indices);
       return D3D_OK;
@@ -102,7 +106,7 @@ namespace dxvk {
     }
 
     inline HRESULT SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer8* pStreamData, UINT Stride) {
-      m_state.streams[StreamNumber].buffer = pStreamData;
+      m_state.streams[StreamNumber].buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
       // The previous stride is preserved if pStreamData is NULL
       if (likely(pStreamData != nullptr))
         m_state.streams[StreamNumber].stride = Stride;
@@ -112,7 +116,7 @@ namespace dxvk {
     }
 
     inline HRESULT SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
-      m_state.textures[Stage] = pTexture;
+      m_state.textures[Stage] = static_cast<D3D8Texture2D*>(pTexture);
       m_captures.flags.set(D3D8CapturedStateFlag::Textures);
       m_captures.textures.set(Stage, true);
       return D3D_OK;

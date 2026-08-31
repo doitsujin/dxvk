@@ -100,7 +100,7 @@ namespace dxvk {
     HRESULT res = m_stateBlock->Apply();
 
     if (m_captures.flags.test(D3D8CapturedStateFlag::Indices))
-      m_device->SetIndices(m_state.indices, m_state.baseVertexIndex);
+      m_device->SetIndices(m_state.indices.ptr(), m_state.baseVertexIndex);
 
     // This was a very easy footgun for D3D8 applications.
     if (m_captures.flags.test(D3D8CapturedStateFlag::SWVP))
@@ -109,14 +109,14 @@ namespace dxvk {
     if (m_captures.flags.test(D3D8CapturedStateFlag::VertexBuffers)) {
       for (DWORD stream = 0; stream < m_state.streams.size(); stream++) {
         if (m_captures.streams.get(stream))
-          m_device->SetStreamSource(stream, m_state.streams[stream].buffer, m_state.streams[stream].stride);
+          m_device->SetStreamSource(stream, m_state.streams[stream].buffer.ptr(), m_state.streams[stream].stride);
       }
     }
 
     if (m_captures.flags.test(D3D8CapturedStateFlag::Textures)) {
       for (DWORD stage = 0; stage < m_state.textures.size(); stage++) {
         if (m_captures.textures.get(stage))
-          m_device->SetTexture(stage, m_state.textures[stage]);
+          m_device->SetTexture(stage, m_state.textures[stage].ptr());
       }
     }
 
