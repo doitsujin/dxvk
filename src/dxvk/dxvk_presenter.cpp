@@ -628,7 +628,7 @@ namespace dxvk {
     surfaceInfo.surface = m_surface;
 
     if (m_device->features().extFullScreenExclusive)
-      surfaceInfo.pNext = &fullScreenExclusiveInfo;
+      fullScreenExclusiveInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenExclusiveInfo));
 
     // Query surface capabilities. Some properties might have changed,
     // including the size limits and supported present modes, so we'll
@@ -996,17 +996,19 @@ namespace dxvk {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
     surfaceInfo.surface = m_surface;
 
+    if (m_device->features().extFullScreenExclusive)
+      fullScreenInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenInfo));
+
     VkResult status;
-    
-    if (m_device->features().extFullScreenExclusive) {
+    if (m_device->instance()->extensions().khrGetSurfaceCapabilities2.specVersion) {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
         m_device->adapter()->handle(), &surfaceInfo, &numFormats, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device->adapter()->handle(), m_surface, &numFormats, nullptr);
+        m_device->adapter()->handle(), surfaceInfo.surface, &numFormats, nullptr);
     }
 
     if (status != VK_SUCCESS) {
@@ -1016,8 +1018,8 @@ namespace dxvk {
     
     formats.resize(numFormats);
 
-    if (m_device->features().extFullScreenExclusive) {
-      std::vector<VkSurfaceFormat2KHR> tmpFormats(numFormats, 
+    if (m_device->instance()->extensions().khrGetSurfaceCapabilities2.specVersion) {
+      std::vector<VkSurfaceFormat2KHR> tmpFormats(numFormats,
         { VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR, nullptr, VkSurfaceFormatKHR() });
 
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
@@ -1027,7 +1029,7 @@ namespace dxvk {
         formats[i] = tmpFormats[i].surfaceFormat;
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device->adapter()->handle(), m_surface, &numFormats, formats.data());
+        m_device->adapter()->handle(), surfaceInfo.surface, &numFormats, formats.data());
     }
 
     if (status != VK_SUCCESS)
@@ -1043,8 +1045,11 @@ namespace dxvk {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
     surfaceInfo.surface = m_surface;
+
+    if (m_device->features().extFullScreenExclusive)
+      fullScreenInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenInfo));
 
     VkResult status;
 
@@ -1053,7 +1058,7 @@ namespace dxvk {
         m_device->adapter()->handle(), &surfaceInfo, &numModes, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device->adapter()->handle(), m_surface, &numModes, nullptr);
+        m_device->adapter()->handle(), surfaceInfo.surface, &numModes, nullptr);
     }
 
     if (status != VK_SUCCESS) {
@@ -1068,7 +1073,7 @@ namespace dxvk {
         m_device->adapter()->handle(), &surfaceInfo, &numModes, modes.data());
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device->adapter()->handle(), m_surface, &numModes, modes.data());
+        m_device->adapter()->handle(), surfaceInfo.surface, &numModes, modes.data());
     }
 
     if (status != VK_SUCCESS)
