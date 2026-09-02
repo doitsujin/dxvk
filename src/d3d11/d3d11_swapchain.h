@@ -14,7 +14,7 @@ namespace dxvk {
   class D3D11Device;
   class D3D11DXGIDevice;
 
-  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain2> {
+  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain3> {
     constexpr static uint32_t DefaultFrameLatency = 1;
   public:
 
@@ -90,6 +90,12 @@ namespace dxvk {
     void STDMETHODCALLTYPE SetTargetFrameRate(
             double                    FrameRate);
 
+    HRESULT STDMETHODCALLTYPE SetBackgroundColor(
+      const DXGI_RGBA*                pColor);
+
+    HRESULT STDMETHODCALLTYPE SetRotation(
+            DXGI_MODE_ROTATION        Rotation);
+
   private:
 
     using DirtyRectList = small_vector<VkRectLayerKHR, 4>;
@@ -134,6 +140,7 @@ namespace dxvk {
     Rc<sync::CallbackFence>   m_frameLatencySignal;
 
     VkColorSpaceKHR           m_colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkClearColorValue         m_clearColor = {};
 
     double                    m_targetFrameRate = 0.0;
 

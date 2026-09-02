@@ -101,7 +101,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDXGIVkSwapChain)
      || riid == __uuidof(IDXGIVkSwapChain1)
-     || riid == __uuidof(IDXGIVkSwapChain2)) {
+     || riid == __uuidof(IDXGIVkSwapChain2)
+     || riid == __uuidof(IDXGIVkSwapChain3)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -358,6 +359,27 @@ namespace dxvk {
 
     if (m_presenter != nullptr)
       m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetBackgroundColor(
+    const DXGI_RGBA*                pColor) {
+    m_clearColor.float32[0] = pColor->r;
+    m_clearColor.float32[1] = pColor->g;
+    m_clearColor.float32[2] = pColor->b;
+    m_clearColor.float32[3] = pColor->a;
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetRotation(
+          DXGI_MODE_ROTATION        Rotation) {
+    if (Rotation > DXGI_MODE_ROTATION_IDENTITY) {
+      Logger::err(str::format("D3D11SwapChain::SetRotation: Rotation ", Rotation, " not supported."));
+      return E_NOTIMPL;
+    }
+
+    return S_OK;
   }
 
 
