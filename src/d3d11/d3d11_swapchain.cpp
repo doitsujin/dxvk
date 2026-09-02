@@ -374,7 +374,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetRotation(
           DXGI_MODE_ROTATION        Rotation) {
-    if (Rotation > DXGI_MODE_ROTATION_IDENTITY) {
+    if (Rotation != DXGI_MODE_ROTATION_IDENTITY) {
       Logger::err(str::format("D3D11SwapChain::SetRotation: Rotation ", Rotation, " not supported."));
       return E_NOTIMPL;
     }

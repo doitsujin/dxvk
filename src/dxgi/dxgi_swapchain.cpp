@@ -32,6 +32,7 @@ namespace dxvk {
     // may fail e.g. with older vkd3d-proton builds.
     m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain1), reinterpret_cast<void**>(&m_presenter1));
     m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain2), reinterpret_cast<void**>(&m_presenter2));
+    m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain3), reinterpret_cast<void**>(&m_presenter3));
 
     m_frameRateOption = m_factory->GetOptions()->maxFrameRate;
 
@@ -187,8 +188,11 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetRotation(
           DXGI_MODE_ROTATION*       pRotation) {
-    Logger::err("DxgiSwapChain::GetRotation: Not implemented");
-    return E_NOTIMPL;
+    if (!pRotation)
+      return E_INVALIDARG;
+
+    *pRotation = m_rotation;
+    return S_OK;
   }
   
   
@@ -558,12 +562,15 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetRotation(
           DXGI_MODE_ROTATION        Rotation) {
+    if (Rotation == DXGI_MODE_ROTATION_UNSPECIFIED || Rotation > DXGI_MODE_ROTATION_ROTATE270)
+      return E_INVALIDARG;
 
-    if (Rotation == DXGI_MODE_ROTATION_IDENTITY)
-      return S_OK;
+    m_rotation = Rotation;
 
-    Logger::err(str::format("DxgiSwapChain::SetRotation(", Rotation,"): Not implemented"));
-    return E_NOTIMPL;
+    if (!m_presenter3)
+      return Rotation == DXGI_MODE_ROTATION_IDENTITY ? S_OK : E_NOTIMPL;
+
+    return m_presenter3->SetRotation(Rotation);
   }
   
   
@@ -1047,7 +1054,7 @@ namespace dxvk {
 
   void DxgiSwapChain::UpdateTargetFrameRate(
           UINT                    SyncInterval) {
-    if (m_presenter2 == nullptr)
+    if (!m_presenter2)
       return;
 
     // Engage the frame limiter with large sync intervals even in windowed
