@@ -608,6 +608,10 @@ namespace dxvk {
      && m_properties.driverVersion < Version(595u, 0u, 0u))
       m_featuresSupported.khrPresentId2.presentId2 = VK_FALSE;
 
+    // Disable present timing if the corresponding option is turned off.
+    if (!instance.options().enablePresentTiming)
+      m_featuresSupported.extPresentTiming.presentTiming = VK_FALSE;
+
     // Ensure we only enable one of present_id or present_id_2. Prefer the
     // older versions of these extensions if we don't have present timing
     // support since the newer ones are causing issues in some environments.
