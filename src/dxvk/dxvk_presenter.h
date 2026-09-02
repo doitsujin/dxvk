@@ -63,6 +63,7 @@ namespace dxvk {
     uint64_t                targetTime    = 0u;
     uint64_t                deadline      = 0u;
     bool                    isTimed       = false;
+    bool                    doWait        = false;
   };
 
   /**

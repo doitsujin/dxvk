@@ -205,6 +205,8 @@ namespace dxvk {
     bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
                    || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
+    bool waitForPresent = m_hasPresentWait && isFifoMode;
+
     VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
     timingInfo.presentStageQueries = m_timingMode.presentStage;
     timingInfo.timeDomainId = m_timingMode.timeDomainId;
@@ -225,6 +227,10 @@ namespace dxvk {
 
         frameDeadline = timingInfo.targetTime + m_timingMode.frameIntervalNs;
       }
+
+      // Skip present_wait in fixed refresh mode if the frame is timed
+      if (!m_timingDisplayInfo || !m_timingDisplayInfo->isVariableRefresh)
+        waitForPresent = waitForPresent && !timingInfo.targetTime;
     }
 
     VkPresentTimingsInfoEXT timingsInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT };
@@ -287,18 +293,17 @@ namespace dxvk {
     }
 
     // Add frame to waiter queue with current properties
-    if (m_hasPresentWait) {
-      PresenterFrame frame;
-      frame.frameId = frameId;
-      frame.tracker = tracker;
-      frame.mode = m_presentMode;
-      frame.result = status;
-      frame.targetTime = frameDeadline ? timingInfo.targetTime : 0u;
-      frame.deadline = frameDeadline;
-      frame.isTimed = bool(timingInfo.targetTime);
+    PresenterFrame frame;
+    frame.frameId = frameId;
+    frame.tracker = tracker;
+    frame.mode = m_presentMode;
+    frame.result = status;
+    frame.targetTime = frameDeadline ? timingInfo.targetTime : 0u;
+    frame.deadline = frameDeadline;
+    frame.isTimed = bool(timingInfo.targetTime);
+    frame.doWait = waitForPresent;
 
-      pushFrame(frame);
-    }
+    pushFrame(frame);
 
     // On a successful present, try to acquire next image already, in
     // order to hide potential delays from the application thread.
@@ -335,24 +340,16 @@ namespace dxvk {
     if (m_signal == nullptr || !frameId)
       return;
 
-    if (m_hasPresentWait) {
-      bool canSignal = false;
+    bool canSignal = false;
 
-      { std::unique_lock lock(m_frameMutex);
+    { std::unique_lock lock(m_frameMutex);
 
-        m_lastSignaled = frameId;
-        canSignal = m_lastCompleted >= frameId;
-      }
-
-      if (canSignal)
-        m_signal->signal(frameId);
-    } else {
-      m_fpsLimiter.delay();
-      m_signal->signal(frameId);
-
-      if (tracker)
-        tracker->notifyGpuPresentEnd(frameId);
+      m_lastSignaled = frameId;
+      canSignal = m_lastCompleted >= frameId;
     }
+
+    if (canSignal)
+      m_signal->signal(frameId);
   }
 
 
@@ -969,7 +966,7 @@ namespace dxvk {
     if (m_device->features().khrIncrementalPresent)
       m_hasIncrementalPresent = caps.surfaceCapabilities.currentTransform == VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
-    if (m_signal && m_hasPresentWait && !m_frameThread.joinable())
+    if (m_signal && !m_frameThread.joinable())
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
 
     m_presentRepaint = true;
@@ -1950,7 +1947,7 @@ namespace dxvk {
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
-      if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)) {
+      if (frame.result >= 0 && frame.doWait) {
         VkResult vr;
 
         if (m_device->features().khrPresentWait2.presentWait2) {
