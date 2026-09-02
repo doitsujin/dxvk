@@ -210,6 +210,7 @@ namespace dxvk {
 
     DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
     DXGI_MODE_ROTATION              m_rotation = DXGI_MODE_ROTATION_IDENTITY;
+    DXGI_RGBA                       m_backgroundColor = {};
 
     uint32_t                        m_globalHDRStateSerial = 0;
     bool                            m_hasLatencyControl = false;
