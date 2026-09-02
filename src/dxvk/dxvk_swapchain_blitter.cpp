@@ -33,6 +33,7 @@ namespace dxvk {
 
   void DxvkSwapchainBlitter::present(
     const Rc<DxvkCommandList>&ctx,
+          VkClearColorValue   clearColor,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
@@ -98,8 +99,10 @@ namespace dxvk {
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    if (srcRect.extent != dstRect.extent)
+    if (dstRect.extent != VkExtent2D { dstExtent.width, dstExtent.height }) {
       attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      attachmentInfo.clearValue.color = clearColor;
+    }
 
     VkRenderingInfo renderInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderInfo.renderArea.offset = { 0u, 0u };

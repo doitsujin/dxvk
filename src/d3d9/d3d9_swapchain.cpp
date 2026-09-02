@@ -902,7 +902,7 @@ namespace dxvk {
         // Blit back buffer onto Vulkan swap chain
         auto contextObjects = ctx->beginExternalRendering();
 
-        cBlitter->present(contextObjects,
+        cBlitter->present(contextObjects, VkClearColorValue(),
           cDstView, cDstRect, cSrcView, cSrcRect);
 
         // Submit command list and present

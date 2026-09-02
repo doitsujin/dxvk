@@ -488,7 +488,8 @@ namespace dxvk {
       cLatency        = m_latency,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId,
-      cDirtyRects     = std::move(dirtyRects)
+      cDirtyRects     = std::move(dirtyRects),
+      cClearColor     = m_clearColor
     ] (DxvkContext* ctx) {
       // Update back buffer color space as necessary
       if (cSwapImage->image()->info().colorSpace != cColorSpace) {
@@ -502,9 +503,8 @@ namespace dxvk {
       // swap chain and render the HUD if we have one.
       auto contextObjects = ctx->beginExternalRendering();
 
-      cBlitter->present(contextObjects,
-        cBackBuffer, VkRect2D(),
-        cSwapImage, VkRect2D());
+      cBlitter->present(contextObjects, cClearColor,
+        cBackBuffer, VkRect2D(), cSwapImage, VkRect2D());
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
