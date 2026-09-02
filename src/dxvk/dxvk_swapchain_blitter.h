@@ -124,14 +124,15 @@ namespace dxvk {
      * blits the source image onto the swap chain appropriately.
      * The swap chain image will remain bound for rendering.
      * \param [in] ctx Context objects
+     * \param [in] clearColor Background color
      * \param [in] dstView Swap chain image view
      * \param [in] dstRect Destination rectangle
      * \param [in] srcView Image to present
-     * \param [in] srcColorSpace Image color space
      * \param [in] srcRect Source rectangle to present
      */
     void present(
       const Rc<DxvkCommandList>&ctx,
+            VkClearColorValue   clearColor,
       const Rc<DxvkImageView>&  dstView,
             VkRect2D            dstRect,
       const Rc<DxvkImageView>&  srcView,
