@@ -338,6 +338,18 @@ namespace dxvk {
     return S_OK;
   }
 
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetBackgroundColor(
+          const DXGI_RGBA*                pColor) {
+    if (!pColor)
+      return E_INVALIDARG;
+
+    m_backgroundColor.float32[0] = pColor->r;
+    m_backgroundColor.float32[1] = pColor->g;
+    m_backgroundColor.float32[2] = pColor->b;
+    m_backgroundColor.float32[3] = pColor->a;
+    return S_OK;
+  }
+
 
   void STDMETHODCALLTYPE D3D11SwapChain::GetLastPresentCount(
           UINT64*                   pLastPresentCount) {
@@ -466,7 +478,8 @@ namespace dxvk {
       cLatency        = m_latency,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId,
-      cDirtyRects     = std::move(dirtyRects)
+      cDirtyRects     = std::move(dirtyRects),
+      cBgColor        = m_backgroundColor
     ] (DxvkContext* ctx) {
       // Update back buffer color space as necessary
       if (cSwapImage->image()->info().colorSpace != cColorSpace) {
@@ -474,6 +487,17 @@ namespace dxvk {
         usage.colorSpace = cColorSpace;
 
         ctx->ensureImageCompatibility(cSwapImage->image(), usage);
+      }
+
+      // Clear swap chain image with background color before blitting.
+      // This simulates DXGI SetBackgroundColor for DXGI_SCALING_NONE
+      // windowed mode where DWM would fill uncovered areas.
+      {
+        DxvkAttachment attachment = { };
+        attachment.view = cBackBuffer;
+        VkClearValue clearValue = { };
+        clearValue.color = cBgColor;
+        ctx->clearRenderTarget(attachment, 0u, clearValue, VK_IMAGE_ASPECT_COLOR_BIT);
       }
 
       // Blit the D3D back buffer onto the actual Vulkan

@@ -180,8 +180,11 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetBackgroundColor(
           DXGI_RGBA*                pColor) {
-    Logger::err("DxgiSwapChain::GetBackgroundColor: Not implemented");
-    return E_NOTIMPL;
+    if (!pColor)
+      return E_INVALIDARG;
+
+    *pColor = m_backgroundColor;
+    return S_OK;
   }
   
   
@@ -551,8 +554,17 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetBackgroundColor(
     const DXGI_RGBA*                pColor) {
-    Logger::err("DxgiSwapChain::SetBackgroundColor: Not implemented");
-    return E_NOTIMPL;
+    if (!pColor)
+      return E_INVALIDARG;
+
+    m_backgroundColor = *pColor;
+
+    // Only applies to DXGI_SCALING_NONE in windowed mode per MSDN,
+    // but we forward it unconditionally so the presenter can decide.
+    if (m_presenter)
+      m_presenter->SetBackgroundColor(pColor);
+
+    return S_OK;
   }
   
   

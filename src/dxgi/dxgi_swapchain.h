@@ -208,6 +208,7 @@ namespace dxvk {
     bool                            m_is_d3d12;
 
     DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    DXGI_RGBA                       m_backgroundColor = { 0.0f, 0.0f, 0.0f, 0.0f };
 
     uint32_t                        m_globalHDRStateSerial = 0;
     bool                            m_hasLatencyControl = false;

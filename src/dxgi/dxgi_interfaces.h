@@ -124,6 +124,9 @@ IDXGIVkSwapChain : public IUnknown {
 
   virtual HRESULT STDMETHODCALLTYPE SetHDRMetaData(
     const DXGI_VK_HDR_METADATA*     pMetaData) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetBackgroundColor(
+    const DXGI_RGBA*                pColor) = 0;
 };
 
 

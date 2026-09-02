@@ -81,6 +81,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetHDRMetaData(
       const DXGI_VK_HDR_METADATA*     pMetaData);
 
+    HRESULT STDMETHODCALLTYPE SetBackgroundColor(
+            const DXGI_RGBA*                pColor);
+
     void STDMETHODCALLTYPE GetLastPresentCount(
             UINT64*                   pLastPresentCount);
 
@@ -134,6 +137,7 @@ namespace dxvk {
     Rc<sync::CallbackFence>   m_frameLatencySignal;
 
     VkColorSpaceKHR           m_colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkClearColorValue         m_backgroundColor = { { 0.0f, 0.0f, 0.0f, 0.0f } };
 
     double                    m_targetFrameRate = 0.0;
 
