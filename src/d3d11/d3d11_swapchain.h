@@ -178,6 +178,10 @@ namespace dxvk {
 
     Com<D3D11ReflexDevice> GetReflexDevice();
 
+    VkRect2D ComputeSrcPresentRect() const;
+
+    VkRect2D ComputeDstPresentRect(VkExtent2D DstSize, VkExtent2D SrcSize) const;
+
     void CompositeIncrementalPresent(
             D3D11ImmediateContext*   pContext,
       const DXGI_PRESENT_PARAMETERS* pPresentParameters);
@@ -187,9 +191,9 @@ namespace dxvk {
 
     void CreateCompositionShaders();
 
-    DirtyRectList NormalizeDirtyRects(const DXGI_PRESENT_PARAMETERS* pPresentParameters) const;
+    DirtyRectList NormalizeDirtyRects(const DXGI_PRESENT_PARAMETERS* pPresentParameters, VkRect2D Bounds) const;
 
-    void AddDirtyRect(DirtyRectList& List, RECT Rect) const;
+    void AddDirtyRect(DirtyRectList& List, RECT Rect, VkRect2D Bounds) const;
 
     std::string GetApiName() const;
 
