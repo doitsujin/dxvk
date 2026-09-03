@@ -26,6 +26,7 @@ compiler_args = [
   '-Wno-extern-c-compat',
   '-Wno-unused-const-variable',
   '-Wno-missing-braces',
+  '-Wfatal-errors',
 ]
 
 link_args = []
@@ -37,6 +38,7 @@ if get_option('build_id')
 endif
 
 dxvk_include_dirs = ['./include']
+# dxvk_include_dirs += get_option('includedir')
 if fs.is_dir('./include/vulkan/include')
   dxvk_include_dirs += ['./include/vulkan/include']
 elif not cpp.check_header('vulkan/vulkan.h')
