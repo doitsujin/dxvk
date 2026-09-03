@@ -212,6 +212,8 @@ namespace dxvk {
     DXGI_MODE_ROTATION              m_rotation = DXGI_MODE_ROTATION_IDENTITY;
     DXGI_RGBA                       m_backgroundColor = {};
 
+    VkExtent2D                      m_sourceSize = {};
+
     uint32_t                        m_globalHDRStateSerial = 0;
     bool                            m_hasLatencyControl = false;
 
@@ -248,6 +250,10 @@ namespace dxvk {
     bool ValidateColorSpaceSupport(
             DXGI_FORMAT             Format,
             DXGI_COLOR_SPACE_TYPE   ColorSpace);
+
+    HRESULT UpdateSourceSize(
+            UINT                    Width,
+            UINT                    Height);
 
     HRESULT UpdateColorSpace(
             DXGI_FORMAT             Format,

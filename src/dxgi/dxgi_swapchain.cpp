@@ -47,6 +47,7 @@ namespace dxvk {
     }
 
     // Ensure that RGBA16 swap chains are scRGB if supported
+    UpdateSourceSize(m_desc.Width, m_desc.Height);
     UpdateColorSpace(m_desc.Format, m_colorSpace);
 
     // Somewhat hacky way to determine whether to forward the
@@ -461,6 +462,7 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
+    UpdateSourceSize(m_desc.Width, m_desc.Height);
     UpdateColorSpace(m_desc.Format, m_colorSpace);
     return hr;
   }
@@ -614,9 +616,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetSourceSize(
           UINT*                     pWidth,
           UINT*                     pHeight) {
-    // TODO implement properly once supported
-    if (pWidth)  *pWidth  = m_desc.Width;
-    if (pHeight) *pHeight = m_desc.Height;
+    if (pWidth)  *pWidth  = m_sourceSize.width;
+    if (pHeight) *pHeight = m_sourceSize.height;
     return S_OK;
   }
 
@@ -647,11 +648,9 @@ namespace dxvk {
       return E_INVALIDARG;
 
     std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
-
-    RECT region = { 0, 0, LONG(Width), LONG(Height) };
-    return m_presenter->SetPresentRegion(&region);
+    return UpdateSourceSize(Width, Height);
   }
-  
+
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::CheckColorSpaceSupport(
           DXGI_COLOR_SPACE_TYPE           ColorSpace,
@@ -1059,6 +1058,22 @@ namespace dxvk {
       m_monitorInfo->PuntColorSpace(ColorSpace);
 
     return hr;
+  }
+
+
+  HRESULT DxgiSwapChain::UpdateSourceSize(
+          UINT                    Width,
+          UINT                    Height) {
+    // Ignore this feature and do not forward it to the presenter. The interactions
+    // with scaling and rotation are not documented and do not seem very useful, as
+    // the present region serves as a scaling factor rather than clamping the source
+    // rect, and is applied post-rotation while the given coordinates are validated
+    // against the pre-rotation back buffer size. This Also appears to be a no-op
+    // with SCALING_STRETCH scaling, while introducing scaling for SCALING_NONE and
+    // actually enlarging the present region in that case.
+    m_sourceSize.width = Width;
+    m_sourceSize.height = Height;
+    return S_OK;
   }
 
 

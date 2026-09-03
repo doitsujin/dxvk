@@ -194,7 +194,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetPresentRegion(
     const RECT*                     pRegion) {
-    // TODO implement
+    Logger::err("D3D11SwapChain::SetPresentRegion: Stub");
     return E_NOTIMPL;
   }
 
