@@ -4846,11 +4846,10 @@ namespace dxvk {
       // Perform submission. If the amount of staging memory allocated since the
       // last submission exceeds the hard limit, we need to submit to guarantee
       // forward progress. Ideally, this should not happen very often.
-      GpuFlushType flushType = stagingBufferAllocated <= m_stagingMemorySignaled + MaxMemoryInFlight
-        ? GpuFlushType::ImplicitSynchronization
-        : GpuFlushType::ExplicitFlush;
-
-      ConsiderFlush(flushType);
+      if (stagingBufferAllocated <= m_stagingMemorySignaled + MaxMemoryInFlight)
+        ConsiderFlush(GpuFlushType::ImplicitSynchronization);
+      else
+        ExecuteFlush(false);
     }
 
     // Wait for staging memory to get recycled.
