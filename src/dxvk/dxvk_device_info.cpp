@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <iomanip>
 #include <set>
 #include <sstream>
@@ -627,6 +629,11 @@ namespace dxvk {
       m_featuresSupported.amdBufferMarker = VK_FALSE;
       m_featuresSupported.nvDeviceDiagnosticCheckpoints = VK_FALSE;
     }
+
+    m_relaxRequiredFeaturesForMetal =
+         m_properties.vk12.driverID == VK_DRIVER_ID_MOLTENVK
+      || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_HONEYKRISP
+      || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_KOSMICKRISP;
   }
 
 
@@ -753,8 +760,22 @@ namespace dxvk {
     if (m_queueMapping.graphics.family == VK_QUEUE_FAMILY_IGNORED)
       return std::string("Device does not have a graphics queue");
 
+
+    static const std::array<const char*, 5> s_metalOptionalFeatures = {{
+      "fillModeNonSolid", "geometryShader", "shaderClipDistance",
+      "shaderCullDistance", "depthClipEnable",
+    }};
+
     for (const auto& f : getFeatureList()) {
       if (f.featureRequired && !(*f.featureEnabled)) {
+        if (m_relaxRequiredFeaturesForMetal) {
+          bool exempt = std::any_of(s_metalOptionalFeatures.begin(), s_metalOptionalFeatures.end(),
+            [&] (const char* name) { return std::strcmp(name, f.readableName) == 0; });
+
+          if (exempt)
+            continue;
+        }
+
         std::string message = str::format("Device does not support required feature '", f.readableName, "'");
 
         if (f.extensionEnabled)
