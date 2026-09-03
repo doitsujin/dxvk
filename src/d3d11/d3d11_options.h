@@ -102,6 +102,18 @@ namespace dxvk {
     /// Some games are broken and ignore row pitch.
     bool disableDirectImageMapping = false;
 
+    /// Validate shader resource, render target, unordered access and
+    /// depth-stencil views against a liveness registry before binding
+    /// them to the pipeline.
+    ///
+    /// Workaround for games that bind a view after already having
+    /// released their last reference to it (an application-side
+    /// use-after-free that would otherwise crash DXVK when it
+    /// dereferences the dangling view object). Adds bookkeeping
+    /// overhead to every view's construction, destruction and bind
+    /// call, so this is disabled by default.
+    bool viewUAFGuard = false;
+
     /// Shader dump path
     std::string shaderDumpPath;
   };

@@ -191,6 +191,9 @@ namespace dxvk {
     if (!pResourceView || (NumRects && pRects))
       return;
 
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(pResourceView))
+      return;
+
     // ID3D11View has no methods to query the exact type of
     // the view, so we'll have to check each possible class
     auto dsv = dynamic_cast<D3D11DepthStencilView*>(pResourceView);
@@ -414,6 +417,9 @@ namespace dxvk {
     if (!buf || !uav)
       return;
 
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(uav))
+      return;
+
     auto counterView = uav->GetCounterView();
 
     if (counterView == nullptr)
@@ -449,6 +455,9 @@ namespace dxvk {
     if (!rtv)
       return;
 
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(rtv))
+      return;
+
     AddCost(GpuCostEstimate::Transfer);
 
     DxvkAttachment attachment = {};
@@ -472,6 +481,9 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (!pUnorderedAccessView)
+      return;
+
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(pUnorderedAccessView))
       return;
 
     Com<ID3D11UnorderedAccessView> qiUav;
@@ -621,6 +633,9 @@ namespace dxvk {
     if (!uav)
       return;
 
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(uav))
+      return;
+
     auto imgView = uav->GetImageView();
     auto bufView = uav->GetBufferView();
 
@@ -677,6 +692,9 @@ namespace dxvk {
     if (!dsv)
       return;
 
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(dsv))
+      return;
+
     // Figure out which aspects to clear based on
     // the image view properties and clear flags.
     VkImageAspectFlags aspectMask = 0;
@@ -721,6 +739,9 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (NumRects && !pRect)
+      return;
+
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && pView && !D3D11ViewUAFGuard::isViewLive(pView))
       return;
 
     AddCost(GpuCostEstimate::Transfer);
@@ -808,7 +829,13 @@ namespace dxvk {
 
     auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
 
-    if (!view || view->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER)
+    if (!view)
+      return;
+
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard) && !D3D11ViewUAFGuard::isViewLive(view))
+      return;
+
+    if (view->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER)
       return;
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc = view->GetResourceDesc();
@@ -2145,6 +2172,22 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
+
+    // See SetRenderTargetsAndUnorderedAccessViews for why this rewrites
+    // the local pointer instead of touching the app's own array.
+    std::array<ID3D11UnorderedAccessView*, D3D11_1_UAV_SLOT_COUNT> sanitizedUavs;
+
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard)
+     && ppUnorderedAccessViews && NumUAVs <= sanitizedUavs.size()) {
+      for (uint32_t i = 0; i < NumUAVs; i++) {
+        sanitizedUavs[i] = ppUnorderedAccessViews[i];
+
+        if (sanitizedUavs[i] && !D3D11ViewUAFGuard::isViewLive(sanitizedUavs[i]))
+          sanitizedUavs[i] = nullptr;
+      }
+
+      ppUnorderedAccessViews = sanitizedUavs.data();
+    }
 
     if (TestRtvUavHazards(0, nullptr, NumUAVs, ppUnorderedAccessViews))
       return;
@@ -5288,6 +5331,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumResources; i++) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
 
+      if (unlikely(m_parent->GetOptions()->viewUAFGuard) && resView && !D3D11ViewUAFGuard::isViewLive(resView))
+        resView = nullptr;
+
       if (bindings.views[StartSlot + i] != resView) {
         if (likely(resView != nullptr)) {
           if (unlikely(resView->TestHazards())) {
@@ -5346,6 +5392,45 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
+    // Guard against apps binding a view they have already destroyed. Only
+    // touched when d3d11.viewUAFGuard is enabled, and only rewrites the
+    // local (pass-by-value) pointer parameters, never the app's own arrays.
+    std::array<ID3D11RenderTargetView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> sanitizedRtvs;
+    std::array<ID3D11UnorderedAccessView*, D3D11_1_UAV_SLOT_COUNT> sanitizedUavs;
+
+    if (unlikely(m_parent->GetOptions()->viewUAFGuard)) {
+      // Only take over the array if NumRTVs/NumUAVs is within the bounds the
+      // D3D11 API allows (and that our fixed-size local buffers are sized
+      // for). An out-of-spec call falls through unguarded rather than risk
+      // reading past the end of the local array.
+      if (ppRenderTargetViews && NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL
+       && NumRTVs <= sanitizedRtvs.size()) {
+        for (uint32_t i = 0; i < NumRTVs; i++) {
+          sanitizedRtvs[i] = ppRenderTargetViews[i];
+
+          if (sanitizedRtvs[i] && !D3D11ViewUAFGuard::isViewLive(sanitizedRtvs[i]))
+            sanitizedRtvs[i] = nullptr;
+        }
+
+        ppRenderTargetViews = sanitizedRtvs.data();
+      }
+
+      if (pDepthStencilView && !D3D11ViewUAFGuard::isViewLive(pDepthStencilView))
+        pDepthStencilView = nullptr;
+
+      if (ppUnorderedAccessViews && NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS
+       && NumUAVs <= sanitizedUavs.size()) {
+        for (uint32_t i = 0; i < NumUAVs; i++) {
+          sanitizedUavs[i] = ppUnorderedAccessViews[i];
+
+          if (sanitizedUavs[i] && !D3D11ViewUAFGuard::isViewLive(sanitizedUavs[i]))
+            sanitizedUavs[i] = nullptr;
+        }
+
+        ppUnorderedAccessViews = sanitizedUavs.data();
+      }
+    }
+
     if (TestRtvUavHazards(NumRTVs, ppRenderTargetViews, NumUAVs, ppUnorderedAccessViews))
       return;
 
