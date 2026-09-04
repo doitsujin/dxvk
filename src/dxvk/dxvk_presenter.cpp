@@ -1416,6 +1416,15 @@ namespace dxvk {
 
     if (!info.refreshIntervalNs && !info.isVariableRefresh)
       info.refreshIntervalNs = swapchainTiming.refreshInterval;
+
+    if (info.isVariableRefresh) {
+      // Note that VRR isn't reported correctly in some environments.
+      Logger::info("Presenter: Reported refresh rate: Variable");
+    } else {
+      auto refreshRateToLog = 10000000000ull / info.refreshIntervalNs;
+      Logger::info(str::format("Presenter: Reported refresh rate: ",
+        (refreshRateToLog / 10u), ".", (refreshRateToLog % 10u), " Hz "));
+    }
   }
 
 
