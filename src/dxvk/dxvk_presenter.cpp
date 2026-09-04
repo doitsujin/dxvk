@@ -1441,7 +1441,15 @@ namespace dxvk {
       ? uint64_t(1000000000.0 / std::abs(m_frameRateLimit))
       : uint64_t(0u);
 
-    if (!m_timingMode.presentStage || m_timingMode.frameIntervalNs <= m_timingDisplayInfo->refreshIntervalNs) {
+    // Don't enable timing if we are trying to limit to less than half a
+    // frame per second below maximum refresh. This catches small deltas
+    // between the refresh rates reported by win32 and the Vulkan driver
+    // while running at native refresh.
+    uint64_t thresholdIntervalNs = m_frameRateLimit != 0.0
+      ? uint64_t(1000000000.0 / (std::abs(m_frameRateLimit) + 0.5))
+      : uint64_t(0u);
+
+    if (!m_timingMode.presentStage || thresholdIntervalNs <= m_timingDisplayInfo->refreshIntervalNs) {
       Logger::info("Presenter: Present timing disabled");
       return;
     }
