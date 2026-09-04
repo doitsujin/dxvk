@@ -1465,12 +1465,14 @@ namespace dxvk {
     m_timingMode.referenceTime = 0u;
     m_timingMode.referenceFrameId = 0u;
 
-    if (m_timingMode.relativeTiming)
-      Logger::info("Presenter: Present timing enabled for FIFO modes (relative)");
-    else if (m_timingMode.absoluteTiming)
-      Logger::info("Presenter: Present timing enabled for FIFO modes (absolute)");
-    else
-      Logger::info("Presenter: Present timing disabled (absolute timing unsupported)");
+    // Log frame rate target like we would for the built-in limiter
+    if (m_timingMode.relativeTiming || m_timingMode.absoluteTiming) {
+      auto frameRateToLog = uint32_t(10000000000.0 / double(m_timingMode.frameIntervalNs));
+      Logger::info(str::format("Presenter: ", m_timingMode.relativeTiming ? "Relative" : "Absolute",
+        " timing enabled (", (frameRateToLog / 10u), ".", (frameRateToLog % 10u), " FPS)"));
+    } else {
+      Logger::info("Presenter: Absolute timing not supported, disabling timing.");
+    }
   }
 
 
