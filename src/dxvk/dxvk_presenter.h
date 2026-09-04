@@ -56,10 +56,14 @@ namespace dxvk {
    * \brief Queued frame
    */
   struct PresenterFrame {
-    uint64_t                frameId   = 0u;
-    Rc<DxvkLatencyTracker>  tracker   = nullptr;
-    VkPresentModeKHR        mode      = VK_PRESENT_MODE_FIFO_KHR;
-    VkResult                result    = VK_NOT_READY;
+    uint64_t                frameId       = 0u;
+    Rc<DxvkLatencyTracker>  tracker       = nullptr;
+    VkPresentModeKHR        mode          = VK_PRESENT_MODE_FIFO_KHR;
+    VkResult                result        = VK_NOT_READY;
+    uint64_t                targetTime    = 0u;
+    uint64_t                deadline      = 0u;
+    bool                    isTimed       = false;
+    bool                    doWait        = false;
   };
 
   /**
@@ -72,6 +76,62 @@ namespace dxvk {
   };
 
   /**
+   * \brief Presenter time domain entry
+   *
+   * Used for timestamp calibration. Reference times are given in units
+   * of nanoseconds, except for QPC which is given in raw QPC ticks.
+   * QPC will be unavailable in dxvk-native environments.
+   */
+  struct PresenterTimeDomain {
+    VkTimeDomainKHR timeDomain = VK_TIME_DOMAIN_MAX_ENUM_KHR;
+    uint64_t timeDomainId = 0u;
+    uint64_t referenceTime = 0u;
+  };
+
+  /**
+   * \brief Presenter time domain info
+   *
+   * Stores info and calibration for all time domains that we need to
+   * keep track of. This will generally include a QPC entry on Windows
+   * so that we can accurately return frame statistics.
+   */
+  struct PresenterTimeDomainInfo {
+    dxvk::high_resolution_clock::time_point lastCalibration = { };
+    uint64_t updateCounter = 0u;
+    small_vector<PresenterTimeDomain, 16u> domains;
+  };
+
+  /**
+   * \brief Display timing properties
+   */
+  struct PresenterDisplayInfo {
+    uint64_t updateCounter = 0u;
+    uint64_t refreshIntervalNs = 0u;
+    bool isVariableRefresh = false;
+  };
+
+  /**
+   * \brief Present timing mode for the swapchain
+   *
+   * Stores reference time point for absolute present timing, and
+   * whether or not to use relative timing for frame pacing purposes.
+   */
+  struct PresenterTimingInfo {
+    VkPresentStageFlagsEXT presentStage = 0u;
+    bool supportsRelative = false;
+    bool supportsAbsolute = false;
+    bool relativeTiming = false;
+    bool absoluteTiming = false;
+    uint64_t timeDomainId = 0u;
+    uint64_t frameIntervalNs = 0u;
+    uint64_t referenceTime = 0u;
+    uint64_t referenceFrameId = 0u;
+    uint64_t lastFrameTimeLocal = 0u;
+    uint64_t lastFrameTimeQpc = 0u;
+    uint64_t lastFrameId = 0u;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -79,7 +139,8 @@ namespace dxvk {
    * window system integration.
    */
   class Presenter : public RcObject {
-
+    static constexpr size_t FrameQueueSize = 32u;
+    static constexpr size_t MaxFrameQueueSize = 256u;
   public:
 
     Presenter(
@@ -322,10 +383,24 @@ namespace dxvk {
     dxvk::condition_variable    m_frameCond;
     dxvk::condition_variable    m_frameDrain;
     dxvk::thread                m_frameThread;
-    std::queue<PresenterFrame>  m_frameQueue;
+
+    size_t                      m_frameQueuePushId = 0u;
+    size_t                      m_frameQueuePopId = 0u;
+
+    std::array<PresenterFrame, FrameQueueSize> m_frameQueue;
 
     uint64_t                    m_lastSignaled = 0u;
     uint64_t                    m_lastCompleted = 0u;
+
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                             m_timingMutex;
+
+    std::optional<PresenterTimeDomainInfo>  m_timingDomains;
+    std::optional<PresenterDisplayInfo>     m_timingDisplayInfo;
+    PresenterTimingInfo                     m_timingMode = { };
+    uint32_t                                m_timingQueueSize = FrameQueueSize;
+
+    double                      m_frameRateLimit = 0.0;
 
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
@@ -378,6 +453,28 @@ namespace dxvk {
             uint32_t                  minImageCount,
             uint32_t                  maxImageCount);
 
+    void updateTimingDomains();
+
+    void updateDisplayTiming();
+
+    void updateTimingMode();
+
+    void recalibrateTimeDomains();
+
+    bool updatePresentTiming();
+
+    void waitUntilFrameTargetTime(
+      const PresenterFrame&           frame);
+
+    bool hasQpcDomain();
+
+    uint64_t translateTimestamp(
+            VkTimeDomainKHR           srcTimeDomain,
+            uint64_t                  srcTimeDomainId,
+            uint64_t                  srcTimestamp,
+            VkTimeDomainKHR           dstTimeDomain,
+            uint64_t                  dstTimeDomainId);
+
     VkResult createSurface();
 
     VkResult createLatencySemaphore();
@@ -390,6 +487,8 @@ namespace dxvk {
 
     void waitForSwapchainFence(
             PresenterSync&            sync);
+
+    void pushFrame(const PresenterFrame& frame);
 
     void runFrameThread();
 

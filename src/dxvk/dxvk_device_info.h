@@ -79,6 +79,7 @@ namespace dxvk {
     VkPhysicalDeviceMultiDrawFeaturesEXT                      extMultiDraw                    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT };
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap           = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT };
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT      extPageableDeviceLocalMemory    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT };
+    VkPhysicalDevicePresentTimingFeaturesEXT                  extPresentTiming                = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT };
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2                  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT };
     VkBool32                                                  extSampleLocations              = VK_FALSE;
     VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier       = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT };
@@ -87,6 +88,7 @@ namespace dxvk {
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT          extSwapchainMaintenance1        = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT };
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT };
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor       = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES };
+    VkBool32                                                  khrCalibratedTimestamps         = VK_FALSE;
     VkPhysicalDeviceFaultFeaturesKHR                          khrDeviceFault                  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_KHR };
     VkPhysicalDeviceDynamicRenderingLocalReadFeatures         khrDynamicRenderingLocalRead    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_LOCAL_READ_FEATURES_KHR };
     VkBool32                                                  khrExternalMemoryWin32          = VK_FALSE;
@@ -155,6 +157,7 @@ namespace dxvk {
     VkExtensionProperties extMultiDraw                      = vk::makeExtension(VK_EXT_MULTI_DRAW_EXTENSION_NAME);
     VkExtensionProperties extNonSeamlessCubeMap             = vk::makeExtension(VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME);
     VkExtensionProperties extPageableDeviceLocalMemory      = vk::makeExtension(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+    VkExtensionProperties extPresentTiming                  = vk::makeExtension(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
     VkExtensionProperties extRobustness2                    = vk::makeExtension(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
     VkExtensionProperties extSampleLocations                = vk::makeExtension(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
     VkExtensionProperties extShaderModuleIdentifier         = vk::makeExtension(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME);
@@ -163,6 +166,7 @@ namespace dxvk {
     VkExtensionProperties extSwapchainMaintenance1          = vk::makeExtension(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
     VkExtensionProperties extTransformFeedback              = vk::makeExtension(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME);
     VkExtensionProperties extVertexAttributeDivisor         = vk::makeExtension(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME);
+    VkExtensionProperties khrCalibratedTimestamps           = vk::makeExtension(VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
     VkExtensionProperties khrDeviceFault                    = vk::makeExtension(VK_KHR_DEVICE_FAULT_EXTENSION_NAME);
     VkExtensionProperties khrDynamicRenderingLocalRead      = vk::makeExtension(VK_KHR_DYNAMIC_RENDERING_LOCAL_READ_EXTENSION_NAME);
     VkExtensionProperties khrExternalMemoryWin32            = vk::makeExtension(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME);

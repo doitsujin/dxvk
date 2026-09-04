@@ -117,6 +117,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties);
     VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties2);
 
+    #ifdef VK_KHR_calibrated_timestamps
+    VULKAN_FN(vkGetPhysicalDeviceCalibrateableTimeDomainsKHR);
+    #endif
+
     #ifdef VK_KHR_get_surface_capabilities2
     VULKAN_FN(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
     VULKAN_FN(vkGetPhysicalDeviceSurfaceFormats2KHR);
@@ -443,6 +447,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdDrawMultiIndexedEXT);
     #endif
 
+    #ifdef VK_EXT_present_timing
+    VULKAN_FN(vkSetSwapchainPresentTimingQueueSizeEXT);
+    VULKAN_FN(vkGetSwapchainTimingPropertiesEXT);
+    VULKAN_FN(vkGetSwapchainTimeDomainPropertiesEXT);
+    VULKAN_FN(vkGetPastPresentationTimingEXT);
+    #endif
+
     #ifdef VK_EXT_sample_locations
     VULKAN_FN(vkCmdSetSampleLocationsEXT);
     #endif
@@ -472,6 +483,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyCuModuleNVX);
     VULKAN_FN(vkDestroyCuFunctionNVX);
     VULKAN_FN(vkCmdCuLaunchKernelNVX);
+    #endif
+
+    #ifdef VK_KHR_calibrated_timestamps
+    VULKAN_FN(vkGetCalibratedTimestampsKHR);
     #endif
 
     #ifdef VK_KHR_external_memory_win32

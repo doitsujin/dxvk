@@ -3,6 +3,8 @@
 #include "dxvk_device.h"
 #include "dxvk_presenter.h"
 
+#include "../util/util_sleep.h"
+
 #include "../wsi/wsi_window.h"
 
 namespace dxvk {
@@ -57,12 +59,7 @@ namespace dxvk {
     destroyLatencySemaphore();
 
     if (m_frameThread.joinable()) {
-      { std::lock_guard lock(m_frameMutex);
-
-        m_frameQueue.push(PresenterFrame());
-        m_frameCond.notify_one();
-      }
-
+      pushFrame(PresenterFrame());
       m_frameThread.join();
     }
   }
@@ -178,6 +175,8 @@ namespace dxvk {
     const VkRectLayerKHR*         rects) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
+    uint64_t frameDeadline = 0u;
+
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
     presentId.swapchainCount = 1;
     presentId.pPresentIds   = &frameId;
@@ -202,6 +201,42 @@ namespace dxvk {
     regionInfo.swapchainCount = 1;
     regionInfo.pRegions = &region;
 
+    // Present timing isn't useful with Immediate or Mailbox
+    bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
+                   || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+
+    bool waitForPresent = m_hasPresentWait && isFifoMode;
+
+    VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
+    timingInfo.presentStageQueries = m_timingMode.presentStage;
+    timingInfo.timeDomainId = m_timingMode.timeDomainId;
+
+    if (m_timingMode.presentStage && isFifoMode) {
+      std::lock_guard lock(m_timingMutex);
+
+      if (m_timingMode.relativeTiming) {
+        timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT;
+        timingInfo.targetTime = m_timingMode.frameIntervalNs;
+        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+      } else if (m_timingMode.absoluteTiming && m_timingMode.referenceFrameId) {
+        timingInfo.targetTime = m_timingMode.referenceTime + (frameId - m_timingMode.referenceFrameId) * m_timingMode.frameIntervalNs;
+        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+
+        if (m_timingDisplayInfo && !m_timingDisplayInfo->isVariableRefresh)
+          timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT;
+
+        frameDeadline = timingInfo.targetTime + m_timingMode.frameIntervalNs;
+      }
+
+      // Skip present_wait in fixed refresh mode if the frame is timed
+      if (!m_timingDisplayInfo || !m_timingDisplayInfo->isVariableRefresh)
+        waitForPresent = waitForPresent && !timingInfo.targetTime;
+    }
+
+    VkPresentTimingsInfoEXT timingsInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT };
+    timingsInfo.swapchainCount = 1u;
+    timingsInfo.pTimingInfos = &timingInfo;
+
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores    = &currSync.present;
@@ -214,6 +249,9 @@ namespace dxvk {
         presentId2.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId2));
       else
         presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
+
+      if (timingInfo.presentStageQueries)
+        timingsInfo.pNext = std::exchange(info.pNext, &timingsInfo);
     }
 
     if (m_hasSwapchainMaintenance1) {
@@ -226,6 +264,13 @@ namespace dxvk {
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
+
+    // Treat a QUEUE_FULL error as a hint to recreate the swapchain with
+    // a larger queue size. This could probably be done more robustly,
+    // but since we have latency constraints in the frontend APIs, we
+    // should never run into this scenario in practice anyway.
+    if (status == VK_ERROR_PRESENT_TIMING_QUEUE_FULL_EXT)
+      m_timingQueueSize *= 2u;
 
     // Maintain valid state if presentation succeeded, even if we want to
     // recreate the swapchain. Spec says that 'queue' operations, i.e. the
@@ -248,17 +293,17 @@ namespace dxvk {
     }
 
     // Add frame to waiter queue with current properties
-    if (m_hasPresentWait) {
-      std::lock_guard lock(m_frameMutex);
+    PresenterFrame frame;
+    frame.frameId = frameId;
+    frame.tracker = tracker;
+    frame.mode = m_presentMode;
+    frame.result = status;
+    frame.targetTime = frameDeadline ? timingInfo.targetTime : 0u;
+    frame.deadline = frameDeadline;
+    frame.isTimed = bool(timingInfo.targetTime);
+    frame.doWait = waitForPresent;
 
-      auto& frame = m_frameQueue.emplace();
-      frame.frameId = frameId;
-      frame.tracker = tracker;
-      frame.mode = m_presentMode;
-      frame.result = status;
-
-      m_frameCond.notify_one();
-    }
+    pushFrame(frame);
 
     // On a successful present, try to acquire next image already, in
     // order to hide potential delays from the application thread.
@@ -295,24 +340,16 @@ namespace dxvk {
     if (m_signal == nullptr || !frameId)
       return;
 
-    if (m_hasPresentWait) {
-      bool canSignal = false;
+    bool canSignal = false;
 
-      { std::unique_lock lock(m_frameMutex);
+    { std::unique_lock lock(m_frameMutex);
 
-        m_lastSignaled = frameId;
-        canSignal = m_lastCompleted >= frameId;
-      }
-
-      if (canSignal)
-        m_signal->signal(frameId);
-    } else {
-      m_fpsLimiter.delay();
-      m_signal->signal(frameId);
-
-      if (tracker)
-        tracker->notifyGpuPresentEnd(frameId);
+      m_lastSignaled = frameId;
+      canSignal = m_lastCompleted >= frameId;
     }
+
+    if (canSignal)
+      m_signal->signal(frameId);
   }
 
 
@@ -495,6 +532,13 @@ namespace dxvk {
 
   void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
     m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
+
+    std::lock_guard lock(m_timingMutex);
+
+    if (m_frameRateLimit != frameRate) {
+      m_frameRateLimit = frameRate;
+      updateTimingMode();
+    }
   }
 
 
@@ -581,11 +625,12 @@ namespace dxvk {
     surfaceInfo.surface = m_surface;
 
     if (m_device->features().extFullScreenExclusive)
-      surfaceInfo.pNext = &fullScreenExclusiveInfo;
+      fullScreenExclusiveInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenExclusiveInfo));
 
     // Query surface capabilities. Some properties might have changed,
     // including the size limits and supported present modes, so we'll
     // just query everything again.
+    VkPresentTimingSurfaceCapabilitiesEXT presentTimingCaps = { VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT };
     VkSurfaceCapabilitiesPresentWait2KHR presentWait2Caps = { VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR };
     VkSurfaceCapabilitiesPresentId2KHR presentId2Caps = { VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR };
 
@@ -596,6 +641,9 @@ namespace dxvk {
 
       if (m_device->features().khrPresentWait2.presentWait2)
         presentWait2Caps.pNext = std::exchange(caps.pNext, &presentWait2Caps);
+
+      if (m_device->features().extPresentTiming.presentTiming)
+        presentTimingCaps.pNext = std::exchange(caps.pNext, &presentTimingCaps);
     }
 
     std::vector<VkSurfaceFormatKHR> formats;
@@ -725,6 +773,38 @@ namespace dxvk {
       dynamicModes.clear();
     }
 
+    // If present timing is supported, also check if there is a useful present
+    // stage we can use. Prioritize the latest available stage for absolute
+    // timing since we need to correlate with timing reports.
+    // Also, opt out of timing if we have issues keeping the report queue to
+    // a reasonable size.
+    if (presentTimingCaps.presentTimingSupported && presentId2Caps.presentId2Supported
+     && presentWait2Caps.presentWait2Supported && m_timingQueueSize <= MaxFrameQueueSize) {
+      small_vector<VkPresentStageFlagBitsEXT, 3> stages;
+
+      if (presentTimingCaps.presentAtAbsoluteTimeSupported) {
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT);
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT);
+      } else {
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT);
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT);
+      }
+
+      stages.push_back(VK_PRESENT_STAGE_REQUEST_DEQUEUED_BIT_EXT);
+
+      for (auto stage : stages) {
+        if (presentTimingCaps.presentStageQueries & stage) {
+          m_timingMode.presentStage = stage;
+          break;
+        }
+      }
+
+      if (m_timingMode.presentStage) {
+        m_timingMode.supportsRelative = presentTimingCaps.presentAtRelativeTimeSupported;
+        m_timingMode.supportsAbsolute = presentTimingCaps.presentAtAbsoluteTimeSupported;
+      }
+    }
+
     // Compute swap chain image count based on available info
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
@@ -766,6 +846,9 @@ namespace dxvk {
     if (presentWait2Caps.presentWait2Supported)
       swapInfo.flags |= VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR;
 
+    if (m_timingMode.presentStage)
+      swapInfo.flags |= VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT;
+
     if (m_device->features().extFullScreenExclusive)
       fullScreenInfo.pNext = const_cast<void*>(std::exchange(swapInfo.pNext, &fullScreenInfo));
 
@@ -777,12 +860,15 @@ namespace dxvk {
 
     Logger::info(str::format(
       "Presenter: Actual swapchain properties:"
-      "\n  Format:       ", swapInfo.imageFormat,
-      "\n  Color space:  ", swapInfo.imageColorSpace,
-      "\n  Present mode: ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
-      "\n  Buffer size:  ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
-      "\n  Image count:  ", swapInfo.minImageCount));
-    
+      "\n  Format:          ", swapInfo.imageFormat,
+      "\n  Color space:     ", swapInfo.imageColorSpace,
+      "\n  Present mode:    ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
+      "\n  Buffer size:     ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
+      "\n  Image count:     ", swapInfo.minImageCount,
+      "\n  Timing:          ", (m_timingMode.supportsAbsolute
+        ? (m_timingMode.supportsRelative ? "yes (absolute, relative)" : "yes (absolute)")
+        : (m_timingMode.supportsRelative ? "yes (relative)" : "no"))));
+
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_swapchain))) {
       Logger::err(str::format("Presenter: Failed to create Vulkan swapchain: ", status));
       return status;
@@ -880,10 +966,23 @@ namespace dxvk {
     if (m_device->features().khrIncrementalPresent)
       m_hasIncrementalPresent = caps.surfaceCapabilities.currentTransform == VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
-    if (m_signal && m_hasPresentWait && !m_frameThread.joinable())
+    if (m_signal && !m_frameThread.joinable())
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
 
     m_presentRepaint = true;
+
+    // Set up initial present timing state
+    if (m_timingMode.presentStage) {
+      m_vkd->vkSetSwapchainPresentTimingQueueSizeEXT(m_vkd->device(), m_swapchain, m_timingQueueSize);
+
+      updateDisplayTiming();
+
+      updateTimingDomains();
+      recalibrateTimeDomains();
+
+      updateTimingMode();
+    }
+
     return VK_SUCCESS;
   }
 
@@ -894,17 +993,19 @@ namespace dxvk {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
     surfaceInfo.surface = m_surface;
 
+    if (m_device->features().extFullScreenExclusive)
+      fullScreenInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenInfo));
+
     VkResult status;
-    
-    if (m_device->features().extFullScreenExclusive) {
+    if (m_device->instance()->extensions().khrGetSurfaceCapabilities2.specVersion) {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
         m_device->adapter()->handle(), &surfaceInfo, &numFormats, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device->adapter()->handle(), m_surface, &numFormats, nullptr);
+        m_device->adapter()->handle(), surfaceInfo.surface, &numFormats, nullptr);
     }
 
     if (status != VK_SUCCESS) {
@@ -914,8 +1015,8 @@ namespace dxvk {
     
     formats.resize(numFormats);
 
-    if (m_device->features().extFullScreenExclusive) {
-      std::vector<VkSurfaceFormat2KHR> tmpFormats(numFormats, 
+    if (m_device->instance()->extensions().khrGetSurfaceCapabilities2.specVersion) {
+      std::vector<VkSurfaceFormat2KHR> tmpFormats(numFormats,
         { VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR, nullptr, VkSurfaceFormatKHR() });
 
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
@@ -925,7 +1026,7 @@ namespace dxvk {
         formats[i] = tmpFormats[i].surfaceFormat;
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device->adapter()->handle(), m_surface, &numFormats, formats.data());
+        m_device->adapter()->handle(), surfaceInfo.surface, &numFormats, formats.data());
     }
 
     if (status != VK_SUCCESS)
@@ -941,8 +1042,11 @@ namespace dxvk {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
     surfaceInfo.surface = m_surface;
+
+    if (m_device->features().extFullScreenExclusive)
+      fullScreenInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &fullScreenInfo));
 
     VkResult status;
 
@@ -951,7 +1055,7 @@ namespace dxvk {
         m_device->adapter()->handle(), &surfaceInfo, &numModes, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device->adapter()->handle(), m_surface, &numModes, nullptr);
+        m_device->adapter()->handle(), surfaceInfo.surface, &numModes, nullptr);
     }
 
     if (status != VK_SUCCESS) {
@@ -966,7 +1070,7 @@ namespace dxvk {
         m_device->adapter()->handle(), &surfaceInfo, &numModes, modes.data());
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device->adapter()->handle(), m_surface, &numModes, modes.data());
+        m_device->adapter()->handle(), surfaceInfo.surface, &numModes, modes.data());
     }
 
     if (status != VK_SUCCESS)
@@ -1195,6 +1299,522 @@ namespace dxvk {
   }
 
 
+  void Presenter::updateTimingDomains() {
+    // Reset domain info in case there's an error
+    m_timingDomains = std::nullopt;
+
+    uint64_t updateCounter = 0u;
+
+    small_vector<VkTimeDomainKHR, 16u> domains;
+    small_vector<uint64_t, 16u> domainIds;
+
+    VkResult status = VK_INCOMPLETE;
+
+    while (status == VK_INCOMPLETE) {
+      VkSwapchainTimeDomainPropertiesEXT domainInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT };
+
+      status = m_vkd->vkGetSwapchainTimeDomainPropertiesEXT(
+        m_vkd->device(), m_swapchain, &domainInfo, nullptr);
+
+      if (status != VK_SUCCESS)
+        break;
+
+      domains.resize(domainInfo.timeDomainCount);
+      domainIds.resize(domainInfo.timeDomainCount);
+
+      // Fetch update counter now. If the internal counter increases between
+      // the first and the second call, we may end up with a different number
+      // of available domains, so handle VK_INCOMPLETE returns here and resize
+      // the arrays appropriately.
+      domainInfo.pTimeDomains = domains.data();
+      domainInfo.pTimeDomainIds = domainIds.data();
+
+      status = m_vkd->vkGetSwapchainTimeDomainPropertiesEXT(
+        m_vkd->device(), m_swapchain, &domainInfo, &updateCounter);
+
+      domains.resize(domainInfo.timeDomainCount);
+      domainIds.resize(domainInfo.timeDomainCount);
+    }
+
+    if (status != VK_SUCCESS) {
+      Logger::warn(str::format("Presenter: Failed to query swapchain time domains: ", status));
+      return;
+    }
+
+    // We're guaranteed at least one PRESENT_STAGE_LOCAL domain. Just
+    // use that for actual timing purposes and ignore everything else.
+    // We will add report time domains on demand.
+    auto& info = m_timingDomains.emplace();
+    info.updateCounter = updateCounter;
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      if (domains[i] == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT) {
+        auto& domain = info.domains.emplace_back();
+        domain.timeDomain = domains[i];
+        domain.timeDomainId = domainIds[i];
+
+        m_timingMode.timeDomainId = domainIds[i];
+      }
+    }
+
+    // Check if there is a QPC domain and add it as necessary.
+    uint32_t timeDomainCount = 0u;
+
+    status = m_vki->vkGetPhysicalDeviceCalibrateableTimeDomainsKHR(
+      m_device->adapter()->handle(), &timeDomainCount, nullptr);
+
+    if (status == VK_SUCCESS) {
+      domains.resize(timeDomainCount);
+
+      status = m_vki->vkGetPhysicalDeviceCalibrateableTimeDomainsKHR(
+        m_device->adapter()->handle(), &timeDomainCount, domains.data());
+    }
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query time domains: ", status));
+      return;
+    }
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      if (domains[i] == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+        auto& domain = info.domains.emplace_back();
+        domain.timeDomain = domains[i];
+      }
+    }
+  }
+
+
+  void Presenter::updateDisplayTiming() {
+    // Reset state in case of an error
+    m_timingDisplayInfo = std::nullopt;
+
+    uint64_t updateCounter = 0u;
+
+    VkSwapchainTimingPropertiesEXT swapchainTiming = { VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT };
+    VkResult status = m_vkd->vkGetSwapchainTimingPropertiesEXT(
+      m_vkd->device(), m_swapchain, &swapchainTiming, &updateCounter);
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query display timing: ", status));
+      return;
+    }
+
+    auto& info = m_timingDisplayInfo.emplace();
+    info.updateCounter = updateCounter;
+
+    // This can happen on some platforms. We can't meaningfully enable timing.
+    if (!swapchainTiming.refreshDuration && !swapchainTiming.refreshInterval) {
+      Logger::warn(str::format("Presenter: Unable to determine display refresh rate"));
+      return;
+    }
+
+    // Swapchain timing is all sorts of weird, values of 0 generally indicate that
+    // the corresponding property is unknown, and UINT64_MAX for refreshInterval
+    // implies variable refresh rate.
+    info.isVariableRefresh = swapchainTiming.refreshInterval == uint64_t(-1);
+    info.refreshIntervalNs = swapchainTiming.refreshDuration;
+
+    if (!info.refreshIntervalNs && !info.isVariableRefresh)
+      info.refreshIntervalNs = swapchainTiming.refreshInterval;
+
+    if (info.isVariableRefresh) {
+      // Note that VRR isn't reported correctly in some environments.
+      Logger::info("Presenter: Reported refresh rate: Variable");
+    } else {
+      auto refreshRateToLog = 10000000000ull / info.refreshIntervalNs;
+      Logger::info(str::format("Presenter: Reported refresh rate: ",
+        (refreshRateToLog / 10u), ".", (refreshRateToLog % 10u), " Hz "));
+    }
+  }
+
+
+  void Presenter::updateTimingMode() {
+    m_timingMode.relativeTiming = false;
+    m_timingMode.absoluteTiming = false;
+
+    // Can't meaningfully do timing if we don't know about display timing
+    if (!m_timingDomains || !m_timingDisplayInfo)
+      return;
+
+    // Compute target frame interval from frame rate limit
+    m_timingMode.frameIntervalNs = m_frameRateLimit != 0.0
+      ? uint64_t(1000000000.0 / std::abs(m_frameRateLimit))
+      : uint64_t(0u);
+
+    // Don't enable timing if we are trying to limit to less than half a
+    // frame per second below maximum refresh. This catches small deltas
+    // between the refresh rates reported by win32 and the Vulkan driver
+    // while running at native refresh.
+    uint64_t thresholdIntervalNs = m_frameRateLimit != 0.0
+      ? uint64_t(1000000000.0 / (std::abs(m_frameRateLimit) + 0.5))
+      : uint64_t(0u);
+
+    if (!m_timingMode.presentStage || thresholdIntervalNs <= m_timingDisplayInfo->refreshIntervalNs) {
+      Logger::info("Presenter: Present timing disabled");
+      return;
+    }
+
+    // Probe relative timing first since that is most likely to give us
+    // consistent pacing, without any setup work required from our side.
+    if (m_timingMode.supportsRelative) {
+      if (m_timingDisplayInfo->isVariableRefresh) {
+        // Always enable relative timing for VRR
+        m_timingMode.relativeTiming = true;
+      } else if (m_timingDisplayInfo->refreshIntervalNs) {
+        // Otherwise, check if the frame duration is reasonably close
+        // to a multiple of the display refresh rate.
+        uint64_t maxDeltaNs = m_timingMode.frameIntervalNs / 100u;
+        uint64_t realDeltaNs = (m_timingMode.frameIntervalNs + maxDeltaNs) % m_timingDisplayInfo->refreshIntervalNs;
+
+        m_timingMode.relativeTiming = realDeltaNs <= 2u * maxDeltaNs;
+
+        if (m_timingMode.relativeTiming)
+          m_timingMode.frameIntervalNs = (m_timingMode.frameIntervalNs + maxDeltaNs) - realDeltaNs;
+      }
+    }
+
+    // Fall back to absolute timing if we cannot use relative timimg.
+    if (m_timingMode.supportsAbsolute)
+      m_timingMode.absoluteTiming = !m_timingMode.relativeTiming;
+
+    // Reset reference time and frame ID for absolute timing
+    // so that we don't end up submitting bogus timestamps.
+    m_timingMode.referenceTime = 0u;
+    m_timingMode.referenceFrameId = 0u;
+
+    // Log frame rate target like we would for the built-in limiter
+    if (m_timingMode.relativeTiming || m_timingMode.absoluteTiming) {
+      auto frameRateToLog = uint32_t(10000000000.0 / double(m_timingMode.frameIntervalNs));
+      Logger::info(str::format("Presenter: ", m_timingMode.relativeTiming ? "Relative" : "Absolute",
+        " timing enabled (", (frameRateToLog / 10u), ".", (frameRateToLog % 10u), " FPS)"));
+    } else {
+      Logger::info("Presenter: Absolute timing not supported, disabling timing.");
+    }
+  }
+
+
+  void Presenter::recalibrateTimeDomains() {
+    if (!m_timingDomains)
+      return;
+
+    // Calibrate all known time domains at once
+    auto& domains = m_timingDomains->domains;
+
+    small_vector<VkSwapchainCalibratedTimestampInfoEXT, 16u> swapchainInfo(domains.size(),
+      VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT });
+    small_vector<VkCalibratedTimestampInfoKHR, 16u> calibrationInfo(domains.size(),
+      VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR });
+    small_vector<uint64_t, 16u> timestamps(domains.size());
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      calibrationInfo[i].timeDomain = domains[i].timeDomain;
+
+      if (domains[i].timeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT
+       || domains[i].timeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        swapchainInfo[i].swapchain = m_swapchain;
+        swapchainInfo[i].timeDomainId = domains[i].timeDomainId;
+
+        if (domains[i].timeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT)
+          swapchainInfo[i].presentStage = m_timingMode.presentStage;
+
+        calibrationInfo[i].pNext = &swapchainInfo[i];
+      }
+    }
+
+    // Retry calibration until we get reasonable precision (150us)
+    constexpr uint32_t MaxAttempts = 5u;
+    constexpr uint64_t MaxDeviation = 1500000u;
+
+    uint64_t maxDeviation = 0u;
+
+    for (uint32_t i = 0u; i < MaxAttempts; i++) {
+      VkResult status = m_vkd->vkGetCalibratedTimestampsKHR(m_vkd->device(),
+        domains.size(), calibrationInfo.data(), timestamps.data(), &maxDeviation);
+
+      if (status && !i) {
+        Logger::warn(str::format("Presenter: Failed to calibrate timestamps: ", status));
+        return;
+      }
+
+      if (status || maxDeviation <= MaxDeviation)
+        break;
+    }
+
+    for (size_t i = 0u; i < domains.size(); i++)
+      domains[i].referenceTime = timestamps[i];
+
+    // Remember when we last calibrated everything so that we can periodically
+    // re-query. Clock drift is a real issue on certain hardware configurations.
+    m_timingDomains->lastCalibration = dxvk::high_resolution_clock::now();
+  }
+
+
+  bool Presenter::updatePresentTiming() {
+    if (!m_timingMode.presentStage)
+      return false;
+
+    // Need to access both timing stuff and the frame queue here
+    std::lock_guard lock(m_timingMutex);
+
+    // Still need to drain the queue even if everything is messed up
+    small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
+    small_vector<VkPastPresentationTimingEXT, FrameQueueSize> reports;
+
+    stageTimes.resize(m_timingQueueSize);
+    reports.resize(m_timingQueueSize);
+
+    for (size_t i = 0u; i < m_timingQueueSize; i++) {
+      reports[i].sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
+      reports[i].presentStageCount = 1u;
+      reports[i].pPresentStages = &stageTimes[i];
+    }
+
+    VkPastPresentationTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT };
+    timingInfo.swapchain = m_swapchain;
+
+    VkPastPresentationTimingPropertiesEXT timingProperties = { VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT };
+    timingProperties.presentationTimingCount = reports.size();
+    timingProperties.pPresentationTimings = reports.data();
+
+    VkResult status = m_vkd->vkGetPastPresentationTimingEXT(m_vkd->device(),
+      &timingInfo, &timingProperties);
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
+      return false;
+    }
+
+    // Update display timing and time domains as necessary
+    bool updateMode = false;
+
+    if (!m_timingDisplayInfo || m_timingDisplayInfo->updateCounter != timingProperties.timingPropertiesCounter) {
+      updateMode = true;
+      updateDisplayTiming();
+    }
+
+    if (!m_timingDomains || m_timingDomains->updateCounter != timingProperties.timeDomainsCounter) {
+      updateMode = true;
+      updateTimingDomains();
+
+      recalibrateTimeDomains();
+    }
+
+    if (updateMode)
+      updateTimingMode();
+
+    // Find latest available report and update present statistics. If we run
+    // absolute timing and any given frame missed its deadline, restart the
+    // sequence.
+    std::lock_guard frameLock(m_frameMutex);
+    bool hasMissedDeadline = false;
+
+    for (size_t i = 0u; i < timingProperties.presentationTimingCount; i++) {
+      const auto& time = stageTimes[i];
+      const auto& report = reports[i];
+
+      if (!report.reportComplete || !time.time || time.stage != m_timingMode.presentStage)
+        continue;
+
+      uint64_t reportTimeLocal = translateTimestamp(
+        report.timeDomain, report.timeDomainId, time.time,
+        VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId);
+
+      uint64_t reportTimeQpc = 0u;
+
+      if (hasQpcDomain()) {
+        reportTimeQpc = translateTimestamp(
+          report.timeDomain, report.timeDomainId, time.time,
+          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+      }
+
+      if (reportTimeLocal) {
+        m_timingMode.lastFrameId = report.presentId;
+        m_timingMode.lastFrameTimeLocal = reportTimeLocal;
+        m_timingMode.lastFrameTimeQpc = reportTimeQpc;
+
+        // Implicitly handles the case where deadline is 0, i.e. no
+        // absolute timing was used to control the actual presentation.
+        for (const auto& frame : m_frameQueue) {
+          if (frame.frameId == report.presentId)
+            hasMissedDeadline = reportTimeLocal > frame.deadline;
+        }
+      }
+    }
+
+    if (!m_timingMode.referenceFrameId || hasMissedDeadline) {
+      m_timingMode.referenceFrameId = m_timingMode.lastFrameId;
+      m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
+    }
+
+    return true;
+  }
+
+
+  void Presenter::waitUntilFrameTargetTime(
+    const PresenterFrame&           frame) {
+    if (!frame.targetTime)
+      return;
+
+    uint64_t qpcTargetTime = 0u;
+
+    { std::lock_guard lock(m_timingMutex);
+      if (hasQpcDomain()) {
+        qpcTargetTime = translateTimestamp(
+          VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId, frame.targetTime,
+          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+      }
+    }
+
+    if (qpcTargetTime) {
+      auto dxvkTargetTime = dxvk::high_resolution_clock::get_time_from_counter(qpcTargetTime);
+      Sleep::sleepUntil(dxvk::high_resolution_clock::now(), dxvkTargetTime);
+    }
+  }
+
+
+  bool Presenter::hasQpcDomain() {
+    if (!m_timingDomains)
+      return false;
+
+    for (const auto& domain : m_timingDomains->domains) {
+      if (domain.timeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR)
+        return true;
+    }
+
+    return false;
+  }
+
+
+  uint64_t Presenter::translateTimestamp(
+          VkTimeDomainKHR           srcTimeDomain,
+          uint64_t                  srcTimeDomainId,
+          uint64_t                  srcTimestamp,
+          VkTimeDomainKHR           dstTimeDomain,
+          uint64_t                  dstTimeDomainId) {
+    // Don't need to do anything if the time domains already match anyway
+    if (srcTimeDomain == dstTimeDomain && srcTimeDomainId == dstTimeDomainId)
+      return srcTimestamp;
+
+    // Can't do anything if we can't calibrate time stamps
+    if (!m_timingDomains)
+      return 0u;
+
+    // Determine tick frequency for QPC timestamps. Our internal high resolution
+    // clock is QPC on Windows, so this should work whenever the time domain is
+    // actually present.
+    static std::atomic<int64_t> s_qpcFreq = { 0 };
+    int64_t qpcFreq = s_qpcFreq.load(std::memory_order_relaxed);
+
+    if (unlikely(!qpcFreq)) {
+      qpcFreq = dxvk::high_resolution_clock::get_frequency();
+      s_qpcFreq.store(qpcFreq, std::memory_order_relaxed);
+    }
+
+    // If the last calibration is older than a second, recalibrate.
+    uint64_t calibrationAgeNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+      dxvk::high_resolution_clock::now() - m_timingDomains->lastCalibration).count();
+
+    if (calibrationAgeNs > 1000000000ull)
+      recalibrateTimeDomains();
+
+    // Check whether the source and destination time domains are known
+    // and compute the delta in terms of nanoseconds or QPC ticks.
+    uint64_t refTimeSrcDomain = 0u;
+    uint64_t refTimeDstDomain = 0u;
+
+    for (size_t i = 0u; i < m_timingDomains->domains.size(); i++) {
+      if (m_timingDomains->domains[i].timeDomain == srcTimeDomain
+       && m_timingDomains->domains[i].timeDomainId == srcTimeDomainId)
+        refTimeSrcDomain = m_timingDomains->domains[i].referenceTime;
+
+      if (m_timingDomains->domains[i].timeDomain == dstTimeDomain
+       && m_timingDomains->domains[i].timeDomainId == dstTimeDomainId)
+        refTimeDstDomain = m_timingDomains->domains[i].referenceTime;
+    }
+
+    // If we couldn't find one of the time domains, try to calibrate
+    if (!refTimeSrcDomain || !refTimeDstDomain) {
+      std::array<VkSwapchainCalibratedTimestampInfoEXT, 2u> swapchainInfo = {{
+        VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT },
+        VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT },
+      }};
+
+      std::array<VkCalibratedTimestampInfoKHR, 2u> calibrationInfo = {{
+        VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR },
+        VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR },
+      }};
+
+      calibrationInfo[0].timeDomain = srcTimeDomain;
+      calibrationInfo[1].timeDomain = dstTimeDomain;
+
+      if (srcTimeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT || srcTimeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        calibrationInfo[0].pNext = &swapchainInfo[0];
+
+        swapchainInfo[0].swapchain = m_swapchain;
+        swapchainInfo[0].presentStage = m_timingMode.presentStage;
+        swapchainInfo[0].timeDomainId = srcTimeDomainId;
+      }
+
+      if (dstTimeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT || dstTimeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        calibrationInfo[1].pNext = &swapchainInfo[1];
+
+        swapchainInfo[1].swapchain = m_swapchain;
+        swapchainInfo[1].presentStage = m_timingMode.presentStage;
+        swapchainInfo[1].timeDomainId = dstTimeDomainId;
+      }
+
+      // Try to get reference timestamps for the two domains
+      std::array<uint64_t, 2u> timestamps = { };
+
+      uint64_t maxDeviation = 0u;
+
+      VkResult status = m_vkd->vkGetCalibratedTimestampsKHR(m_vkd->device(),
+        calibrationInfo.size(), calibrationInfo.data(), timestamps.data(), &maxDeviation);
+
+      if (status) {
+        Logger::err(str::format("Presenter: Failed to map timestamp from ",
+          srcTimeDomain, "@", srcTimeDomainId," to domain ",
+          dstTimeDomain, "@", dstTimeDomainId, ": ", status));
+        return 0u;
+      }
+
+      // On success, add the domains to the domain list as necessary
+      // and recalibrate all known domains for subsequent steps
+      if (!refTimeSrcDomain) {
+        auto& domain = m_timingDomains->domains.emplace_back();
+        domain.timeDomain = srcTimeDomain;
+        domain.timeDomainId = srcTimeDomainId;
+      }
+
+      if (!refTimeDstDomain) {
+        auto& domain = m_timingDomains->domains.emplace_back();
+        domain.timeDomain = dstTimeDomain;
+        domain.timeDomainId = dstTimeDomainId;
+      }
+
+      refTimeSrcDomain = timestamps[0];
+      refTimeDstDomain = timestamps[1];
+
+      recalibrateTimeDomains();
+    }
+
+    // Compute time delta in terms of the destination time domain
+    int64_t timeDelta = int64_t(srcTimestamp - refTimeSrcDomain);
+
+    if (srcTimeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+      timeDelta *= 1000000000;
+      timeDelta /= qpcFreq;
+    }
+
+    if (dstTimeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+      timeDelta *= qpcFreq;
+      timeDelta /= 1000000000;
+    }
+
+    return uint64_t(refTimeDstDomain + timeDelta);
+  }
+
+
   VkResult Presenter::createSurface() {
     VkResult vr = m_surfaceProc(&m_surface);
 
@@ -1231,7 +1851,7 @@ namespace dxvk {
     std::unique_lock lock(m_frameMutex);
 
     m_frameDrain.wait(lock, [this] {
-      return m_frameQueue.empty();
+      return m_frameQueuePopId == m_frameQueuePushId;
     });
 
     for (auto& sem : m_semaphores)
@@ -1265,6 +1885,10 @@ namespace dxvk {
     m_hasPresentId = false;
     m_hasPresentWait = false;
     m_hasIncrementalPresent = false;
+
+    m_timingDomains = std::nullopt;
+    m_timingDisplayInfo = std::nullopt;
+    m_timingMode = PresenterTimingInfo();
   }
 
 
@@ -1300,6 +1924,22 @@ namespace dxvk {
   }
 
 
+  void Presenter::pushFrame(const PresenterFrame& frame) {
+    std::unique_lock lock(m_frameMutex);
+
+    // This should realistically never stall; this acts more as a safeguard
+    // in case the frame worker is being starved by the system.
+    m_frameDrain.wait(lock, [this] {
+      return m_frameQueuePushId - m_frameQueuePopId < m_frameQueue.size();
+    });
+
+    m_frameQueue[m_frameQueuePushId % m_frameQueue.size()] = frame;
+    m_frameQueuePushId += 1u;
+
+    m_frameCond.notify_one();
+  }
+
+
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
@@ -1311,14 +1951,14 @@ namespace dxvk {
       { std::unique_lock lock(m_frameMutex);
 
         m_frameCond.wait(lock, [this] {
-          return !m_frameQueue.empty();
+          return m_frameQueuePushId > m_frameQueuePopId;
         });
 
         // Use a frame ID of 0 as an exit condition
-        frame = m_frameQueue.front();
+        frame = m_frameQueue[m_frameQueuePopId % m_frameQueue.size()];
 
         if (!frame.frameId) {
-          m_frameQueue.pop();
+          m_frameQueuePopId += 1u;
           return;
         }
       }
@@ -1326,7 +1966,7 @@ namespace dxvk {
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
-      if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)) {
+      if (frame.result >= 0 && frame.doWait) {
         VkResult vr;
 
         if (m_device->features().khrPresentWait2.presentWait2) {
@@ -1354,14 +1994,16 @@ namespace dxvk {
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      m_fpsLimiter.delay();
+      if (updatePresentTiming() && frame.isTimed)
+        waitUntilFrameTargetTime(frame);
+      else
+        m_fpsLimiter.delay();
 
       // Wake up any thread that may be waiting for the queue to become empty
       bool canSignal = false;
 
       { std::unique_lock lock(m_frameMutex);
-
-        m_frameQueue.pop();
+        m_frameQueuePopId += 1u;
         m_frameDrain.notify_one();
 
         m_lastCompleted = frame.frameId;
