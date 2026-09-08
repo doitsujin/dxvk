@@ -207,6 +207,20 @@ namespace dxvk {
     win32HandleInfo.handleType = m_info.sharedType;
 
     HANDLE sharedHandle = INVALID_HANDLE_VALUE;
+
+    /* Same trap as sharedHandle() above, and this one is the path a
+     * keyed-mutex texture takes first: the constructor warned that this
+     * semaphore type cannot be exported and carried on, so on a device
+     * without VK_KHR_external_semaphore_win32 -- MoltenVK -- this entry
+     * point is null and the call below is a jump to address zero. GOG
+     * Galaxy's Chromium compositor creates exactly such a texture and
+     * died here on the guest side, with nothing in the log but the
+     * canShareImage warning far upstream. */
+    if (!m_vkd->vkGetSemaphoreWin32HandleKHR) {
+      Logger::err("DxvkFence::initKmtHandles: VK_KHR_external_semaphore_win32 not supported");
+      return;
+    }
+
     VkResult vr = m_vkd->vkGetSemaphoreWin32HandleKHR(m_vkd->device(), &win32HandleInfo, &sharedHandle);
     if (vr != VK_SUCCESS) {
       Logger::err(str::format("Failed to get semaphore handle: ", vr));
