@@ -211,6 +211,11 @@ namespace dxvk {
     handleInfo.handleType = m_info.sharing.type;
     handleInfo.memory = memoryInfo.memory;
 
+    if (!m_vkd->vkGetMemoryWin32HandleKHR) {
+      Logger::warn("DxvkImage::sharedHandle: VK_KHR_external_memory_win32 not supported");
+      return INVALID_HANDLE_VALUE;
+    }
+
     if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
       Logger::warn("DxvkImage::DxvkImage: Failed to get shared handle for image");
 #endif

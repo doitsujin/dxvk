@@ -182,6 +182,15 @@ namespace dxvk {
     win32HandleInfo.handleType = m_info.sharedType;
 
     HANDLE sharedHandle = INVALID_HANDLE_VALUE;
+
+    /* Same reasoning as DxvkResourceAllocation::initKmtHandles. The constructor
+     * already warns that exporting this semaphore type is unsupported and then
+     * carries on, so this is reachable with a null entry point. */
+    if (!m_vkd->vkGetSemaphoreWin32HandleKHR) {
+      Logger::err("DxvkFence::sharedHandle: VK_KHR_external_semaphore_win32 not supported");
+      return INVALID_HANDLE_VALUE;
+    }
+
     VkResult vr = m_vkd->vkGetSemaphoreWin32HandleKHR(m_vkd->device(), &win32HandleInfo, &sharedHandle);
 
     if (vr != VK_SUCCESS)

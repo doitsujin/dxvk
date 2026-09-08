@@ -339,6 +339,21 @@ namespace dxvk {
     auto device = m_allocator->device();
     auto vk = device->vkd();
 
+    /* The entry point is null when the device has no VK_KHR_external_memory_win32,
+     * which is every MoltenVK device: Metal has no Win32 handles to give out.
+     * Calling it anyway is a jump to address zero, and the program that asked
+     * for a shared texture dies instead of being told no.
+     *
+     * Measured on macOS with EA's launcher, which composites its browser
+     * subprocess through a shared D3D11 texture: DXVK logged "Failed to create
+     * shared resource: VK_KHR_EXTERNAL_MEMORY_WIN32 not supported" and then
+     * jumped to zero three lines later. Refusing here leaves the caller with a
+     * failed handle, which is a thing it can handle. */
+    if (!vk->vkGetMemoryWin32HandleKHR) {
+      Logger::warn("DxvkResourceAllocation::initKmtHandles: VK_KHR_external_memory_win32 not supported");
+      return;
+    }
+
     VkMemoryGetWin32HandleInfoKHR handleInfo = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
     handleInfo.handleType = handleType;
     handleInfo.memory = m_memory;
