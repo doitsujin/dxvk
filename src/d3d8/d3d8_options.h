@@ -26,8 +26,9 @@ namespace dxvk {
     /// Place all P8 textures in D3DPOOL_SCRATCH.
     bool placeP8InScratch;
 
-    /// Ignore D3DLOCK_DISCARD for everything except D3DUSAGE_DYNAMIC + D3DUSAGE_WRITEONLY buffers.
-    bool forceLegacyDiscard;
+    /// Ignore D3DLOCK_DISCARD on everything except D3DUSAGE_DYNAMIC + D3DUSAGE_WRITEONLY buffers,
+    /// and mark all D3DUSAGE_WRITEONLY buffers in D3DPOOL_DEFAULT as D3DUSAGE_DYNAMIC.
+    bool forceLegacyBuffers;
 
     /// Force D3DTTFF_PROJECTED for the necessary stages when a depth texture is bound to slot 0.
     bool shadowPerspectiveDivide;

@@ -27,11 +27,9 @@ namespace dxvk {
             BYTE** ppbData,
             DWORD  Flags) {
 
-      if (m_options->forceLegacyDiscard &&
-          (Flags & D3DLOCK_DISCARD) &&
-         !((m_usage & D3DUSAGE_DYNAMIC) &&
-           (m_usage & D3DUSAGE_WRITEONLY)))
-          Flags &= ~D3DLOCK_DISCARD;
+      if (unlikely(m_options->forceLegacyBuffers &&
+                !((m_usage & D3DUSAGE_DYNAMIC) && (m_usage & D3DUSAGE_WRITEONLY))))
+        Flags &= ~D3DLOCK_DISCARD;
 
       return this->GetD3D9()->Lock(
         OffsetToLock,
