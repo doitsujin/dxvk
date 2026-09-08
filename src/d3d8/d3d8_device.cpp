@@ -421,6 +421,13 @@ namespace dxvk {
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Mark all D3DPOOL_DEFAULT D3DUSAGE_WRITEONLY buffers as
+    // D3DUSAGE_DYNAMIC, to ensure they're directly mapped
+    if (unlikely(m_d3d8Options.forceLegacyBuffers
+              && d3d9::D3DPOOL(Pool) == d3d9::D3DPOOL_DEFAULT
+              && (Usage & D3DUSAGE_WRITEONLY)))
+      Usage |= D3DUSAGE_DYNAMIC;
+
     if (unlikely(ShouldBatch())) {
       *ppVertexBuffer = m_batcher->CreateVertexBuffer(Length, Usage, FVF, Pool);
       return D3D_OK;
@@ -446,6 +453,13 @@ namespace dxvk {
 
     if (unlikely(ppIndexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
+
+    // Mark all D3DPOOL_DEFAULT D3DUSAGE_WRITEONLY buffers as
+    // D3DUSAGE_DYNAMIC, to ensure they're directly mapped
+    if (unlikely(m_d3d8Options.forceLegacyBuffers
+              && d3d9::D3DPOOL(Pool) == d3d9::D3DPOOL_DEFAULT
+              && (Usage & D3DUSAGE_WRITEONLY)))
+      Usage |= D3DUSAGE_DYNAMIC;
 
     Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9;
     HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);

@@ -59,7 +59,7 @@ namespace dxvk {
 
     this->batching                = config.getOption<bool>       ("d3d8.batching",                false);
     this->placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",        false);
-    this->forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",      false);
+    this->forceLegacyBuffers      = config.getOption<bool>       ("d3d8.forceLegacyBuffers",      false);
     this->shadowPerspectiveDivide = config.getOption<bool>       ("d3d8.shadowPerspectiveDivide", false);
     this->textureUAFGuard         = config.getOption<bool>       ("d3d8.textureUAFGuard",         false);
 

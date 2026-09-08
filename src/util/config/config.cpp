@@ -1320,11 +1320,11 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Rayman 3: Hoodlum Havoc                    *
-     * Missing geometry and textures without      *
-     * legacy DISCARD behavior                    */
+     * Fixes missing geometry and textures        *
+     * as well as some broken effects             */
     { R"(\\Rayman3\.exe$)", {{
       { "d3d9.maxFrameRate",                 "-60" },
-      { "d3d8.forceLegacyDiscard",          "True" },
+      { "d3d8.forceLegacyBuffers",          "True" },
     }} },
     /* Tom Clancy's Splinter Cell                 *
      * Fixes shadow buffers, broken physics       *
@@ -1374,10 +1374,9 @@ namespace dxvk {
       { "d3d9.modeCountCompatibility",      "True" },
     }} },
     /* Top Spin (2005)                            *
-     * Missing geometry and textures without      *
-     * legacy DISCARD behavior                    */
+     * Fixes missing geometry and textures        */
     { R"(\\TopSpin\.exe$)", {{
-      { "d3d8.forceLegacyDiscard",          "True" },
+      { "d3d8.forceLegacyBuffers",          "True" },
     }} },
     /* Lego Racers 2 - Hits an incredible amount  *
      * of queue syncs with direct buffer mapping  */
