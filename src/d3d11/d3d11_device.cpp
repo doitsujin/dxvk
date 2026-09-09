@@ -810,6 +810,40 @@ namespace dxvk {
   }
   
   
+  HRESULT D3D11Device::CreateVertexShaderNvMultiview(
+    const void*                   pShaderBytecode,
+          SIZE_T                  BytecodeLength,
+          ID3D11ClassLinkage*     pClassLinkage,
+    const DxvkNvMultiviewInfo&    NvMultiview,
+          std::vector<DxvkNvPassthroughIoEntry> PassthroughIo,
+          ID3D11VertexShader**    ppVertexShader) {
+
+    InitReturnPtr(ppVertexShader);
+    D3D11CommonShader module;
+
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
+    moduleInfo.nvMultiview = NvMultiview;
+
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
+      ComputeShaderKey(VK_SHADER_STAGE_VERTEX_BIT, pShaderBytecode, BytecodeLength, NvMultiview),
+      pShaderBytecode, BytecodeLength, moduleInfo);
+
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    module.SetNvPassthroughIo(std::move(PassthroughIo));
+
+    if (!ppVertexShader) {
+      return S_FALSE;
+    }
+
+    *ppVertexShader = ref(new D3D11VertexShader(this, module));
+
+    return S_OK;
+  }
+
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateGeometryShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
@@ -836,6 +870,40 @@ namespace dxvk {
   }
   
   
+  HRESULT D3D11Device::CreateGeometryShaderNvMultiview(
+    const void*                   pShaderBytecode,
+          SIZE_T                  BytecodeLength,
+          ID3D11ClassLinkage*     pClassLinkage,
+    const DxvkNvMultiviewInfo&    NvMultiview,
+          std::vector<DxvkNvPassthroughIoEntry> PassthroughIo,
+          ID3D11GeometryShader**  ppGeometryShader) {
+    InitReturnPtr(ppGeometryShader);
+    D3D11CommonShader module;
+
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
+    moduleInfo.nvMultiview = NvMultiview;
+
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
+      ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, pShaderBytecode, BytecodeLength, NvMultiview),
+      pShaderBytecode, BytecodeLength, moduleInfo);
+
+    if (FAILED(hr)) {
+      return hr;
+    }
+
+    module.SetNvPassthroughIo(std::move(PassthroughIo));
+
+    if (!ppGeometryShader) {
+    return S_FALSE;
+    }
+
+    *ppGeometryShader = ref(new D3D11GeometryShader(this, module));
+
+    return S_OK;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateGeometryShaderWithStreamOutput(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
@@ -2304,6 +2372,29 @@ namespace dxvk {
   }
 
 
+  DxvkShaderHash D3D11Device::ComputeShaderKey(
+          VkShaderStageFlagBits   Stage,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength,
+    const DxvkNvMultiviewInfo&    NvMultiview) {
+    // Same bytecode with and without NV multi-view metadata must not
+    // collide in the module set, the debug name, or the on-disk cache.
+    // Mirrors the stream-output overload above: bytecode hash + salt.
+    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+    auto binHash = container.getHash();
+
+    dxbc_spv::util::md5::Hasher nvHasher;
+    nvHasher.update(&NvMultiview, sizeof(NvMultiview));
+    nvHasher.finalize();
+
+    auto nvHash = nvHasher.getDigest();
+
+    return DxvkShaderHash(Stage, BytecodeLength,
+      binHash.data.data(), binHash.data.size(),
+      nvHash.data.data(), nvHash.data.size());
+  }
+
+
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags1, UINT* pFlags2) const {
     const DXGI_VK_FORMAT_INFO fmtMapping = LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
 
@@ -2932,6 +3023,9 @@ namespace dxvk {
       case D3D11_VK_NVX_BINARY_IMPORT:
         return deviceFeatures.nvxBinaryImport;
 
+      case D3D11_VK_NV_MULTIVIEW:
+        return deviceFeatures.nvViewportArray2;
+
       default:
         return false;
     }
@@ -3185,6 +3279,180 @@ namespace dxvk {
     // will need to look-up sampler from uint32 handle later
     AddSamplerAndHandleNVX(*ppSamplerState, *pDriverHandle);
     return true;
+  }
+
+
+  // Resolve an NVAPI custom-semantic array against the DXBC output
+  // signature:
+  //  - type 5 (NV_POSITION): the signature carries the per-view family
+  //    NV_POSITION_VIEW_{1,2,3}_SEMANTIC; view 0's position is SV_POSITION
+  //  - types 2 and 4 (viewport masks): request strings match exactly, u32x4
+  //  - types 1 and 3 (NV_X_RIGHT and NV_XYZW_RIGHT, single-pass stereo):
+  //    absent from every signature observed; recorded as ignored
+  static DxvkNvMultiviewInfo ResolveNvCustomSemantics(
+    const char*                         ShaderType,
+    const void*                         pShaderBytecode,
+          SIZE_T                        BytecodeLength,
+    const D3D11_VK_NV_CUSTOM_SEMANTIC*  pSemantics,
+          uint32_t                      NumSemantics,
+          std::vector<DxvkNvPassthroughIoEntry>* pPassthroughIo = nullptr) {
+    DxvkNvMultiviewInfo result = { };
+
+    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+
+    if (!container) {
+      Logger::warn(str::format("NvSemantics(", ShaderType, "): invalid DXBC container"));
+      return result;
+    }
+
+    auto osgnChunk = container.getOutputSignatureChunk();
+
+    if (!osgnChunk) {
+      Logger::warn(str::format("NvSemantics(", ShaderType, "): no output signature chunk"));
+      return result;
+    }
+
+    dxbc_spv::dxbc::Signature outputSignature(std::move(osgnChunk));
+
+    static const std::array<const char*, 3> s_positionViewNames = {{
+      "NV_POSITION_VIEW_1_SEMANTIC",
+      "NV_POSITION_VIEW_2_SEMANTIC",
+      "NV_POSITION_VIEW_3_SEMANTIC",
+    }};
+
+    if (pPassthroughIo) {
+      static const std::array<const char*, 5> s_nvInteropNamesForFilter = {{
+        "NV_POSITION_VIEW_1_SEMANTIC", "NV_POSITION_VIEW_2_SEMANTIC",
+        "NV_POSITION_VIEW_3_SEMANTIC", "NV_VIEWPORT_MASK",
+        "NV_VIEWPORT_MASK_2_SEMANTIC",
+      }};
+
+      for (auto e = outputSignature.begin(); e != outputSignature.end(); e++) {
+        bool isNvInterop = false;
+
+        for (auto name : s_nvInteropNamesForFilter) {
+          if (e->matches(name))
+            isNvInterop = true;
+        }
+
+        if (isNvInterop)
+          continue;
+
+        // SV_POSITION rides the Position built-in on the vertex shader,
+        // not a generic location. The amplification GS declares it as a
+        // built-in input separately.
+        if (e->matches("SV_POSITION"))
+          continue;
+
+        pPassthroughIo->push_back({
+          uint32_t(e->getRegisterIndex()), e->getVectorType(),
+          std::string(e->getSemanticName()), e->getSemanticIndex(),
+          e->computeComponentIndex()
+        });
+      }
+
+      Logger::info(str::format("NvSemantics(", ShaderType, ", ",
+        container.getHash(), "): captured ", pPassthroughIo->size(),
+        " passthrough IO entries for amplification"));
+    }
+
+    std::stringstream msg;
+    msg << "NvSemantics(" << ShaderType << ", " << container.getHash() << "):";
+
+    for (uint32_t i = 0; i < NumSemantics; i++) {
+      const auto& sem = pSemantics[i];
+
+      switch (sem.Type) {
+        case 2u: { // NV_VIEWPORT_MASK_SEMANTIC
+          for (auto e = outputSignature.begin(); e != outputSignature.end(); e++) {
+            if (e->matches(sem.Name)) {
+              result.viewportMaskReg = e->getRegisterIndex();
+              result.viewportMaskType[0] = e->getVectorType();
+            }
+          }
+          msg << " mask->o" << result.viewportMaskReg;
+        } break;
+
+        case 4u: { // NV_VIEWPORT_MASK_2_SEMANTIC
+          for (auto e = outputSignature.begin(); e != outputSignature.end(); e++) {
+            if (e->matches(sem.Name)) {
+              result.viewportMask2Reg = e->getRegisterIndex();
+              result.viewportMaskType[1] = e->getVectorType();
+            }
+          }
+          msg << " mask2->o" << result.viewportMask2Reg;
+        } break;
+
+        case 5u: { // NV_POSITION_SEMANTIC: per-view family, view 0 = SV_POSITION
+          for (size_t v = 0; v < s_positionViewNames.size(); v++) {
+            for (auto e = outputSignature.begin(); e != outputSignature.end(); e++) {
+              if (e->matches(s_positionViewNames[v])) {
+                result.positionViewReg[v] = e->getRegisterIndex();
+                result.positionViewType[v] = e->getVectorType();
+              }
+            }
+          }
+          msg << " posViews->o" << result.positionViewReg[0]
+              << "/o" << result.positionViewReg[1]
+              << "/o" << result.positionViewReg[2];
+        } break;
+
+        default: // type 3 = NV_XYZW_RIGHT_SEMANTIC and anything else unexpected
+          msg << " " << sem.Name << "(type=" << sem.Type << ") ignored";
+      }
+    }
+
+    Logger::info(msg.str());
+    return result;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceExt::CreateVertexShaderNvSemantics(
+    const void*                     pShaderBytecode,
+          SIZE_T                    BytecodeLength,
+          ID3D11ClassLinkage*       pClassLinkage,
+    const D3D11_VK_NV_CUSTOM_SEMANTIC* pSemantics,
+          uint32_t                  NumSemantics,
+          ID3D11VertexShader**      ppVertexShader) {
+    std::vector<DxvkNvPassthroughIoEntry> passthroughIo;
+    DxvkNvMultiviewInfo nv = ResolveNvCustomSemantics("VS",
+      pShaderBytecode, BytecodeLength, pSemantics, NumSemantics, &passthroughIo);
+
+    if (!nv.enabled()) {
+      return m_device->CreateVertexShader(pShaderBytecode, BytecodeLength,
+                                          pClassLinkage, ppVertexShader);
+    }
+
+    return m_device->CreateVertexShaderNvMultiview(
+        pShaderBytecode, BytecodeLength, pClassLinkage, nv,
+        std::move(passthroughIo), ppVertexShader);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceExt::CreateGeometryShaderNvSemantics(
+    const void*                     pShaderBytecode,
+          SIZE_T                    BytecodeLength,
+          ID3D11ClassLinkage*       pClassLinkage,
+    const D3D11_VK_NV_CUSTOM_SEMANTIC* pSemantics,
+          uint32_t                  NumSemantics,
+          BOOL                      UseViewportMask,
+          ID3D11GeometryShader**    ppGeometryShader) {
+    std::vector<DxvkNvPassthroughIoEntry> passthroughIo;
+    DxvkNvMultiviewInfo nv = ResolveNvCustomSemantics(
+      UseViewportMask ? "GS vpMask=1" : "GS vpMask=0",
+      pShaderBytecode, BytecodeLength, pSemantics, NumSemantics, &passthroughIo);
+    nv.useViewportMask = UseViewportMask ? 1u : 0u;
+
+    if (!nv.enabled()) {
+      // Single-pass-stereo geometry shaders land here, with no mask
+      // output: plain compile.
+      return m_device->CreateGeometryShader(
+        pShaderBytecode, BytecodeLength, pClassLinkage, ppGeometryShader);
+    }
+
+    return m_device->CreateGeometryShaderNvMultiview(
+      pShaderBytecode, BytecodeLength, pClassLinkage, nv,
+      std::move(passthroughIo), ppGeometryShader);
   }
 
 
@@ -3859,7 +4127,8 @@ namespace dxvk {
     }
     
     if (riid == __uuidof(ID3D11VkExtDevice)
-     || riid == __uuidof(ID3D11VkExtDevice1)) {
+     || riid == __uuidof(ID3D11VkExtDevice1)
+     || riid == __uuidof(ID3D11VkExtDevice2)) {
       *ppvObject = ref(&m_d3d11DeviceExt);
       return S_OK;
     }

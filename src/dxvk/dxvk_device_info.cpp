@@ -72,8 +72,10 @@ namespace dxvk {
     HANDLE_EXT(khrWin32KeyedMutex);                \
     HANDLE_EXT(amdBufferMarker);                   \
     HANDLE_EXT(nvDeviceDiagnosticCheckpoints);     \
+    HANDLE_EXT(nvGeometryShaderPassthrough);       \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
+    HANDLE_EXT(nvViewportArray2);                  \
     HANDLE_EXT(nvxBinaryImport);                   \
     HANDLE_EXT(nvxImageViewHandle);
 
@@ -1085,6 +1087,10 @@ namespace dxvk {
 
       /* Raw access chains, improves performance on NV */
       ENABLE_EXT_FEATURE(nvRawAccessChains, shaderRawAccessChains, false),
+
+      /* SMP multi-view rendering (dxvk-nvapi interop) */
+      ENABLE_EXT(nvGeometryShaderPassthrough, false),
+      ENABLE_EXT(nvViewportArray2, false),
 
       /* CUDA interop extensions */
       ENABLE_EXT(nvxBinaryImport, false),
