@@ -132,6 +132,14 @@ namespace dxvk {
   };
 
   /**
+   * \brief Timing info for the last presented frame
+   */
+  struct PresenterTimingFeedback {
+    uint64_t frameId = 0u;
+    uint64_t presentTime = 0u;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -324,6 +332,16 @@ namespace dxvk {
             uint32_t                timingCount,
             VkLatencyTimingsFrameReportNV* timings);
 
+    /**
+     * \brief Queries timing info of last frame
+     *
+     * Returns the ID of the last presented frame and the current timestamp
+     * of when presentation completed, if that information is available. If
+     * no timing info is available, the returned frame ID will be 0.
+     * \returns Timing info for the last presented frame
+     */
+    PresenterTimingFeedback queryPresentTiming();
+
   private:
 
     Rc<DxvkDevice>              m_device;
@@ -398,6 +416,7 @@ namespace dxvk {
     std::optional<PresenterTimeDomainInfo>  m_timingDomains;
     std::optional<PresenterDisplayInfo>     m_timingDisplayInfo;
     PresenterTimingInfo                     m_timingMode = { };
+    PresenterTimingFeedback                 m_timingFeedback = {};
     uint32_t                                m_timingQueueSize = FrameQueueSize;
 
     double                      m_frameRateLimit = 0.0;
@@ -461,7 +480,10 @@ namespace dxvk {
 
     void recalibrateTimeDomains();
 
-    bool updatePresentTiming();
+    bool updatePresentTiming(uint64_t frameId);
+
+    void commitTimingFeedback(
+      const PresenterTimingFeedback&  feedback);
 
     void waitUntilFrameTargetTime(
       const PresenterFrame&           frame);
