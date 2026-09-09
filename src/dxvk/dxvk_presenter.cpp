@@ -580,6 +580,12 @@ namespace dxvk {
   }
 
 
+  PresenterTimingFeedback Presenter::queryPresentTiming() {
+    std::lock_guard lock(m_timingMutex);
+    return m_timingFeedback;
+  }
+
+
   VkResult Presenter::recreateSwapChain() {
     VkResult vr;
 
@@ -1549,12 +1555,18 @@ namespace dxvk {
   }
 
 
-  bool Presenter::updatePresentTiming() {
-    if (!m_timingMode.presentStage)
-      return false;
-
+  bool Presenter::updatePresentTiming(uint64_t frameId) {
     // Need to access both timing stuff and the frame queue here
     std::lock_guard lock(m_timingMutex);
+
+    PresenterTimingFeedback feedback = {};
+    feedback.frameId = frameId;
+    feedback.presentTime = dxvk::high_resolution_clock::get_counter();
+
+    if (!m_timingMode.presentStage) {
+      commitTimingFeedback(feedback);
+      return false;
+    }
 
     // Still need to drain the queue even if everything is messed up
     small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
@@ -1581,6 +1593,7 @@ namespace dxvk {
 
     if (status) {
       Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
+      commitTimingFeedback(feedback);
       return false;
     }
 
@@ -1646,7 +1659,26 @@ namespace dxvk {
       m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
     }
 
+    // We can't give meaningful feedback w/o QPC timing currently.
+    // TODO figure out correct time domain for dxvk-native if we're
+    // reslly interested, otherwise just ignore the problem.
+    if (hasQpcDomain()) {
+      feedback.frameId = m_timingMode.lastFrameId;
+      feedback.presentTime = m_timingMode.lastFrameTimeQpc;
+    }
+
+    commitTimingFeedback(feedback);
     return true;
+  }
+
+
+  void Presenter::commitTimingFeedback(
+    const PresenterTimingFeedback&  feedback) {
+    // Only commit present timing if the new frame ID is larger than the
+    // previous frame ID, in order to avoid reverting the counter in case
+    // the application spins on present statistics.
+    if (feedback.frameId > m_timingFeedback.frameId)
+      m_timingFeedback = feedback;
   }
 
 
@@ -1994,7 +2026,7 @@ namespace dxvk {
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      if (updatePresentTiming() && frame.isTimed)
+      if (updatePresentTiming(frame.frameId) && frame.isTimed)
         waitUntilFrameTargetTime(frame);
       else
         m_fpsLimiter.delay();
