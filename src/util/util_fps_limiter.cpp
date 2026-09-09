@@ -37,10 +37,6 @@ namespace dxvk {
       m_heuristicEnable = false;
 
       m_maxLatency = maxLatency;
-
-      if (!std::exchange(m_warningShown, false))
-        Logger::warn("Built-in frame rate limiter enabled. Please enable an external"
-                     " limiter instead in order to avoid poor frame pacing.");
     }
   }
 
