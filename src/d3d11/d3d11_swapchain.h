@@ -144,9 +144,6 @@ namespace dxvk {
 
     double                    m_targetFrameRate = 0.0;
 
-    dxvk::mutex               m_frameStatisticsLock;
-    DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
-
     bool                      m_hasHud = false;
     Rc<hud::HudLatencyItem>   m_latencyHud;
 

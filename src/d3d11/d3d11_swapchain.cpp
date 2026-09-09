@@ -348,8 +348,13 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D11SwapChain::GetFrameStatistics(
           DXGI_VK_FRAME_STATISTICS* pFrameStatistics) {
-    std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
-    *pFrameStatistics = m_frameStatistics;
+    PresenterTimingFeedback feedback = {};
+
+    if (m_presenter)
+      feedback = m_presenter->queryPresentTiming();
+
+    pFrameStatistics->PresentCount = std::max<uint64_t>(feedback.frameId, DXGI_MAX_SWAP_CHAIN_BUFFERS) - DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    pFrameStatistics->PresentQPCTime = feedback.presentTime;
   }
 
 
@@ -708,16 +713,11 @@ namespace dxvk {
     // Wait for the sync event so that we respect the maximum frame latency
     m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
 
-    m_frameLatencySignal->setCallback(m_frameId, [this,
-      cFrameId           = m_frameId,
+    m_frameLatencySignal->setCallback(m_frameId, [
       cFrameLatencyEvent = m_frameLatencyEvent
     ] () {
       if (cFrameLatencyEvent)
         ReleaseSemaphore(cFrameLatencyEvent, 1, nullptr);
-
-      std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
-      m_frameStatistics.PresentCount = cFrameId - DXGI_MAX_SWAP_CHAIN_BUFFERS;
-      m_frameStatistics.PresentQPCTime = dxvk::high_resolution_clock::get_counter();
     });
   }
 
