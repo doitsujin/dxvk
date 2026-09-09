@@ -13,6 +13,9 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11ShaderResourceView1>(pDevice),
     m_resource(pResource), m_desc(*pDesc), m_d3d10(this),
     m_destructionNotifier(this) {
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::registerView(this);
+
     ResourceAddRefPrivate(m_resource);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
@@ -183,6 +186,9 @@ namespace dxvk {
   
   
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::unregisterView(this);
+
     m_destructionNotifier.Notify();
 
     ResourceReleasePrivate(m_resource);

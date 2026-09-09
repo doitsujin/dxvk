@@ -13,6 +13,9 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11RenderTargetView1>(pDevice),
     m_resource(pResource), m_desc(*pDesc), m_d3d10(this),
     m_destructionNotifier(this) {
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::registerView(this);
+
     ResourceAddRefPrivate(m_resource);
 
     auto texture = GetCommonTexture(pResource);
@@ -172,6 +175,9 @@ namespace dxvk {
   
   
   D3D11RenderTargetView::~D3D11RenderTargetView() {
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::unregisterView(this);
+
     m_destructionNotifier.Notify();
 
     ResourceReleasePrivate(m_resource);
