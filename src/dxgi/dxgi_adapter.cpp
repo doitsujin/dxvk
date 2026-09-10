@@ -433,10 +433,11 @@ namespace dxvk {
 
       bool hideNvidiaGpu = adapterInfo.driverId == VK_DRIVER_ID_NVIDIA_PROPRIETARY
         ? options->hideNvidiaGpu : options->hideNvkGpu;
+      bool hideIntelGpu = options->shouldHideIntelGpu();
 
       bool hideGpu = (adapterInfo.vendorId == uint16_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
                   || (adapterInfo.vendorId == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
-                  || (adapterInfo.vendorId == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
+                  || (adapterInfo.vendorId == uint16_t(DxvkGpuVendor::Intel) && hideIntelGpu);
 
       if (hideGpu) {
         adapterInfo.vendorId = fallbackVendor;

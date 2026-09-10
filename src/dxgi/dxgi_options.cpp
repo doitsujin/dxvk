@@ -155,6 +155,23 @@ namespace dxvk {
   }
 
 
+  bool DxgiOptions::shouldHideIntelGpu() const {
+    if (this->hideIntelGpu)
+      return true;
+
+    if (m_xessVendorWaApplied.load())
+      return true;
+
+    if (!isXessVendorWaNeeded())
+      return false;
+
+    if (!m_xessVendorWaApplied.exchange(true))
+      Logger::info(str::format("XeSS: hiding Intel GPU Vendor ID"));
+
+    return true;
+  }
+
+
   static bool isHDRDisallowed(bool enableUe4Workarounds) {
 #ifdef _WIN32
     // Unreal Engine 4 titles use AGS/NVAPI to try and enable
@@ -220,14 +237,6 @@ namespace dxvk {
     // logic to Nvidia later, if necessary.
     this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
     this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
-
-    const bool xessVendorWaNeeded = isXessVendorWaNeeded();
-    Logger::debug(str::format("DXGI: XeSS vendor workaround required: ", xessVendorWaNeeded ? "yes" : "no"));
-
-    if (xessVendorWaNeeded) {
-      Logger::info(str::format("XeSS: hiding Intel GPU Vendor ID"));
-      this->hideIntelGpu = true;
-    }
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
 
