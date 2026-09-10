@@ -503,6 +503,10 @@ namespace dxvk {
       { "d3d11.disableDirectImageMapping",  "True" },
       { "dxvk.enableImplicitResolves",     "False" },
     }} },
+    /* Skyrim Speshul Edition                     */
+    { R"(\\SkyrimSE\.exe$)", {{
+      { "d3d11.cachedDynamicResources",        "a" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
