@@ -628,6 +628,11 @@ namespace dxvk {
 
     bool changeFullscreen = m_presentParams.Windowed != pPresentParams->Windowed;
 
+    if (m_window != pPresentParams->hDeviceWindow) {
+      m_window = pPresentParams->hDeviceWindow;
+      m_displayRefreshRateDirty = true;
+    }
+
     if (pPresentParams->Windowed) {
       if (changeFullscreen)
         this->LeaveFullscreenMode();
