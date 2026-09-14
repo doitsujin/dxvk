@@ -4,34 +4,27 @@
 
 namespace dxvk {
 
+  class D3D8Multithread;
+
   /**
-   * \brief Device lock
-   *
-   * Lightweight RAII wrapper that implements
-   * a subset of the functionality provided by
-   * \c std::unique_lock, with the goal of being
-   * cheaper to construct and destroy.
+   * \brief Scoped device lock
    */
   class D3D8DeviceLock {
 
   public:
 
-    D3D8DeviceLock()
-      : m_mutex(nullptr) { }
+    D3D8DeviceLock() { }
 
-    D3D8DeviceLock(sync::RecursiveSpinlock& mutex)
-      : m_mutex(&mutex) {
-      mutex.lock();
-    }
+    D3D8DeviceLock(D3D8Multithread& mutex)
+    : m_mutex(&mutex) { }
 
     D3D8DeviceLock(D3D8DeviceLock&& other)
-      : m_mutex(other.m_mutex) {
+    : m_mutex(other.m_mutex) {
       other.m_mutex = nullptr;
     }
 
     D3D8DeviceLock& operator = (D3D8DeviceLock&& other) {
-      if (m_mutex)
-        m_mutex->unlock();
+      Unlock();
 
       m_mutex = other.m_mutex;
       other.m_mutex = nullptr;
@@ -39,13 +32,14 @@ namespace dxvk {
     }
 
     ~D3D8DeviceLock() {
-      if (m_mutex != nullptr)
-        m_mutex->unlock();
+      Unlock();
     }
 
   private:
 
-    sync::RecursiveSpinlock* m_mutex;
+    D3D8Multithread* m_mutex = nullptr;
+
+    void Unlock();
 
   };
 
@@ -54,24 +48,54 @@ namespace dxvk {
    * \brief D3D8 context lock
    */
   class D3D8Multithread {
+    static constexpr uint32_t InvalidTid = -1u;
 
+    friend D3D8DeviceLock;
   public:
 
-    D3D8Multithread(
-      BOOL                  Protected);
+    D3D8Multithread(BOOL Protected)
+    : m_protected(Protected) { }
 
+    /**
+     * \brief Acquires lock
+     *
+     * If the calling thread already owns the lock, this will return
+     * an empty lock guard and rely entirely on proper scoping.
+     * \returns Lock guard
+     */
     D3D8DeviceLock AcquireLock() {
-      return m_protected
-        ? D3D8DeviceLock(m_mutex)
-        : D3D8DeviceLock();
+      if (likely(!m_protected))
+        return D3D8DeviceLock();
+
+      uint32_t expected = 0u;
+      uint32_t threadId = dxvk::this_thread::get_id();
+
+      if (likely(m_owner.compare_exchange_weak(expected, threadId, std::memory_order_acquire)))
+        return D3D8DeviceLock(*this);
+
+      if (expected == threadId)
+        return D3D8DeviceLock();
+
+      return LockContested(threadId);
     }
 
   private:
 
-    BOOL            m_protected;
+    alignas(CACHE_LINE_SIZE)
+    std::atomic<uint32_t>   m_owner     = { 0u };
+    BOOL                    m_protected = false;
 
-    sync::RecursiveSpinlock m_mutex;
+    D3D8DeviceLock LockContested(uint32_t threadId);
+
+    void Unlock() {
+      m_owner.store(0u, std::memory_order_release);
+    }
 
   };
+
+  inline void D3D8DeviceLock::Unlock() {
+    if (m_mutex)
+      m_mutex->Unlock();
+  }
 
 }

@@ -29,6 +29,7 @@
 #include "../util/rc/util_rc_ptr.h"
 
 #include "../util/sync/sync_recursive.h"
+#include "../util/sync/sync_spinlock.h"
 
 #include "../util/util_env.h"
 #include "../util/util_enum.h"

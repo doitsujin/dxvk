@@ -127,6 +127,7 @@ __CRT_UUID_DECL(d3d9::IDirect3DDevice9Ex,          0xB18B10CE, 0x2649, 0x405A, 0
 #include "../util/log/log_debug.h"
 
 #include "../util/sync/sync_recursive.h"
+#include "../util/sync/sync_spinlock.h"
 
 #include "../util/util_error.h"
 #include "../util/util_likely.h"
