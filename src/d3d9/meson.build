@@ -35,7 +35,6 @@ d3d9_src = [
   'd3d9_vertex_declaration.cpp',
   'd3d9_query.cpp',
   'd3d9_shader_validator.cpp',
-  'd3d9_multithread.cpp',
   'd3d9_options.cpp',
   'd3d9_stateblock.cpp',
   'd3d9_util.cpp',
