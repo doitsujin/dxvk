@@ -5,7 +5,6 @@ d3d8_src = [
   'd3d8_device.cpp',
   'd3d8_interface.cpp',
   'd3d8_main.cpp',
-  'd3d8_multithread.cpp',
   'd3d8_options.cpp',
   'd3d8_shader.cpp',
   'd3d8_state_block.cpp',

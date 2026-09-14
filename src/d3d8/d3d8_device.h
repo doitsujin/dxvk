@@ -1,7 +1,6 @@
 #pragma once
 
 #include "d3d8_include.h"
-#include "d3d8_multithread.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
 #include "d3d8_swapchain.h"
@@ -11,6 +10,8 @@
 #include "d3d8_batch.h"
 
 #include "../d3d9/d3d9_bridge.h"
+
+#include "../util/sync/sync_scoped.h"
 
 #include <array>
 #include <vector>
@@ -23,6 +24,9 @@ namespace dxvk {
   class D3D8Interface;
 
   struct D3D8VertexShaderInfo;
+
+  using D3D8Multithread = sync::ScopedDeviceLock;
+  using D3D8DeviceLock = sync::ScopedDeviceGuard;
 
   using D3D8DeviceBase = D3D8WrappedObject<d3d9::IDirect3DDevice9, IDirect3DDevice8>;
   class D3D8Device final : public D3D8DeviceBase {
@@ -366,7 +370,7 @@ namespace dxvk {
     inline bool ShouldBatch()  { return m_batcher  != nullptr; }
 
     D3D8DeviceLock LockDevice() {
-      return m_multithread.AcquireLock();
+      return m_multithread.acquire();
     }
 
     /**
