@@ -1,9 +1,10 @@
 #pragma once
 
 #include "d3d9_interfaces.h"
-#include "d3d9_multithread.h"
 
 #include "../dxvk/dxvk_extension_provider.h"
+
+#include "../util/sync/sync_scoped.h"
 
 namespace dxvk {
 
@@ -11,6 +12,9 @@ namespace dxvk {
   class D3D9CommonTexture;
   class D3D9DeviceEx;
   struct D3D9_COMMON_TEXTURE_DESC;
+
+  using D3D9Multithread = sync::ScopedDeviceLock;
+  using D3D9DeviceLock = sync::ScopedDeviceGuard;
 
   class D3D9VkInteropInterface final : public ID3D9VkInteropInterface1 {
 
