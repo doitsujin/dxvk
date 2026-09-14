@@ -26,6 +26,7 @@ util_src = files([
   'sha1/sha1_util.cpp',
 
   'sync/sync_recursive.cpp',
+  'sync/sync_scoped.cpp',
 ])
 
 util_lib = static_library('util', util_src,
