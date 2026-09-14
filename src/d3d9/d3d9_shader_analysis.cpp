@@ -147,6 +147,15 @@ namespace dxvk {
           }
         } break;
 
+        case RegisterType::eInput: {
+          if (GetShaderInfo().getType() == ShaderType::ePixel && GetShaderInfo().getVersion().first < 3u) {
+            auto location = FindLocationInFixedFunctionIO({ dxbc_spv::sm3::SemanticUsage::eColor, index });
+
+            if (location)
+              m_flatShadingMask |= 1u << *location;
+          }
+        } break;
+
         default: break;
       }
     }
@@ -304,8 +313,9 @@ namespace dxvk {
     }
 
     if (GetShaderInfo().getType() == ShaderType::ePixel
-      && dcl.getSemanticUsage() == SemanticUsage::eColor
-      && dcl.getSemanticIndex() < 2u) {
+     && GetShaderInfo().getVersion().first == 3u
+     && dcl.getSemanticUsage() == SemanticUsage::eColor
+     && dcl.getSemanticIndex() < 2u) {
       Semantic semantic = { dcl.getSemanticUsage(), dcl.getSemanticIndex() };
 
       auto location = FindLocationInFixedFunctionIO(semantic);
