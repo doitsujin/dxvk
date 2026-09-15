@@ -582,14 +582,16 @@ namespace dxvk {
       return;
 
     // Set up basic rasterization state
-    rsInfo.depthClampEnable         = VK_TRUE;
+    rsInfo.depthClampEnable         = device->features().extDepthClipEnable.depthClipEnable;
     rsInfo.polygonMode              = state.rs.polygonMode();
     rsInfo.lineWidth                = 1.0f;
 
     // Set up depth clip state. Require depth clip support,
     // this is *not* equivalent to disabling depth clamp.
-    rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
-    rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
+    if (device->features().extDepthClipEnable.depthClipEnable) {
+      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+      rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
+    }
 
     // Set up conservative rasterization if requested by the application.
     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {

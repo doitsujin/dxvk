@@ -395,13 +395,17 @@ namespace dxvk {
     VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
 
     VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsInfo.depthClampEnable   = VK_TRUE;
+    rsInfo.depthClampEnable   = m_device->features().extDepthClipEnable.depthClipEnable;
     rsInfo.rasterizerDiscardEnable = VK_FALSE;
     rsInfo.polygonMode        = VK_POLYGON_MODE_FILL;
     rsInfo.lineWidth          = 1.0f;
 
-    // Only use the fixed depth clip state if we can't make it dynamic
-    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
+    // Only use the fixed depth clip state if we can't make it dynamic.
+    // If VK_EXT_depth_clip_enable is unavailable entirely, leave
+    // depthClampEnable disabled above: core Vulkan's default (clamp off)
+    // already clips depth the way this is meant to behave here.
+    if (m_device->features().extDepthClipEnable.depthClipEnable
+     && !m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
       rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
       rsDepthClipInfo.depthClipEnable = VK_TRUE;
     }

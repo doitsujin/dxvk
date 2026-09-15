@@ -1,5 +1,34 @@
 #pragma once
 
+#if defined(__APPLE__)
+#ifndef LF_FACESIZE
+#define LF_FACESIZE 32
+#endif
+#ifndef DOUBLE
+typedef double DOUBLE;
+#endif
+#ifndef LPGUID
+typedef struct GUID *LPGUID;
+#endif
+#ifndef IStream
+struct IStream;
+#endif
+#ifndef TEXTMETRICA
+typedef struct tagTEXTMETRICA TEXTMETRICA;
+typedef struct tagTEXTMETRICW TEXTMETRICW;
+#endif
+#ifndef GLYPHMETRICSFLOAT
+typedef struct _GLYPHMETRICSFLOAT {
+  float gmfBlackBoxX, gmfBlackBoxY;
+  struct { float x, y, z; } gmfptGlyphOrigin;
+  float gmfCellIncX, gmfCellIncY;
+} GLYPHMETRICSFLOAT, *LPGLYPHMETRICSFLOAT;
+#endif
+#ifndef STDAPI
+#define STDAPI extern "C" HRESULT WINAPI
+#endif
+#endif
+
 #ifdef __cplusplus
 #include <cstdint>
 #include <cstring>
