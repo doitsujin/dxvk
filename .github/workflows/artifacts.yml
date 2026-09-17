@@ -12,6 +12,9 @@ jobs:
       run: |
         pacman -Syu --needed --noconfirm git meson mingw-w64-gcc glslang
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        curl -LO https://github.com/mstorsjo/llvm-mingw/releases/download/20260908/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz
+        mkdir /opt/llvm-mingw
+        tar -C /opt/llvm-mingw -xf llvm-mingw-*.tar.xz --strip-components=1
     
     - name: Checkout code
       id: checkout-code
@@ -26,8 +29,9 @@ jobs:
     - name: Build release
       id: build-release
       run: |
+        export PATH=$PATH:/opt/llvm-mingw/bin
         export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
-        ./package-release.sh ${VERSION_NAME} build --no-package
+        ./package-release.sh ${VERSION_NAME} build --no-package --build-arm64x
         echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
 
     - name: Upload artifacts
