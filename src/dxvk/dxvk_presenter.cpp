@@ -203,7 +203,8 @@ namespace dxvk {
 
     // Present timing isn't useful with Immediate or Mailbox
     bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
-                   || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+                   || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR
+		   || m_presentMode == VK_PRESENT_MODE_FIFO_LATEST_READY_KHR;	
 
     bool waitForPresent = m_hasPresentWait && isFifoMode;
 
