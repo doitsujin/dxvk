@@ -249,6 +249,29 @@ namespace dxvk {
         info.pQueueFamilyIndices = queueFamilies.data();
       }
     }
+
+    template<typename CreateInfo>
+    bool writeBack(CreateInfo& info) const {
+      info.sharingMode = sharingMode();
+
+      if (info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+        if (info.pQueueFamilyIndices) {
+          info.queueFamilyIndexCount = std::min<uint32_t>(queueFamilies.size(), info.queueFamilyIndexCount);
+
+          for (uint32_t i = 0u; i < info.queueFamilyIndexCount; i++)
+            const_cast<uint32_t&>(info.pQueueFamilyIndices[i]) = queueFamilies.at(i);
+
+          if (info.queueFamilyIndexCount < queueFamilies.size())
+            return false;
+        } else {
+          info.queueFamilyIndexCount = queueFamilies.size();
+        }
+      } else {
+        info.queueFamilyIndexCount = 0u;
+      }
+
+      return true;
+    }
   };
 
 
