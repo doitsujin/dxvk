@@ -499,8 +499,7 @@ namespace dxvk {
       bool enableDescriptorHeap = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
                                || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
                                || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE
-                               || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA
-                               || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY;
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA;
 
       // Heap regresses performance on the initial NV driver releases.
       if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
