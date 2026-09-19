@@ -125,6 +125,8 @@ namespace dxvk {
 
 
   void DxvkContext::endFrame() {
+    this->endRenderPass(true);
+
     m_renderPassIndex = 0u;
 
     if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
