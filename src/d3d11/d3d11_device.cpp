@@ -2708,6 +2708,18 @@ namespace dxvk {
   }
 
 
+  void D3D11Device::LockBuffer(
+    const Rc<DxvkBuffer>&           Buffer) {
+    auto chunk = AllocCsChunk(DxvkCsChunkFlag::SingleUse);
+
+    chunk->push([cBuffer = Buffer] (DxvkContext* ctx) {
+      ctx->ensureBufferAddress(cBuffer);
+    });
+
+    m_context->InjectCsChunk(DxvkCsQueue::HighPriority, std::move(chunk), true);
+  }
+
+
   bool D3D11Device::LockImage(
     const Rc<DxvkImage>&            Image,
           VkImageUsageFlags         Usage) {
@@ -3237,13 +3249,7 @@ namespace dxvk {
     if (!Buffer->canRelocate())
       return;
 
-    auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
-
-    chunk->push([cBuffer = Buffer] (DxvkContext* ctx) {
-      ctx->ensureBufferAddress(cBuffer);
-    });
-
-    m_device->GetContext()->InjectCsChunk(DxvkCsQueue::HighPriority, std::move(chunk), true);
+    m_device->LockBuffer(Buffer);
   }
 
 
