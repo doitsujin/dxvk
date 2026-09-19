@@ -469,6 +469,9 @@ namespace dxvk {
 
     bool Is11on12Device() const;
 
+    void LockBuffer(
+      const Rc<DxvkBuffer>&           Buffer);
+
     bool LockImage(
       const Rc<DxvkImage>&            Image,
             VkImageUsageFlags         Usage);
