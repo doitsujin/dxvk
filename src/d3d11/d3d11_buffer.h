@@ -217,6 +217,43 @@ namespace dxvk {
 
 
   /**
+   * \brief Interop i
+   */
+  class D3D11VkInteropBuffer : public IDXGIVkInteropBuffer {
+
+  public:
+
+    D3D11VkInteropBuffer(D3D11Buffer* pBuffer);
+
+    ~D3D11VkInteropBuffer();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            IDXGIVkInteropDevice**  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE GetVulkanBufferInfo(
+            VkDeviceAddress*        pGpuAddress,
+            VkBuffer*               pHandle,
+            VkDeviceSize*           pOffset,
+            VkBufferCreateInfo*     pInfo);
+
+  private:
+
+    D3D11Buffer* m_buffer = nullptr;
+
+    std::atomic<bool> m_locked = { false };
+
+  };
+
+
+  /**
    * \brief Retrieves buffer from resource pointer
    * 
    * \param [in] pResource The resource to query

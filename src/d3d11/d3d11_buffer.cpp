@@ -399,6 +399,112 @@ namespace dxvk {
   }
   
 
+  D3D11VkInteropBuffer::D3D11VkInteropBuffer(D3D11Buffer* pBuffer)
+  : m_buffer(pBuffer) {
+
+  }
+
+
+  D3D11VkInteropBuffer::~D3D11VkInteropBuffer() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11VkInteropBuffer::AddRef() {
+    return m_buffer->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11VkInteropBuffer::Release() {
+    return m_buffer->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropBuffer::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_buffer->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropBuffer::GetDevice(
+          IDXGIVkInteropDevice**  ppDevice) {
+    Com<ID3D11Device> device;
+    m_buffer->GetDevice(&device);
+
+    return device->QueryInterface(
+      __uuidof(IDXGIVkInteropDevice),
+      reinterpret_cast<void**>(ppDevice));
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropBuffer::GetVulkanBufferInfo(
+          VkDeviceAddress*        pGpuAddress,
+          VkBuffer*               pHandle,
+          VkDeviceSize*           pOffset,
+          VkBufferCreateInfo*     pInfo) {
+    Rc<DxvkBuffer> buffer = m_buffer->GetBuffer();
+
+    Com<ID3D11Device> device;
+    m_buffer->GetDevice(&device);
+
+    if (!m_locked.load()) {
+      // Tile pools will not have a buffer
+      if (!buffer)
+        return E_INVALIDARG;
+
+      // We can't lock mapped buffers in place since we need
+      // to be able to relocate those at all costs
+      if (m_buffer->Desc()->CPUAccessFlags)
+        return E_INVALIDARG;
+
+      static_cast<D3D11Device*>(device.ptr())->LockBuffer(buffer);
+      m_locked.store(true);
+    }
+
+    auto slice = buffer->getSliceInfo();
+
+    if (pHandle && pOffset) {
+      *pHandle = slice.buffer;
+      *pOffset = slice.offset;
+    } else if (pHandle || pOffset) {
+      // Need to either specify one or both since the
+      // buffer will have a non-zero offset.
+      return E_INVALIDARG;
+    }
+
+    if (pGpuAddress)
+      *pGpuAddress = slice.gpuAddress;
+
+    HRESULT hr = S_OK;
+
+    if (pInfo) {
+      auto sharingMode = static_cast<D3D11Device*>(device.ptr())->GetDXVKDevice()->getSharingMode();
+
+      const auto& info = buffer->info();
+      pInfo->flags = info.flags;
+      pInfo->size = info.size;
+      pInfo->usage = info.usage;
+
+      if (!sharingMode.writeBack(*pInfo))
+        hr = S_FALSE;
+
+      auto pUsageInfo = const_cast<VkBufferUsageFlags2CreateInfo*>(
+        reinterpret_cast<const VkBufferUsageFlags2CreateInfo*>(pInfo->pNext));
+
+      if (pUsageInfo) {
+        if (pUsageInfo->sType != VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO)
+          return E_INVALIDARG;
+
+        pInfo->usage = 0u;
+        pUsageInfo->usage = info.usage;
+      }
+    }
+
+    return hr;
+  }
+
+
   D3D11Buffer* GetCommonBuffer(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&dimension);
