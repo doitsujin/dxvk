@@ -532,6 +532,27 @@ namespace dxvk {
     if (m_backBuffers.size() > 1u)
       RotateBackBuffers(immediateContext);
 
+    // With dirty rects, the frame that was presented lives in the composition
+    // buffer, and the back buffer the application draws into next holds only
+    // what it drew there two presents ago. Windows leaves the application with
+    // the complete previous frame in that buffer (measured: after Present1 with
+    // a dirty rect, buffer 0 carries the presented frame outside the rect too),
+    // and anything that reads the back buffer -- a GDI surface on it, a copy
+    // for composition -- relies on that. Copy the composed frame back.
+    if (incrementalPresent && m_compositionBuffer != nullptr) {
+      immediateContext->EmitCs([
+        cDstImage = GetCommonTexture(m_backBuffers.front().ptr())->GetImage(),
+        cSrcImage = m_compositionBuffer
+      ] (DxvkContext* ctx) {
+        VkImageSubresourceLayers subresource = { };
+        subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresource.layerCount = 1u;
+
+        ctx->copyImage(cDstImage, subresource, VkOffset3D(),
+          cSrcImage, subresource, VkOffset3D(), cSrcImage->info().extent);
+      });
+    }
+
     immediateContext->FlushCsChunk();
 
     if (m_latency) {
@@ -849,12 +870,14 @@ namespace dxvk {
       imageInfo.debugName = "Composition (Scroll)";
       m_compositionScroll = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      // Create internal images for incremental presentation. If this is the
-      // first frame to use incremental present, then we know for sure that
-      // the last back buffer contains the full contents last presented, so
-      // simply copy the last back buffer to it.
+      // Create internal images for incremental presentation. Start from the
+      // buffer the application has just drawn into: outside the dirty rects it
+      // carries the previous frame, which is what the composition has to keep.
+      // (Measured with a full present followed by a dirty-rect present: the
+      // last back buffer held no frame at all, and the window came up black
+      // around the dirty rect and stayed so.)
       pContext->EmitCs([
-        cPrevImage    = GetCommonTexture(m_backBuffers.back().ptr())->GetImage(),
+        cPrevImage    = backBuffer,
         cCurrImage    = m_compositionBuffer,
         cScrollImage  = m_compositionScroll
       ] (DxvkContext* ctx) {
