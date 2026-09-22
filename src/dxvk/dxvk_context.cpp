@@ -9703,15 +9703,18 @@ namespace dxvk {
 
 
   void DxvkContext::prepareSharedImages() {
-    // Only flush clears for shared images, and restore layouts
-    bool hasSharedClear = false;
+    small_vector<Rc<DxvkImage>, 8u> imagesToClear;
 
-    for (const auto& image : m_nonDefaultLayoutImages) {
-      if (image->info().shared)
-        hasSharedClear = flushDeferredClear(*image, image->getAvailableSubresources());
+    // Only flush clears for shared images, and restore layouts
+    for (const auto& clear : m_deferredClears) {
+      if (clear.imageView->image()->info().shared)
+        imagesToClear.push_back(clear.imageView->image());
     }
 
-    if (hasSharedClear)
+    for (const auto& image : imagesToClear)
+      flushDeferredClear(*image, image->getAvailableSubresources());
+
+    if (!imagesToClear.empty())
       flushBarriers();
 
     restoreImageLayouts([] (DxvkImage& image) {
