@@ -701,7 +701,7 @@ namespace dxvk {
      * \returns Push data block index
      */
     static uint32_t computeIndex(VkShaderStageFlags stageMask) {
-      if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+      if (!(stageMask & VK_SHADER_STAGE_ALL_GRAPHICS))
         return 0u;
 
       uint32_t remainder = stageMask & (stageMask - 1u);
