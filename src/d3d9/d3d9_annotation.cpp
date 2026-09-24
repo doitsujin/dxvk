@@ -33,7 +33,7 @@ namespace dxvk {
 
   INT D3D9GlobalAnnotationList::BeginEvent(D3DCOLOR color, LPCWSTR name) {
     if (!m_shouldAnnotate)
-      return 0;
+      return -1;
 
     auto lock = std::unique_lock(m_mutex);
     for (auto* annotation : m_annotations)
@@ -45,7 +45,7 @@ namespace dxvk {
 
   INT D3D9GlobalAnnotationList::EndEvent() {
     if (!m_shouldAnnotate)
-      return 0;
+      return -1;
 
     auto lock = std::unique_lock(m_mutex);
     for (auto* annotation : m_annotations)
