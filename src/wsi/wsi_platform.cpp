@@ -21,6 +21,9 @@ namespace dxvk::wsi {
 #if defined(DXVK_WSI_GLFW)
     &GlfwWSI,
 #endif
+#if defined(DXVK_WSI_EXTERNAL)
+    &ExternalWSI,
+#endif
   };
 
   void init() {
