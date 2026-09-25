@@ -89,25 +89,6 @@ namespace dxvk {
 
         if (vr != VK_SUCCESS)
           throw DxvkError(str::format("Failed to write Vulkan buffer view descriptor: ", vr));
-      } else if (m_device->canUseDescriptorBuffer()) {
-        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-        bufferInfo.address = m_va + key.offset;
-        bufferInfo.range = key.size;
-        bufferInfo.format = key.format;
-
-        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-
-        if (key.usage == VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
-          info.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;;
-          info.data.pStorageTexelBuffer = &bufferInfo;
-        } else {
-          info.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;;
-          info.data.pUniformTexelBuffer = &bufferInfo;
-        }
-
-        vk->vkGetDescriptorEXT(vk->device(), &info,
-          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
-          descriptor.descriptor.data());
       } else {
         VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
         flags.usage = key.usage;
@@ -150,18 +131,6 @@ namespace dxvk {
 
         if (vr != VK_SUCCESS)
           throw DxvkError(str::format("Failed to write Vulkan buffer descriptor: ", vr));
-      } else if (m_device->canUseDescriptorBuffer()) {
-        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-        bufferInfo.address = m_va + key.offset;
-        bufferInfo.range = key.size;
-
-        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-        info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        info.data.pStorageBuffer = &bufferInfo;
-
-        vk->vkGetDescriptorEXT(vk->device(), &info,
-          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
-          descriptor.descriptor.data());
       }
     }
 
@@ -253,23 +222,6 @@ namespace dxvk {
 
       if (vr != VK_SUCCESS)
         throw DxvkError(str::format("Failed to write Vulkan image view descriptor: ", vr));
-    } else if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
-      VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-
-      if (shaderResourceUsage & VK_IMAGE_USAGE_STORAGE_BIT) {
-        info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        info.data.pStorageImage = &descriptor.legacy.image;
-      } else if (shaderResourceUsage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
-        info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-        info.data.pInputAttachmentImage = &descriptor.legacy.image;
-      } else {
-        info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        info.data.pSampledImage = &descriptor.legacy.image;
-      }
-
-      vk->vkGetDescriptorEXT(vk->device(), &info,
-        m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
-        descriptor.descriptor.data());
     }
 
     return &descriptor;
@@ -1047,7 +999,7 @@ namespace dxvk {
       // ca expect these to be long-lived and mapped, and potentially use a dedicated
       // memory type that may have unexpected size restrictions. Also make sure not
       // to ever relocate these buffers since they require a stable GPU address.
-      if (createInfo.usage & (DescriptorBufferUsage | DescriptorHeapUsage)) {
+      if (createInfo.usage & DescriptorHeapUsage) {
         VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
         dedicatedInfo.buffer = buffer;
 
@@ -2102,9 +2054,6 @@ namespace dxvk {
 
     if (m_device->canUseDescriptorHeap())
       descriptorHeapUsage |= DescriptorHeapUsage;
-
-    if (m_device->canUseDescriptorBuffer())
-      descriptorHeapUsage |= DescriptorBufferUsage;
 
     while (descriptorHeapUsage) {
       VkBufferCreateFlags flag = descriptorHeapUsage & -descriptorHeapUsage;

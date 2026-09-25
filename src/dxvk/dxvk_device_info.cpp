@@ -22,7 +22,6 @@ namespace dxvk {
     HANDLE_EXT(extCustomBorderColor);              \
     HANDLE_EXT(extDepthClipEnable);                \
     HANDLE_EXT(extDepthBiasControl);               \
-    HANDLE_EXT(extDescriptorBuffer);               \
     HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extDynamicRenderingUnusedAttachments); \
     HANDLE_EXT(extExtendedDynamicState3);          \
@@ -82,7 +81,6 @@ namespace dxvk {
   #define EXTENSIONS_WITH_PROPERTIES               \
     HANDLE_EXT(extConservativeRasterization);      \
     HANDLE_EXT(extCustomBorderColor);              \
-    HANDLE_EXT(extDescriptorBuffer);               \
     HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
@@ -511,37 +509,6 @@ namespace dxvk {
         m_featuresSupported.extDescriptorHeap.descriptorHeap = VK_FALSE;
     }
 
-    // Descriptor heap deprecates descriptor buffer
-    if (m_featuresSupported.extDescriptorHeap.descriptorHeap)
-      m_featuresSupported.extDescriptorBuffer.descriptorBuffer = VK_FALSE;
-
-    // Descriptor buffers cause perf regressions on some GPUs
-    if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer) {
-      bool enableDescriptorBuffer = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE;
-
-      // Pascal reportedly sees massive perf drops with descriptor buffer
-      if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
-        enableDescriptorBuffer = m_hasMeshShader;
-
-      // On RDNA2 and older, descriptor buffer implicitly disables fmask
-      // on amdvlk, which makes MSAA performance unusable on these GPUs.
-      if (m_properties.vk12.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE
-       || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
-        enableDescriptorBuffer = !m_hasFmask;
-
-      // Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/work_items/15795.
-      // Does not affect Battlemage, and EDB generally costs perf on Intel.
-      if (m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
-        enableDescriptorBuffer = m_properties.vk13.minSubgroupSize < 16u;
-
-      applyTristate(enableDescriptorBuffer, instance.options().enableDescriptorBuffer);
-
-      if (!enableDescriptorBuffer)
-        m_featuresSupported.extDescriptorBuffer.descriptorBuffer = VK_FALSE;
-    }
-
     // Disable unified layouts if disabled via config
     if (!instance.options().enableUnifiedImageLayout)
       m_featuresSupported.khrUnifiedImageLayouts.unifiedImageLayouts = VK_FALSE;
@@ -957,9 +924,6 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extDepthBiasControl, leastRepresentableValueForceUnormRepresentation, false),
       ENABLE_EXT_FEATURE(extDepthBiasControl, floatRepresentation, false),
       ENABLE_EXT_FEATURE(extDepthBiasControl, depthBiasExact, false),
-
-      /* Deprecated, used when descriptor heap is unavailable */
-      ENABLE_EXT_FEATURE(extDescriptorBuffer, descriptorBuffer, false),
 
       /* Descriptor heaps for a more efficient binding model */
       ENABLE_EXT_FEATURE(extDescriptorHeap, descriptorHeap, false),
