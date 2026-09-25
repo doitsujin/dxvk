@@ -13,6 +13,7 @@ wsi_src = [
   'glfw/wsi_monitor_glfw.cpp',
   'glfw/wsi_platform_glfw.cpp',
   'glfw/wsi_window_glfw.cpp',
+  'external/wsi_platform_external.cpp',
 ]
 
 wsi_deps = [ dep_displayinfo ]
