@@ -253,7 +253,7 @@ namespace dxvk {
           // Add a DEF instruction for each constant
           for (uint32_t j = 0; j < regCount; j += 4) {
             defs.push_back(encodeInstruction(d3d9::D3DSIO_DEF));
-            defs.push_back(encodeDestRegister(d3d9::D3DSPR_CONST2, addr));
+            defs.push_back(encodeDestRegister(d3d9::D3DSPR_CONST, addr));
             defs.push_back(pDeclaration[i+j]);
             defs.push_back(pDeclaration[i+j+1]);
             defs.push_back(pDeclaration[i+j+2]);
