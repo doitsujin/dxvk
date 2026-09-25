@@ -260,7 +260,8 @@ namespace dxvk {
   bool DxvkShaderCache::writeShaderCreateInfo(util::File& stream, const DxvkIrShaderCreateInfo& createInfo) {
     bool status = write(stream, createInfo.options)
                && write(stream, createInfo.flatShadingInputs)
-               && write(stream, createInfo.rasterizedStream);
+               && write(stream, createInfo.rasterizedStream)
+               && write(stream, createInfo.nvMultiview);
 
     status = status && write(stream, uint32_t(createInfo.xfbEntries.size()));
 
@@ -452,7 +453,8 @@ namespace dxvk {
     bool status = readString(stream, offset, key.name)
                && read(stream, offset, key.createInfo.options)
                && read(stream, offset, key.createInfo.flatShadingInputs)
-               && read(stream, offset, key.createInfo.rasterizedStream);
+               && read(stream, offset, key.createInfo.rasterizedStream)
+               && read(stream, offset, key.createInfo.nvMultiview);
 
     uint32_t xfbCount = 0u;
     status = status && read(stream, offset, xfbCount);
