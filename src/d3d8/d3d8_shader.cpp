@@ -20,23 +20,23 @@ namespace dxvk {
    * \cite https://learn.microsoft.com/en-us/windows/win32/direct3d9/mapping-between-a-directx-9-declaration-and-directx-8
   */
   static constexpr BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
-    {d3d9::D3DDECLUSAGE_POSITION, 0},      // dcl_position     v0
-    {d3d9::D3DDECLUSAGE_BLENDWEIGHT, 0},   // dcl_blendweight  v1
-    {d3d9::D3DDECLUSAGE_BLENDINDICES, 0},  // dcl_blendindices v2
-    {d3d9::D3DDECLUSAGE_NORMAL, 0},        // dcl_normal       v3
-    {d3d9::D3DDECLUSAGE_PSIZE, 0},         // dcl_psize        v4
-    {d3d9::D3DDECLUSAGE_COLOR, 0},         // dcl_color        v5 ; diffuse
-    {d3d9::D3DDECLUSAGE_COLOR, 1},         // dcl_color1       v6 ; specular
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 0},      // dcl_texcoord0    v7
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 1},      // dcl_texcoord1    v8
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 2},      // dcl_texcoord2    v9
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 3},      // dcl_texcoord3    v10
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 4},      // dcl_texcoord4    v11
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 5},      // dcl_texcoord5    v12
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 6},      // dcl_texcoord6    v13
-    {d3d9::D3DDECLUSAGE_TEXCOORD, 7},      // dcl_texcoord7    v14
-    {d3d9::D3DDECLUSAGE_POSITION, 1},      // dcl_position1    v15 ; position 2
-    {d3d9::D3DDECLUSAGE_NORMAL, 1},        // dcl_normal1      v16 ; normal 2
+    {d3d9::D3DDECLUSAGE_POSITION, 0},     // dcl_position     v0
+    {d3d9::D3DDECLUSAGE_BLENDWEIGHT, 0},  // dcl_blendweight  v1
+    {d3d9::D3DDECLUSAGE_BLENDINDICES, 0}, // dcl_blendindices v2
+    {d3d9::D3DDECLUSAGE_NORMAL, 0},       // dcl_normal       v3
+    {d3d9::D3DDECLUSAGE_PSIZE, 0},        // dcl_psize        v4
+    {d3d9::D3DDECLUSAGE_COLOR, 0},        // dcl_color        v5 ; diffuse
+    {d3d9::D3DDECLUSAGE_COLOR, 1},        // dcl_color1       v6 ; specular
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 0},     // dcl_texcoord0    v7
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 1},     // dcl_texcoord1    v8
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 2},     // dcl_texcoord2    v9
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 3},     // dcl_texcoord3    v10
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 4},     // dcl_texcoord4    v11
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 5},     // dcl_texcoord5    v12
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 6},     // dcl_texcoord6    v13
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 7},     // dcl_texcoord7    v14
+    {d3d9::D3DDECLUSAGE_POSITION, 1},     // dcl_position1    v15 ; position 2
+    {d3d9::D3DDECLUSAGE_NORMAL, 1},       // dcl_normal1      v16 ; normal 2
   };
 
   /** Width in bytes of each d3d9::D3DDECLTYPE or d3d8 D3DVSDT_TYPE */
@@ -72,8 +72,8 @@ namespace dxvk {
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
    */
   constexpr DWORD encodeInstruction(d3d9::D3DSHADER_INSTRUCTION_OPCODE_TYPE opcode) {
-    DWORD token   = 0;
-    token        |= opcode & 0xFFFF;  // bits 0:15
+    DWORD token   = 0u;
+    token        |= opcode & 0xFFFF; // bits 0:15
     return token;
   }
 
@@ -84,15 +84,16 @@ namespace dxvk {
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/destination-parameter-token
    */
   constexpr DWORD encodeDestRegister(d3d9::D3DSHADER_PARAM_REGISTER_TYPE type, UINT reg) {
-    DWORD token = 0;
-    token |= reg & 0x7FF;                  // bits 0:10   num
-    token |= ((type & 0x07) << 28);        // bits 28:30  type[0:2]
-    token |= ((type & 0x18) >>  3) << 11;  // bits 11:12  type[3:4]
-    // UINT addrMode : 1;                  // bit  13     hasRelative
-    token |= 0b1111 << 16;                 // bits 16:19  DxsoRegMask
-    // UINT resultModifier : 3;            // bits 20:23
-    // UINT resultShift : 3;               // bits 24:27
-    token |= 1u << 31;                     // bit  31     always 1
+    static_assert(D3DSP_REGNUM_MASK == 0x7FF); // Ensure we've imported the D3D9 value
+    DWORD token = 0u;
+    token |= reg & D3DSP_REGNUM_MASK;                              // bits 0:10   num
+    token |= (type << D3DSP_REGTYPE_SHIFT)  & D3DSP_REGTYPE_MASK;  // bits 28:30  type[0:2]
+    token |= (type << D3DSP_REGTYPE_SHIFT2) & D3DSP_REGTYPE_MASK2; // bits 11:12  type[3:4]
+    // UINT addrMode : 1;                                          // bit  13     hasRelative
+    token |= 0xF << 16;                                            // bits 16:19  DxsoRegMask
+    // UINT resultModifier : 3;                                    // bits 20:23
+    // UINT resultShift : 3;                                       // bits 24:27
+    token |= 1u << 31;                                             // bit  31     always 1
     return token;
   }
 
@@ -102,10 +103,10 @@ namespace dxvk {
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
    */
   constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage, DWORD index) {
-    DWORD token = 0;
-    token |= VSD_ENCODE(usage, D3DSP_DCL_USAGE);       // bits 0:4   DxsoUsage (TODO: missing MSB)
-    token |= VSD_ENCODE(index, D3DSP_DCL_USAGEINDEX);  // bits 16:19 usageIndex
-    token |= 1u << 31;                                 // bit 31     always 1
+    DWORD token = 0u;
+    token |= VSD_ENCODE(usage, D3DSP_DCL_USAGE);      // bits 0:4   DxsoUsage (TODO: missing MSB)
+    token |= VSD_ENCODE(index, D3DSP_DCL_USAGEINDEX); // bits 16:19 usageIndex
+    token |= 1u << 31;                                // bit 31     always 1
     return token;
   }
 
@@ -314,16 +315,15 @@ namespace dxvk {
           const DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
           const DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
 
-          tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));                  // dcl opcode
-          tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(usage), index));  // usage token
-          tokens.push_back(encodeDestRegister(d3d9::D3DSPR_INPUT, vn));           // dest register num
+          tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));                 // dcl opcode
+          tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(usage), index)); // usage token
+          tokens.push_back(encodeDestRegister(d3d9::D3DSPR_INPUT, vn));          // dest register num
         }
       }
 
       // Copy constant defs
-      for (DWORD def : defs) {
+      for (DWORD& def : defs)
         tokens.push_back(def);
-      }
 
       // Copy shader tokens from input,
       // skip first token (we already copied it)
@@ -331,17 +331,17 @@ namespace dxvk {
       do {
         token = pFunction[i++];
 
-        const DWORD opcode = token & D3DSI_OPCODE_MASK;
-
         // Instructions
         if ((token & VS_BIT_PARAM) == 0) {
+          const DWORD opcode = token & D3DSI_OPCODE_MASK;
+
           // Swizzle fixup for opcodes that require explicit use of a replicate swizzle.
           if (opcode == D3DSIO_RSQ  || opcode == D3DSIO_RCP
            || opcode == D3DSIO_EXP  || opcode == D3DSIO_LOG
            || opcode == D3DSIO_EXPP || opcode == D3DSIO_LOGP) {
-            tokens.push_back(token);                   // instr
-            tokens.push_back(token = pFunction[i++]);  // dest
-            token = pFunction[i++];                    // src0
+            tokens.push_back(token);                  // instr
+            tokens.push_back(token = pFunction[i++]); // dest
+            token = pFunction[i++];                   // src0
 
             // If no swizzling is done, then use the w-component.
             // See d8vk#43 for more information as this may need to change in some cases.
@@ -351,6 +351,7 @@ namespace dxvk {
             }
           }
         }
+
         tokens.push_back(token);
       } while (token != D3DVS_END());
     }
