@@ -127,10 +127,7 @@ namespace dxvk {
             m_constants.boolMask |= 1u << index;
         } break;
 
-        case RegisterType::eConst:
-        case RegisterType::eConst2:
-        case RegisterType::eConst3:
-        case RegisterType::eConst4: {
+        case RegisterType::eConst: {
           m_constants.floatCount = std::max(m_constants.floatCount, index + count);
 
           if (src.hasRelativeAddressing()) {
