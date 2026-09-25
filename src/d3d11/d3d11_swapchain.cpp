@@ -184,7 +184,7 @@ namespace dxvk {
       m_presenter->setSurfaceFormat(GetSurfaceFormat(pDesc->Format));
 
     if (m_desc.Width != pDesc->Width || m_desc.Height != pDesc->Height)
-      m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
+      m_presenter->setSurfaceExtent({ pDesc->Width, pDesc->Height });
 
     m_desc = *pDesc;
     CreateBackBuffers();
