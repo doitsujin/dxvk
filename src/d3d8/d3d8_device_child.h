@@ -1,9 +1,5 @@
 #pragma once
 
-// Common methods for device-tied objects.
-// - AddRef, Release from IUnknown
-// - GetDevice from various classes including IDirect3DResource8
-
 #include "d3d8_include.h"
 #include "d3d8_wrapped_object.h"
 
@@ -22,6 +18,7 @@ namespace dxvk {
 
     ULONG STDMETHODCALLTYPE AddRef() {
       uint32_t refCount = this->m_refCount++;
+
       if (unlikely(!refCount)) {
         this->AddRefPrivate();
         GetDevice()->AddRef();
@@ -35,13 +32,10 @@ namespace dxvk {
 
       do {
         oldRefCount = this->m_refCount.load();
-
         // clamp value to 0 to prevent underruns
         if (unlikely(!oldRefCount))
           return 0;
-
         refCount = oldRefCount - 1;
-
       } while (!this->m_refCount.compare_exchange_weak(oldRefCount, refCount));
 
       if (unlikely(!refCount)) {
