@@ -187,6 +187,9 @@ namespace dxvk {
     for (const auto& p : m_imageCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
+    for (const auto& p : m_inputAttachmentImageCopyPipelines)
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
+
     for (const auto& p : m_bufferImageCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
