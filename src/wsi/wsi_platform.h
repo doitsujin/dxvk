@@ -123,6 +123,9 @@ namespace dxvk::wsi {
 #if defined(DXVK_WSI_GLFW)
   extern WsiBootstrap GlfwWSI;
 #endif
+#if defined(DXVK_WSI_EXTERNAL)
+  extern WsiBootstrap ExternalWSI;
+#endif
 
   void init();
   void quit();

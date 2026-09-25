@@ -8,6 +8,8 @@
 #include "wsi/native_sdl2.h"
 #elif DXVK_WSI_GLFW
 #include "wsi/native_glfw.h"
+#elif DXVK_WSI_EXTERNAL
+#include "wsi/native_external_wsi.h"
 #else
 #error Unknown wsi!
 #endif
