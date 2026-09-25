@@ -815,9 +815,8 @@ namespace dxvk {
               if (unlikely(FAILED(res)))
                 return res;
 
-              Com<D3D8Surface> pBlitImage = static_cast<D3D8Surface*>(pTempImageSurface.ptr());
-              // Temporary image surface dimensions are identical, so we can reuse srcDesc/Rect
-              res = copyTextureBuffers(src.ptr(), pBlitImage.ptr(), srcDesc, srcDesc, srcRect, srcRect);
+              D3D8Surface* pBlitImage = static_cast<D3D8Surface*>(pTempImageSurface.ptr());
+              res = copyTextureBuffers(src.ptr(), pBlitImage, srcDesc, dstDesc, srcRect, dstRect);
               if (unlikely(FAILED(res)))
                 return res;
 
@@ -839,20 +838,20 @@ namespace dxvk {
             // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
             case d3d9::D3DPOOL_DEFAULT: {
               // Get temporary off-screen surface for stretching.
-              Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
+              d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
               HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
-                pBlitImage.ptr(),
+                pBlitImage,
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
               if (unlikely(FAILED(res)))
                 return res;
 
               // Now sync the rendertarget data into main memory.
-              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
+              return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
             }
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
@@ -888,20 +887,20 @@ namespace dxvk {
           switch (srcDesc.Pool) {
             case d3d9::D3DPOOL_DEFAULT: {
               // Get temporary off-screen surface for stretching.
-              Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
+              d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
               HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
-                pBlitImage.ptr(),
+                pBlitImage,
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
               if (unlikely(FAILED(res)))
                 return res;
 
               // Now sync the rendertarget data into main memory.
-              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
+              return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
             }
             // MANAGED/SYSMEM/SCRATCH -> SYSMEM: LockRect / memcpy
             case d3d9::D3DPOOL_MANAGED:
@@ -937,20 +936,20 @@ namespace dxvk {
           switch (srcDesc.Pool) {
             case d3d9::D3DPOOL_DEFAULT: {
               // Get temporary off-screen surface for stretching.
-              Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
+              d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
               HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
-                pBlitImage.ptr(),
+                pBlitImage,
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
               if (unlikely(FAILED(res)))
                 return res;
 
               // Now sync the rendertarget data into main memory.
-              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
+              return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
             }
             // MANAGED/SYSMEM/SCRATCH -> SCRATCH: LockRect / memcpy
             case d3d9::D3DPOOL_MANAGED:
