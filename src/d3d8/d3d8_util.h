@@ -35,8 +35,7 @@ namespace dxvk {
                                    & ~D3DPMISCCAPS_SEPARATEALPHABLEND
                                    & ~D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS
                                    & ~D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING
-                                   & ~D3DPMISCCAPS_FOGVERTEXCLAMPED
-                                   & ~D3DPMISCCAPS_POSTBLENDSRGBCONVERT;
+                                   & ~D3DPMISCCAPS_FOGVERTEXCLAMPED;
 
     pCaps8->RasterCaps            &= ~D3DPRASTERCAPS_SCISSORTEST
                                    & ~D3DPRASTERCAPS_SLOPESCALEDEPTHBIAS

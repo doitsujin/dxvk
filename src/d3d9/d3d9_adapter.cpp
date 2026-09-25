@@ -483,8 +483,12 @@ namespace dxvk {
                                     | D3DPMISCCAPS_SEPARATEALPHABLEND
                                     | D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS
                                     | D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING
-                                    | D3DPMISCCAPS_FOGVERTEXCLAMPED
-                                    | D3DPMISCCAPS_POSTBLENDSRGBCONVERT;
+                                    | D3DPMISCCAPS_FOGVERTEXCLAMPED;
+
+    // Only 9Ex devices advertise D3DPMISCCAPS_POSTBLENDSRGBCONVERT
+    if (m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex))
+      pCaps->PrimitiveMiscCaps     |= D3DPMISCCAPS_POSTBLENDSRGBCONVERT;
+
     // Raster Caps
     pCaps->RasterCaps               = D3DPRASTERCAPS_DITHER
                                     | D3DPRASTERCAPS_ZTEST
@@ -501,7 +505,7 @@ namespace dxvk {
                                     | D3DPRASTERCAPS_SCISSORTEST
                                     | D3DPRASTERCAPS_SLOPESCALEDEPTHBIAS
                                     | D3DPRASTERCAPS_DEPTHBIAS
-                                    | D3DPRASTERCAPS_MULTISAMPLE_TOGGLE; // <-- TODO! (but difficult in Vk)
+                                    | D3DPRASTERCAPS_MULTISAMPLE_TOGGLE;
     // Z Comparison Caps
     pCaps->ZCmpCaps                 = D3DPCMPCAPS_NEVER
                                     | D3DPCMPCAPS_LESS

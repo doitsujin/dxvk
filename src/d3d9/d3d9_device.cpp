@@ -8677,26 +8677,27 @@ namespace dxvk {
     rs[D3DRS_STENCILREF] = 0;
     BindDepthStencilReference();
 
-    rs[D3DRS_FILLMODE]            = D3DFILL_SOLID;
-    rs[D3DRS_CULLMODE]            = D3DCULL_CCW;
-    rs[D3DRS_DEPTHBIAS]           = bit::cast<DWORD>(0.0f);
-    rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_FILLMODE]             = D3DFILL_SOLID;
+    rs[D3DRS_CULLMODE]             = D3DCULL_CCW;
+    rs[D3DRS_DEPTHBIAS]            = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_SLOPESCALEDEPTHBIAS]  = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
     BindDepthBias();
 
-    rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
+    rs[D3DRS_SCISSORTESTENABLE]    = FALSE;
 
-    rs[D3DRS_ALPHATESTENABLE]     = FALSE;
-    rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
+    rs[D3DRS_ALPHATESTENABLE]      = FALSE;
+    rs[D3DRS_ALPHAFUNC]            = D3DCMP_ALWAYS;
     BindAlphaTestState();
-    rs[D3DRS_ALPHAREF]            = 0;
-    m_pushData.shared.alphaRef    = rs[D3DRS_ALPHAREF];
+    rs[D3DRS_ALPHAREF]             = 0;
+    m_pushData.shared.alphaRef     = rs[D3DRS_ALPHAREF];
 
-    rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
+    rs[D3DRS_MULTISAMPLEANTIALIAS] = TRUE;
+    rs[D3DRS_MULTISAMPLEMASK]      = 0xffffffff;
     BindMultiSampleState();
 
-    rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
-    m_pushData.ffps.textureFactor = rs[D3DRS_TEXTUREFACTOR];
+    rs[D3DRS_TEXTUREFACTOR]        = 0xffffffff;
+    m_pushData.ffps.textureFactor  = rs[D3DRS_TEXTUREFACTOR];
 
     rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
     rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
@@ -8765,7 +8766,6 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
     rs[D3DRS_PATCHEDGESTYLE]             = D3DPATCHEDGE_DISCRETE;
     rs[D3DRS_DEBUGMONITORTOKEN]          = D3DDMT_ENABLE;
     rs[D3DRS_POSITIONDEGREE]             = D3DDEGREE_CUBIC;
