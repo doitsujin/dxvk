@@ -8,7 +8,6 @@ namespace dxvk {
     numCompilerThreads    = config.getOption<int32_t> ("dxvk.numCompilerThreads",     0);
     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);
     enableDescriptorHeap  = config.getOption<Tristate>("dxvk.enableDescriptorHeap",   Tristate::Auto);
-    enableDescriptorBuffer = config.getOption<Tristate>("dxvk.enableDescriptorBuffer", Tristate::Auto);
     enableDescriptorUpdateTemplates = config.getOption<bool>("dxvk.enableDescriptorUpdateTemplates", false);
     enableUnifiedImageLayout = config.getOption<bool> ("dxvk.enableUnifiedImageLayouts", true);
     enableImplicitResolves = config.getOption<bool>   ("dxvk.enableImplicitResolves", true);

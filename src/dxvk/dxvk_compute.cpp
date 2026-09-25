@@ -108,9 +108,6 @@ namespace dxvk {
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
-    if (m_device->canUseDescriptorBuffer())
-      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
-
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = *stageInfo.getStageInfos();
     info.layout               = layout->getPipelineLayout();

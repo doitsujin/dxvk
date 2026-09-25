@@ -27,10 +27,6 @@ namespace dxvk {
       m_descriptorHeap = new DxvkResourceDescriptorHeap(device.ptr());
 
       m_features.set(DxvkContextFeature::DescriptorHeap);
-    } else if (device->canUseDescriptorBuffer()) {
-      m_descriptorHeap = new DxvkResourceDescriptorHeap(device.ptr());
-
-      m_features.set(DxvkContextFeature::DescriptorBuffer);
     } else {
       m_descriptorPool = new DxvkDescriptorPool(device.ptr());
 
@@ -173,8 +169,7 @@ namespace dxvk {
 
     // Flush pending descriptor updates and assign the sync
     // point to the submission
-    if (m_features.any(DxvkContextFeature::DescriptorHeap,
-                       DxvkContextFeature::DescriptorBuffer))
+    if (m_features.test(DxvkContextFeature::DescriptorHeap))
       m_cmd->setDescriptorSyncHandle(m_descriptorWorker.getSyncHandle());
 
     // Need to call this before submitting so that the last GPU
@@ -7041,40 +7036,22 @@ namespace dxvk {
 
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateSamplerSet(const DxvkPipelineLayout* layout) {
-    if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
-      const uint32_t     bufferIndex = 0u;
-      const VkDeviceSize bufferOffset = 0u;
+    VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
 
-      VkSetDescriptorBufferOffsetsInfoEXT bindInfo = { VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT };
-      bindInfo.stageFlags = layout->getShaderStageMask();
-      bindInfo.layout = layout->getPipelineLayout();
-      bindInfo.firstSet = 0u;
-      bindInfo.setCount = 1u;
-      bindInfo.pBufferIndices = &bufferIndex;
-      bindInfo.pOffsets = &bufferOffset;
+    VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+    bindInfo.stageFlags = layout->getShaderStageMask();
+    bindInfo.layout = layout->getPipelineLayout();
+    bindInfo.descriptorSetCount = 1u;
+    bindInfo.pDescriptorSets = &set;
 
-      m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer, &bindInfo);
-    } else {
-      VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
-
-      VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
-      bindInfo.stageFlags = layout->getShaderStageMask();
-      bindInfo.layout = layout->getPipelineLayout();
-      bindInfo.descriptorSetCount = 1u;
-      bindInfo.pDescriptorSets = &set;
-
-      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
-    }
+    m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
   }
 
 
   template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   bool DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
     if (m_features.test(DxvkContextFeature::DescriptorHeap)) {
-      if (!updateDescriptorHeapBindings<BindPoint, DxvkBindingModel::DescriptorHeap, AlwaysTrack>(layout))
-        return false;
-    } else if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
-      if (!updateDescriptorHeapBindings<BindPoint, DxvkBindingModel::DescriptorBuffer, AlwaysTrack>(layout))
+      if (!updateDescriptorHeapBindings<BindPoint, AlwaysTrack>(layout))
         return false;
     } else {
       updateDescriptorSetsBindings<BindPoint, AlwaysTrack>(layout);
@@ -7333,11 +7310,9 @@ namespace dxvk {
   }
 
 
-  template<VkPipelineBindPoint BindPoint, DxvkBindingModel Model, bool AlwaysTrack>
+  template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   bool DxvkContext::updateDescriptorHeapBindings(const DxvkPipelineBindings* layout) {
     constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
-    using HeapOffset = std::conditional_t<Model == DxvkBindingModel::DescriptorHeap, uint32_t, VkDeviceSize>;
-
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
@@ -7363,26 +7338,14 @@ namespace dxvk {
       if (!m_cmd->createDescriptorRange())
         return false;
 
-      if (Model != DxvkBindingModel::DescriptorHeap) {
-        if (pipelineLayout->usesSamplerHeap())
-          updateSamplerSet<BindPoint>(pipelineLayout);
-      }
-
       dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
     }
 
-    std::array<uint32_t, DxvkDescriptorSets::SetCount + 1u> bufferIndices = { };
-    std::array<HeapOffset, DxvkDescriptorSets::SetCount + 1u> heapOffsets = { };
+    std::array<uint32_t, DxvkDescriptorSets::SetCount + 1u> heapOffsets = { };
 
-    if constexpr (Model == DxvkBindingModel::DescriptorHeap) {
-      // Make sure the heaps are actually valid and usable
-      if (unlikely(!m_cmd->ensureDescriptorHeapBinding()))
-        return false;
-    } else {
-      // The resource heap is always bound at index 1
-      for (auto& index : bufferIndices)
-        index = 1u;
-    }
+    // Make sure the heaps are actually valid and usable
+    if (unlikely(!m_cmd->ensureDescriptorHeapBinding()))
+      return false;
 
     // Scratch memory for descriptor updates
     for (auto setIndex : bit::BitMask(dirtySetMask)) {
@@ -7513,26 +7476,13 @@ namespace dxvk {
       uint32_t countMask = dirtySetMask + (dirtySetMask & -dirtySetMask);
       uint32_t count = bit::bsf(countMask) - first;
 
-      if constexpr (Model == DxvkBindingModel::DescriptorHeap) {
-        // Descriptor set offsets are stored in-order at offset 0
-        VkPushDataInfoEXT pushInfo = { VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT };
-        pushInfo.offset = sizeof(uint32_t) * first;
-        pushInfo.data.address = &heapOffsets[first];
-        pushInfo.data.size = sizeof(uint32_t) * count;
+      // Descriptor set offsets are stored in-order at offset 0
+      VkPushDataInfoEXT pushInfo = { VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT };
+      pushInfo.offset = sizeof(uint32_t) * first;
+      pushInfo.data.address = &heapOffsets[first];
+      pushInfo.data.size = sizeof(uint32_t) * count;
 
-        m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
-      } else {
-        // Global sampler set will always be bound to index 0 if used
-        VkSetDescriptorBufferOffsetsInfoEXT bindInfo = { VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT };
-        bindInfo.stageFlags = pipelineLayout->getShaderStageMask();
-        bindInfo.layout = pipelineLayout->getPipelineLayout();
-        bindInfo.firstSet = first + uint32_t(pipelineLayout->usesSamplerHeap());
-        bindInfo.setCount = count;
-        bindInfo.pBufferIndices = &bufferIndices[first];
-        bindInfo.pOffsets = &heapOffsets[first];
-
-        m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer, &bindInfo);
-      }
+      m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
 
       dirtySetMask &= countMask;
     } while (dirtySetMask);
@@ -9373,12 +9323,10 @@ namespace dxvk {
 
     m_cmd->setTrackingId(m_trackingId);
 
-    if (m_features.any(DxvkContextFeature::DescriptorHeap,
-                       DxvkContextFeature::DescriptorBuffer)) {
+    if (m_features.test(DxvkContextFeature::DescriptorHeap))
       m_cmd->setDescriptorHeap(m_descriptorHeap);
-    } else {
+    else
       m_cmd->setDescriptorPool(m_descriptorPool);
-    }
   }
 
 

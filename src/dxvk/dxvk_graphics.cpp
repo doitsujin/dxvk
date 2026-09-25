@@ -239,9 +239,6 @@ namespace dxvk {
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
-    if (m_device->canUseDescriptorBuffer())
-      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
-
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &flags };
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
 
@@ -522,9 +519,6 @@ namespace dxvk {
 
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
-
-    if (m_device->canUseDescriptorBuffer())
-      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &flags };
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
@@ -1377,9 +1371,6 @@ namespace dxvk {
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
-    if (m_device->canUseDescriptorBuffer())
-      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
-
     VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
     libInfo.libraryCount    = libraries.size();
     libInfo.pLibraries      = libraries.data();
@@ -1468,9 +1459,6 @@ namespace dxvk {
 
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
-
-    if (m_device->canUseDescriptorBuffer())
-      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
     info.stageCount               = stageInfo.getStageCount();

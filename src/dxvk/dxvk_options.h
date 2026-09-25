@@ -27,9 +27,6 @@ namespace dxvk {
     /// Enable descriptor heap
     Tristate enableDescriptorHeap = Tristate::Auto;
 
-    /// Enable descriptor buffer
-    Tristate enableDescriptorBuffer = Tristate::Auto;
-
     /// Enable unified image layout path
     bool enableUnifiedImageLayout = true;
 
