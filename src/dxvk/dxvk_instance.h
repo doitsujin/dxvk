@@ -28,6 +28,7 @@ namespace dxvk {
   struct DxvkInstanceExtensionInfo {
     VkExtensionProperties extDebugUtils               = vk::makeExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     VkExtensionProperties extSurfaceMaintenance1      = vk::makeExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+    VkExtensionProperties extSwapchainColorSpace      = vk::makeExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
     VkExtensionProperties khrGetSurfaceCapabilities2  = vk::makeExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
     VkExtensionProperties khrSurface                  = vk::makeExtension(VK_KHR_SURFACE_EXTENSION_NAME);
     VkExtensionProperties khrSurfaceMaintenance1      = vk::makeExtension(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);

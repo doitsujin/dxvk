@@ -41,7 +41,6 @@ namespace dxvk {
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extShaderModuleIdentifier);         \
     HANDLE_EXT(extShaderStencilExport);            \
-    HANDLE_EXT(extSwapchainColorSpace);            \
     HANDLE_EXT(extSwapchainMaintenance1);          \
     HANDLE_EXT(extTransformFeedback);              \
     HANDLE_EXT(extVertexAttributeDivisor);         \
@@ -1023,9 +1022,6 @@ namespace dxvk {
 
       /* Stencil export, used both internally and in client APIs */
       ENABLE_EXT(extShaderStencilExport, false),
-
-      /* HDR color space support */
-      ENABLE_EXT(extSwapchainColorSpace, false),
 
       /* Swapchain maintenance, used to implement proper synchronization
        * and dynamic present modes to avoid swapchain recreation */
