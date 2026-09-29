@@ -590,27 +590,26 @@ namespace dxvk {
 
   // Copies texture rect in system mem using memcpy.
   // Rects must be congruent, but need not be aligned.
-  HRESULT copyTextureBuffers(
+  inline HRESULT copyTextureBuffers(
       D3D8Surface*                  src,
       D3D8Surface*                  dst,
       const d3d9::D3DSURFACE_DESC&  srcDesc,
       const d3d9::D3DSURFACE_DESC&  dstDesc,
       const RECT&                   srcRect,
       const RECT&                   dstRect) {
-    HRESULT res = D3D_OK;
-    D3DLOCKED_RECT srcLocked, dstLocked;
-
-    const bool compressed = isDXTFormat(D3DFORMAT(srcDesc.Format));
-
-    res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
+    D3DLOCKED_RECT srcLocked;
+    HRESULT res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (unlikely(FAILED(res)))
       return res;
 
+    D3DLOCKED_RECT dstLocked;
     res = dst->LockRect(&dstLocked, &dstRect, 0);
     if (unlikely(FAILED(res))) {
       src->UnlockRect();
       return res;
     }
+
+    const bool compressed = isDXTFormat(D3DFORMAT(srcDesc.Format));
 
     auto rows = srcRect.bottom  - srcRect.top;
     auto cols = srcRect.right   - srcRect.left;
@@ -669,8 +668,10 @@ namespace dxvk {
     }
 
     res = src->UnlockRect();
+    if (unlikely(FAILED(res)))
+      return res;
 
-    return res;
+    return D3D_OK;
   }
 
   /**
@@ -764,11 +765,10 @@ namespace dxvk {
       POINT dstPt = { dstRect.left, dstRect.top };
 
       switch (dstDesc.Pool) {
-
         // Dest: DEFAULT
-        case d3d9::D3DPOOL_DEFAULT:
+        case d3d9::D3DPOOL_DEFAULT: {
           switch (srcDesc.Pool) {
-            case d3d9::D3DPOOL_DEFAULT: {
+            case d3d9::D3DPOOL_DEFAULT:
               // DEFAULT -> DEFAULT: use StretchRect
               return GetD3D9()->StretchRect(
                 src->GetD3D9(),
@@ -777,8 +777,8 @@ namespace dxvk {
                 &dstRect,
                 d3d9::D3DTEXF_NONE
               );
-            }
-            case d3d9::D3DPOOL_MANAGED: {
+
+            case d3d9::D3DPOOL_MANAGED:
               // MANAGED -> DEFAULT: UpdateTextureFromBuffer
               return m_bridge->UpdateTextureFromBuffer(
                 src->GetD3D9(),
@@ -786,8 +786,8 @@ namespace dxvk {
                 &srcRect,
                 &dstPt
               );
-            }
-            case d3d9::D3DPOOL_SYSTEMMEM: {
+
+            case d3d9::D3DPOOL_SYSTEMMEM:
               // SYSTEMMEM -> DEFAULT: use UpdateSurface
               return GetD3D9()->UpdateSurface(
                 src->GetD3D9(),
@@ -795,7 +795,7 @@ namespace dxvk {
                 dst->GetD3D9(),
                 &dstPt
               );
-            }
+
             case d3d9::D3DPOOL_SCRATCH: {
               // SCRATCH -> DEFAULT: memcpy to a SYSTEMMEM temporary buffer and use UpdateSurface
 
@@ -827,118 +827,40 @@ namespace dxvk {
                 &dstPt
               );
             }
-            default: {
-              return D3DERR_INVALIDCALL;
-            }
-          } break;
 
-        // Dest: MANAGED
+            default:
+              return D3DERR_INVALIDCALL;
+          }
+        } break;
+
+        // DEST: MANAGED/SYSTEMMEM/SCRATCH
+        // TODO: Use a different path for DEFAULT -> MANAGED, as GetRenderTargetData
+        // is flaky in such cases, since the image might not get updated properly
         case d3d9::D3DPOOL_MANAGED:
-          switch (srcDesc.Pool) {
-            // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
-            case d3d9::D3DPOOL_DEFAULT: {
-              // Get temporary off-screen surface for stretching.
-              d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
-
-              // Stretch the source RT to the temporary surface.
-              HRESULT res = GetD3D9()->StretchRect(
-                src->GetD3D9(),
-                &srcRect,
-                pBlitImage,
-                &dstRect,
-                d3d9::D3DTEXF_NONE);
-              if (unlikely(FAILED(res)))
-                return res;
-
-              // Now sync the rendertarget data into main memory.
-              return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
-            }
-            case d3d9::D3DPOOL_MANAGED:
-            case d3d9::D3DPOOL_SYSTEMMEM:
-            case d3d9::D3DPOOL_SCRATCH: {
-              // MANAGED/SYSMEM/SCRATCH -> MANAGED: LockRect / memcpy
-
-              if (unlikely(stretch))
-                return D3DERR_INVALIDCALL;
-
-              return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
-            }
-            default: {
-              return D3DERR_INVALIDCALL;
-            }
-          } break;
-
-        // DEST: SYSTEMMEM
-        case d3d9::D3DPOOL_SYSTEMMEM: {
-
-          // RT (DEFAULT) -> SYSTEMMEM: Use GetRenderTargetData as fast path if possible
-          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src.ptr())) {
-
-            // GetRenderTargetData works if the formats and sizes match
-            if (srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
-                && srcDesc.Width  == dstDesc.Width
-                && srcDesc.Height == dstDesc.Height
-                && srcDesc.Format == dstDesc.Format
-                && !asymmetric) {
-              return GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
-            }
-          }
-
-          switch (srcDesc.Pool) {
-            case d3d9::D3DPOOL_DEFAULT: {
-              // Get temporary off-screen surface for stretching.
-              d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
-
-              // Stretch the source RT to the temporary surface.
-              HRESULT res = GetD3D9()->StretchRect(
-                src->GetD3D9(),
-                &srcRect,
-                pBlitImage,
-                &dstRect,
-                d3d9::D3DTEXF_NONE);
-              if (unlikely(FAILED(res)))
-                return res;
-
-              // Now sync the rendertarget data into main memory.
-              return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
-            }
-            // MANAGED/SYSMEM/SCRATCH -> SYSMEM: LockRect / memcpy
-            case d3d9::D3DPOOL_MANAGED:
-            case d3d9::D3DPOOL_SYSTEMMEM:
-            case d3d9::D3DPOOL_SCRATCH: {
-              if (unlikely(stretch))
-                return D3DERR_INVALIDCALL;
-
-              return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
-            }
-            default: {
-              return D3DERR_INVALIDCALL;
-            }
-          } break;
-        }
-
-        // DEST: SCRATCH
+        case d3d9::D3DPOOL_SYSTEMMEM:
         case d3d9::D3DPOOL_SCRATCH: {
-
-          // RT (DEFAULT) -> SCRATCH: Use GetRenderTargetData as fast path if possible
-          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src.ptr())) {
-
-            // GetRenderTargetData works if the formats and sizes match
-            if (srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
-                && srcDesc.Width  == dstDesc.Width
-                && srcDesc.Height == dstDesc.Height
-                && srcDesc.Format == dstDesc.Format
-                && !asymmetric) {
-              return GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
-            }
-          }
-
           switch (srcDesc.Pool) {
+            // RT (DEFAULT) -> MANAGED/SYSTEMMEM/SCRATCH: Use GetRenderTargetData as a fast path if possible
             case d3d9::D3DPOOL_DEFAULT: {
-              // Get temporary off-screen surface for stretching.
+              const bool srcIsRenderTarget = (srcDesc.Usage & D3DUSAGE_RENDERTARGET)
+                                           || m_renderTarget == src.ptr();
+
+              // Note: formats are known to be identical here because
+              // CopyRects doesn't support format conversions either
+              if (srcIsRenderTarget
+                  && !asymmetric
+                  // We can use GetRenderTargetData directly if the
+                  // sizes match and the source RT isn't multisampled
+                  && srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
+                  && srcDesc.Width  == dstDesc.Width
+                  && srcDesc.Height == dstDesc.Height) {
+                return GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
+              }
+
+              // Get a temporary render target for stretching
               d3d9::IDirect3DSurface9* pBlitImage = dst->GetBlitImage();
 
-              // Stretch the source RT to the temporary surface.
+              // Stretch the source surface to the temporary render target
               HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
@@ -948,26 +870,26 @@ namespace dxvk {
               if (unlikely(FAILED(res)))
                 return res;
 
-              // Now sync the rendertarget data into main memory.
+              // Now sync the render target data into main memory
               return GetD3D9()->GetRenderTargetData(pBlitImage, dst->GetD3D9());
             }
-            // MANAGED/SYSMEM/SCRATCH -> SCRATCH: LockRect / memcpy
+
+            // MANAGED/SYSTEMMEM/SCRATCH -> MANAGED/SYSTEMMEM/SCRATCH: LockRect / memcpy
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
-            case d3d9::D3DPOOL_SCRATCH: {
+            case d3d9::D3DPOOL_SCRATCH:
               if (unlikely(stretch))
                 return D3DERR_INVALIDCALL;
 
               return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
-            }
-            default: {
+
+            default:
               return D3DERR_INVALIDCALL;
-            }
-          } break;
-        }
-        default: {
+          }
+        } break;
+
+        default:
           return D3DERR_INVALIDCALL;
-        }
       }
     }
 
