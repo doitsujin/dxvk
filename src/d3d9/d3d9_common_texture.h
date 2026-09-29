@@ -195,6 +195,28 @@ namespace dxvk {
             D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
+     * \brief Validates the D3DUSAGES in CreateXYZEx functions
+     *
+     * \param Usage Usage flags passed to the create function
+     * \param pSharedHandle Shared handle passed to the create function
+     * \return true if the passed flags combined with the handle are fine, false if not.
+     */
+    static HRESULT ValidateExUsages(DWORD Usage, HANDLE* pSharedHandle) {
+      // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+      // Yes, it actually fails when explicitly passing D3DUSAGE_RENDERTARGET in CreateRenderTargetEx
+      // and D3DUSAGE_DEPTHSTENCIL in CreateDepthStencilSurfaceEx.
+      if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+        return false;
+
+      // The shared flags only work if a shared handle is passed.
+      if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+        && pSharedHandle == nullptr))
+        return false;
+
+      return true;
+    }
+
+    /**
      * \brief Returns whether a Vulkan image is used for this D3D9 texture
      *
      * \param pDesc The texture description
