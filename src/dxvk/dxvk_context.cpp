@@ -8765,29 +8765,6 @@ namespace dxvk {
   }
 
 
-  bool DxvkContext::tryInvalidateDeviceLocalBuffer(
-      const Rc<DxvkBuffer>&           buffer,
-            VkDeviceSize              copySize) {
-    // We can only discard if the full buffer gets written, and we will only discard
-    // small buffers in order to not waste significant amounts of memory.
-    if (copySize != buffer->info().size || copySize > 0x40000)
-      return false;
-
-    // Check if the buffer is safe to move at all
-    if (!buffer->canRelocate())
-      return false;
-
-    // Suspend the current render pass if transform feedback is active prior to
-    // invalidating the buffer, since otherwise we may invalidate a bound buffer.
-    if ((buffer->info().usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT)
-     && (m_flags.test(DxvkContextFlag::GpXfbActive)))
-      this->endCurrentPass(true);
-
-    this->invalidateBuffer(buffer, buffer->allocateStorage());
-    return true;
-  }
-
-
   Rc<DxvkImageView> DxvkContext::ensureImageViewCompatibility(
     const Rc<DxvkImageView>&        view,
           VkImageUsageFlagBits      usage) {
