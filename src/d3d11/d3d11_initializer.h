@@ -75,6 +75,10 @@ namespace dxvk {
 
     Rc<sync::Fence>   m_memorySignal;
 
+    dxvk::condition_variable m_ticketCond;
+    uint64_t          m_ticketNext = 0u;
+    uint64_t          m_ticketDone = 0u;
+
     VkDeviceSize      m_memoryRecorded = 0u;
     VkDeviceSize      m_memorySignaled = 0u;
 
