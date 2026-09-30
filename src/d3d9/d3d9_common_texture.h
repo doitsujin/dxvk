@@ -139,19 +139,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Get a copy of the main image, but with a single sample
-     * This function will allocate/reuse an image with the same info
-     * as the main image
-     * \returns An image with identical info, but 1 sample
-     */
-    const Rc<DxvkImage>& GetResolveImage() {
-      if (unlikely(m_resolveImage == nullptr))
-        m_resolveImage = CreateResolveImage();
-
-      return m_resolveImage;
-    }
-
-    /**
      * \brief Returns a pointer to the internal data used for LockRect/LockBox
      *
      * This works regardless of the map mode used by this texture
@@ -524,7 +511,6 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE  m_mapMode;
 
     Rc<DxvkImage>                 m_image;
-    Rc<DxvkImage>                 m_resolveImage;
     Rc<DxvkBuffer>                m_buffer;
     MemoryFileRegion              m_data = { };
 
