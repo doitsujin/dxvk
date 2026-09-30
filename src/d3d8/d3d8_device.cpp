@@ -686,8 +686,8 @@ namespace dxvk {
    *    ├────────────┼───────────────────────────┼───────────────────────┼───────────────────────┼──────────────────────┤
    *    │ DEFAULT    │  StretchRect              │  GetRenderTargetData  │  GetRenderTargetData  │ GetRenderTargetData  │
    *    │ MANAGED    │  UpdateTextureFromBuffer  │  memcpy               │  memcpy               │ memcpy               │
-   *    │ SYSTEMMEM  │  UpdateSurface            │  memcpy               │  memcpy               │ memcpy               │
-   *    │ SCRATCH    │  memcpy + UpdateSurface   │  memcpy               │  memcpy               │ memcpy               │
+   *    │ SYSTEMMEM  │  UpdateTextureFromBuffer  │  memcpy               │  memcpy               │ memcpy               │
+   *    │ SCRATCH    │  UpdateTextureFromBuffer  │  memcpy               │  memcpy               │ memcpy               │
    *    └────────────┴───────────────────────────┴───────────────────────┴───────────────────────┴──────────────────────┘
    */
   HRESULT STDMETHODCALLTYPE D3D8Device::CopyRects(
@@ -778,55 +778,25 @@ namespace dxvk {
                 d3d9::D3DTEXF_NONE
               );
 
-            case d3d9::D3DPOOL_MANAGED:
-              // MANAGED -> DEFAULT: UpdateTextureFromBuffer
-              return m_bridge->UpdateTextureFromBuffer(
-                src->GetD3D9(),
-                dst->GetD3D9(),
-                &srcRect,
-                &dstPt
-              );
-
-            case d3d9::D3DPOOL_SYSTEMMEM:
-              // SYSTEMMEM -> DEFAULT: use UpdateSurface
-              return GetD3D9()->UpdateSurface(
-                src->GetD3D9(),
-                &srcRect,
-                dst->GetD3D9(),
-                &dstPt
-              );
-
             case d3d9::D3DPOOL_SCRATCH: {
-              // SCRATCH -> DEFAULT: memcpy to a SYSTEMMEM temporary buffer and use UpdateSurface
-
               const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(srcDesc.Format);
-              // UpdateSurface will not work on surface formats unsupported by D3DPOOL_DEFAULT
+              // SCRATCH surfaces may use odd formats which are unsupported by D3DPOOL_DEFAULT
               if (unlikely(!isSupportedSurfaceFormat))
                 return D3DERR_INVALIDCALL;
 
-              Com<IDirect3DSurface8> pTempImageSurface;
-              // The temporary image surface is guaranteed to end up in SYSTEMMEM for supported formats
-              HRESULT res = CreateImageSurface(
-                srcDesc.Width,
-                srcDesc.Height,
-                D3DFORMAT(srcDesc.Format),
-                &pTempImageSurface
-              );
-              if (unlikely(FAILED(res)))
-                return res;
+              [[fallthrough]];
+            }
 
-              D3D8Surface* pBlitImage = static_cast<D3D8Surface*>(pTempImageSurface.ptr());
-              res = copyTextureBuffers(src.ptr(), pBlitImage, srcDesc, dstDesc, srcRect, dstRect);
-              if (unlikely(FAILED(res)))
-                return res;
-
-              return GetD3D9()->UpdateSurface(
-                pBlitImage->GetD3D9(),
-                &srcRect,
+            case d3d9::D3DPOOL_MANAGED:
+            case d3d9::D3DPOOL_SYSTEMMEM:
+              // MANAGED/SYSTEMMEM/SCRATCH -> DEFAULT: UpdateTextureFromBuffer, since UpdateSurface
+              // doesn't support multisampled images, though we could use it for D3DPOOL_SYSTEMMEM
+              return m_bridge->UpdateTextureFromBuffer(
                 dst->GetD3D9(),
+                src->GetD3D9(),
+                &srcRect,
                 &dstPt
               );
-            }
 
             default:
               return D3DERR_INVALIDCALL;
@@ -834,14 +804,16 @@ namespace dxvk {
         } break;
 
         // DEST: MANAGED/SYSTEMMEM/SCRATCH
-        // TODO: Use a different path for DEFAULT -> MANAGED, as GetRenderTargetData
-        // is flaky in such cases, since the image might not get updated properly
         case d3d9::D3DPOOL_MANAGED:
         case d3d9::D3DPOOL_SYSTEMMEM:
         case d3d9::D3DPOOL_SCRATCH: {
           switch (srcDesc.Pool) {
-            // RT (DEFAULT) -> MANAGED/SYSTEMMEM/SCRATCH: Use GetRenderTargetData as a fast path if possible
+            // DEFAULT -> MANAGED/SYSTEMMEM/SCRATCH: Use GetRenderTargetData as a fast path if possible
             case d3d9::D3DPOOL_DEFAULT: {
+              // TODO: Use a different path for DEFAULT -> MANAGED, as GetRenderTargetData
+              // is flaky in such cases, since the image might not get updated properly.
+              // The option of using StretchRect to a temporary lockable surface followed by a
+              // memcpy to the MANAGED surface has turned out to be far too slow to be viable.
               const bool srcIsRenderTarget = (srcDesc.Usage & D3DUSAGE_RENDERTARGET)
                                            || m_renderTarget == src.ptr();
 

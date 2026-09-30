@@ -69,16 +69,18 @@ namespace dxvk {
                              pSrcRect->top,
                              0u };
 
-    VkExtent3D extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
+    VkExtent3D srcExtent = { uint32_t(pSrcRect->right - pSrcRect->left),
+                             uint32_t(pSrcRect->bottom - pSrcRect->top),
+                             1u };
 
     VkOffset3D dstOffset = { pDestPoint->x,
                              pDestPoint->y,
                              0u };
 
     m_device->UpdateTextureFromBuffer(
-      srcTextureInfo, dstTextureInfo,
-      src->GetSubresource(), dst->GetSubresource(),
-      srcOffset, extent, dstOffset
+      dstTextureInfo, srcTextureInfo,
+      dst->GetSubresource(), src->GetSubresource(),
+      srcOffset, srcExtent, dstOffset
     );
 
     dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
