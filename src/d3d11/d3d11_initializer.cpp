@@ -364,6 +364,14 @@ namespace dxvk {
 
       VkDeviceSize alignedSize = dxvk::align(Size, StagingBufferAlignment);
 
+      // Serialize allocation requests so that we don't end up starving large
+      // allocations in case we have to throttle. Usually this will not wait.
+      uint64_t ticket = ++m_ticketNext;
+
+      m_ticketCond.wait(lock, [&] () {
+        return m_ticketDone + 1u == ticket;
+      });
+
       while (true) {
         // Flush pending commands to guarantee forward progress
         if (m_memoryRecorded - m_memorySignaled + alignedSize > MaxMemoryPerSubmission)
@@ -383,6 +391,9 @@ namespace dxvk {
         m_memorySignal->wait(targetValue);
         lock.lock();
       }
+
+      m_ticketDone = ticket;
+      m_ticketCond.notify_all();
     }
 
     // Create temporary buffer. We can't really use the "normal" staging
