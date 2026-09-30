@@ -31,7 +31,7 @@ namespace dxvk {
 
     // Maximum amount of memory in flight. If there are pending uploads while
     // this limit is exceeded, further initialization will be stalled.
-    constexpr static size_t MaxMemoryInFlight = 3u * MaxMemoryPerSubmission;
+    constexpr static size_t MaxMemoryInFlight = 4u * MaxMemoryPerSubmission;
 
     D3D11Initializer(
             D3D11Device*                pParent);
@@ -75,7 +75,6 @@ namespace dxvk {
 
     Rc<sync::Fence>   m_memorySignal;
 
-    VkDeviceSize      m_memoryAllocated = 0u;
     VkDeviceSize      m_memoryRecorded = 0u;
     VkDeviceSize      m_memorySignaled = 0u;
 
