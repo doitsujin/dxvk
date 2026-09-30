@@ -13,6 +13,13 @@ namespace dxvk {
     
   
   void DxvkSignalTracker::add(const Rc<sync::Signal>& signal, uint64_t value) {
+    for (auto& s : m_signals) {
+      if (s.first == signal) {
+        s.second = std::max(s.second, value);
+        break;
+      }
+    }
+
     m_signals.push_back({ signal, value });
   }
 
