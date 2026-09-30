@@ -20,8 +20,7 @@ namespace dxvk {
    * zero-initialization for buffers and images.
    */
   class D3D11Initializer {
-    // Use a staging buffer with a linear allocator to service small uploads
-    constexpr static VkDeviceSize StagingBufferSize = 1ull << 20;
+    constexpr static VkDeviceSize StagingBufferAlignment = DxvkPoolAllocator::MinSize;
   public:
 
     // Maximum number of copy and clear commands to record before flushing
@@ -40,7 +39,7 @@ namespace dxvk {
     ~D3D11Initializer();
 
     void FlushCsChunk() {
-      std::lock_guard<dxvk::mutex> lock(m_csMutex);
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
 
       if (!m_csChunk->empty())
         FlushCsChunkLocked();
@@ -73,13 +72,14 @@ namespace dxvk {
 
     D3D11Device*      m_parent;
     Rc<DxvkDevice>    m_device;
-    
-    DxvkStagingBuffer m_stagingBuffer;
-    Rc<sync::Fence>   m_stagingSignal;
 
-    size_t            m_transferCommands  = 0;
+    Rc<sync::Fence>   m_memorySignal;
 
-    dxvk::mutex       m_csMutex;
+    VkDeviceSize      m_memoryAllocated = 0u;
+    VkDeviceSize      m_memoryRecorded = 0u;
+    VkDeviceSize      m_memorySignaled = 0u;
+
+    uint32_t          m_csCommands = 0u;
     DxvkCsChunkRef    m_csChunk;
 
     void InitDeviceLocalBuffer(
@@ -101,8 +101,6 @@ namespace dxvk {
     void InitTiledTexture(
             D3D11CommonTexture*         pTexture);
 
-    void ThrottleAllocationLocked();
-
     void ExecuteFlush();
 
     void ExecuteFlushLocked();
@@ -110,14 +108,42 @@ namespace dxvk {
     void SyncSharedTexture(
             D3D11CommonTexture*         pResource);
 
+    DxvkBufferSlice AllocStagingBuffer(
+            VkDeviceSize                Size);
+
     void FlushCsChunkLocked();
 
     void NotifyContextFlushLocked();
 
     template<typename Cmd>
-    void EmitCs(Cmd&& command) {
-      std::lock_guard<dxvk::mutex> lock(m_csMutex);
+    void EmitCs(VkDeviceSize stagingSize, Cmd&& command) {
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      EmitCsLocked(std::move(command));
 
+      bool flush = (++m_csCommands >= MaxCommandsPerSubmission);
+
+      if (stagingSize) {
+        // Unconditionally signal staging memory so that we don't
+        // have to jank around with immediate context flushes here
+        m_memoryRecorded += dxvk::align(stagingSize, StagingBufferAlignment);
+
+        EmitCsLocked([
+          cSignal = m_memorySignal,
+          cValue  = m_memoryRecorded
+        ] (DxvkContext* ctx) {
+          cSignal->signal(cValue);
+        });
+
+        if (!flush)
+          flush = m_memoryRecorded - m_memorySignaled >= MaxMemoryPerSubmission;
+      }
+
+      if (flush)
+        ExecuteFlushLocked();
+    }
+
+    template<typename Cmd>
+    void EmitCsLocked(Cmd&& command) {
       if (unlikely(!m_csChunk->push(command))) {
         FlushCsChunkLocked();
 
