@@ -1232,11 +1232,6 @@ namespace dxvk {
     if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(src == dst))
-      return D3DERR_INVALIDCALL;
-
-    bool fastPath = true;
-
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
 
@@ -1264,35 +1259,6 @@ namespace dxvk {
 
     D3D9Format srcFormat = srcTextureInfo->Desc()->Format;
     D3D9Format dstFormat = dstTextureInfo->Desc()->Format;
-
-    // We may only fast path copy non identicals one way!
-    // We don't know what garbage could be in the X8 data.
-    bool similar = AreFormatsSimilar(srcFormat, dstFormat);
-
-    // Copies are only supported on similar formats.
-    fastPath &= similar;
-
-    // Copies are only supported if the sample count matches,
-    // otherwise we need to resolve.
-    auto needsResolve = false;
-    if (srcImage->info().sampleCount != dstImage->info().sampleCount) {
-      needsResolve = srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
-      auto fbBlit = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
-      fastPath &= !fbBlit;
-    }
-
-    // Copies would only work if we are block aligned.
-    if (pSourceRect != nullptr) {
-      fastPath       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
-      fastPath       &=  (pSourceRect->right  % srcFormatInfo->blockSize.width  == 0);
-      fastPath       &=  (pSourceRect->top    % srcFormatInfo->blockSize.height == 0);
-      fastPath       &=  (pSourceRect->bottom % srcFormatInfo->blockSize.height == 0);
-    }
-
-    if (pDestRect != nullptr) {
-      fastPath       &=  (pDestRect->left     % dstFormatInfo->blockSize.width  == 0);
-      fastPath       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
-    }
 
     VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
@@ -1344,8 +1310,16 @@ namespace dxvk {
       || dstCopyExtent.width == 0 || dstCopyExtent.height == 0))
       return D3D_OK;
 
+    bool stretch = srcCopyExtent != dstCopyExtent;
+
+    bool srcIsSurface = srcTextureInfo->GetType() == D3DRTYPE_SURFACE;
+    bool dstIsSurface = dstTextureInfo->GetType() == D3DRTYPE_SURFACE;
+    bool srcHasAttachmentUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+    bool dstHasAttachmentUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
     bool srcIsDS = IsDepthStencilFormat(srcFormat);
     bool dstIsDS = IsDepthStencilFormat(dstFormat);
+
+    // Additional restrictions for depth stencil surfaces
     if (unlikely(srcIsDS || dstIsDS)) {
       if (unlikely(!srcIsDS || !dstIsDS))
         return D3DERR_INVALIDCALL;
@@ -1353,23 +1327,21 @@ namespace dxvk {
       if (unlikely(srcTextureInfo->Desc()->Discard || dstTextureInfo->Desc()->Discard))
         return D3DERR_INVALIDCALL;
 
-      if (unlikely(srcCopyExtent.width != srcExtent.width || srcCopyExtent.height != srcExtent.height))
+      if (unlikely(stretch))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(srcFormat != dstFormat))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(!srcIsSurface || !dstIsSurface))
         return D3DERR_INVALIDCALL;
 
       if (unlikely(m_inScene))
         return D3DERR_INVALIDCALL;
     }
 
-    // Copies would only work if the extents match. (ie. no stretching)
-    bool stretch = srcCopyExtent != dstCopyExtent;
-
-    bool dstHasAttachmentUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
-    bool dstIsSurface = dstTextureInfo->GetType() == D3DRTYPE_SURFACE;
     if (stretch) {
       if (unlikely(pSourceSurface == pDestSurface))
-        return D3DERR_INVALIDCALL;
-
-      if (unlikely(dstIsDS))
         return D3DERR_INVALIDCALL;
 
       // The docs say that stretching is only allowed if the destination is either a render target surface or a render target texture.
@@ -1378,14 +1350,9 @@ namespace dxvk {
       if (unlikely(!dstIsSurface && !dstHasAttachmentUsage))
         return D3DERR_INVALIDCALL;
     } else {
-      bool srcIsSurface = srcTextureInfo->GetType() == D3DRTYPE_SURFACE;
-      bool srcHasAttachmentUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
-
       // D3D9Ex allows StretchRect to regular (non-RT) textures if it is a simple copy.
       bool isCopy = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)
         && pSourceRect == nullptr && pDestRect == nullptr // Yes, the rects have to be null. Even passing a rect that is the same size as the texture is invalid.
-        && srcTextureInfo->Desc()->Pool == D3DPOOL_DEFAULT
-        && dstTextureInfo->Desc()->Pool == D3DPOOL_DEFAULT
         && srcTextureInfo->Desc()->Format == dstTextureInfo->Desc()->Format;
 
       // Non-stretching copies are only allowed if:
@@ -1398,7 +1365,33 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    fastPath &= !stretch;
+    // Copies would only work if the extents match. (ie. no stretching)
+    bool fastPath = !stretch;
+
+    // Copies are only supported on similar formats.
+    fastPath &= AreFormatsSimilar(srcFormat, dstFormat);
+
+    // Copies are only supported if the sample count matches,
+    // otherwise we need to resolve.
+    auto needsResolve = false;
+    if (srcImage->info().sampleCount != dstImage->info().sampleCount) {
+      needsResolve = srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+      auto fbBlit = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+      fastPath &= !fbBlit;
+    }
+
+    // Copies would only work if we are block aligned.
+    if (pSourceRect != nullptr) {
+      fastPath       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pSourceRect->right  % srcFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pSourceRect->top    % srcFormatInfo->blockSize.height == 0);
+      fastPath       &=  (pSourceRect->bottom % srcFormatInfo->blockSize.height == 0);
+    }
+
+    if (pDestRect != nullptr) {
+      fastPath       &=  (pDestRect->left     % dstFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
+    }
 
     if (!fastPath || needsResolve) {
       // Compressed destination formats are forbidden for blits.
