@@ -503,14 +503,6 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkImage> D3D9CommonTexture::CreateResolveImage() const {
-    DxvkImageCreateInfo imageInfo = m_image->info();
-    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-
-    return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  }
-
-
   BOOL D3D9CommonTexture::DetermineShadowState() const {
     constexpr std::array<D3D9Format, 3> blacklist = {
       D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24

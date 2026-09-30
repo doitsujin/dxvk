@@ -5057,55 +5057,14 @@ namespace dxvk {
       }
 
       if (pResource->GetImage() != nullptr) {
-        Rc<DxvkImage> resourceImage = pResource->GetImage();
-
-        Rc<DxvkImage> mappedImage;
-        if (resourceImage->info().sampleCount != 1) {
-            mappedImage = pResource->GetResolveImage();
-        } else {
-            mappedImage = std::move(resourceImage);
-        }
-
-        // When using any map mode which requires the image contents
-        // to be preserved, and if the GPU has write access to the
-        // image, copy the current image contents into the buffer.
-        auto subresourceLayers = vk::makeSubresourceLayers(subresource);
-
-        // We need to resolve this, some games
-        // lock MSAA render targets even though
-        // that's entirely illegal and they explicitly
-        // tell us that they do NOT want to lock them...
-        //
-        // resourceImage is null because the image reference was moved to mappedImage
-        // for images that need to be resolved.
-        if (resourceImage != nullptr) {
-          EmitCs([
-            cMainImage    = resourceImage,
-            cResolveImage = mappedImage,
-            cSubresource  = subresourceLayers
-          ] (DxvkContext* ctx) {
-            VkFormat format = cMainImage->info().format;
-
-            VkImageResolve region;
-            region.srcSubresource = cSubresource;
-            region.srcOffset      = VkOffset3D { 0, 0, 0 };
-            region.dstSubresource = cSubresource;
-            region.dstOffset      = VkOffset3D { 0, 0, 0 };
-            region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-
-            ctx->resolveImage(cResolveImage, cMainImage, region, format,
-              getDefaultResolveMode(format), VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-          });
-        }
-
         // if packedFormat is VK_FORMAT_UNDEFINED
         // DxvkContext::copyImageToBuffer will automatically take the format from the image
         VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
 
         EmitCs([
           cImageBufferSlice = std::move(mappedBufferSlice),
-          cImage            = std::move(mappedImage),
-          cSubresources     = subresourceLayers,
+          cImage            = pResource->GetImage(),
+          cSubresources     = vk::makeSubresourceLayers(subresource),
           cLevelExtent      = levelExtent,
           cPackedFormat     = packedFormat
         ] (DxvkContext* ctx) {
