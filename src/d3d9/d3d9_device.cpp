@@ -1166,7 +1166,7 @@ namespace dxvk {
     if (unlikely(!m_d3dCompatibility.test(D3DCompatibility::D3D8) && dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(dstTexInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
+    if (unlikely(srcTexInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
       return D3DERR_INVALIDCALL;
 
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
