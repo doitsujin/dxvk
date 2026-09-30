@@ -384,10 +384,8 @@ namespace dxvk {
 
 
   std::string DxvkCheckpointBuffer::faultAddressToString(const VkDeviceFaultAddressInfoKHR& address) {
-    VkDeviceAddress mask = VkDeviceAddress(1u) << address.addressPrecision;
-
-    VkDeviceAddress lo = address.reportedAddress & -mask;
-    VkDeviceAddress hi = address.reportedAddress | (mask - 1u);
+    VkDeviceAddress lo = address.reportedAddress & -address.addressPrecision;
+    VkDeviceAddress hi = address.reportedAddress | (address.addressPrecision - 1u);
 
     std::string result = str::format("0x", std::hex, lo);
 
