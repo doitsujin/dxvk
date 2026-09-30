@@ -362,23 +362,22 @@ namespace dxvk {
 
     { std::unique_lock lock(m_mutex);
 
-      // Reserve memory right away to avoid starving large resources
-      m_memoryAllocated += dxvk::align(Size, StagingBufferAlignment);
+      VkDeviceSize alignedSize = dxvk::align(Size, StagingBufferAlignment);
 
       while (true) {
         // Flush pending commands to guarantee forward progress
-        if (m_memoryRecorded - m_memorySignaled + Size > MaxMemoryPerSubmission)
+        if (m_memoryRecorded - m_memorySignaled + alignedSize > MaxMemoryPerSubmission)
           ExecuteFlushLocked();
 
         // If necessary, wait for GPU to consume and release memory so that we
         // remain below the allocation threshold. Does not account for memory
         // fragmentation, but that should be fine.
-        if (m_memoryRecorded - m_memorySignal->value() + Size <= maxPending)
+        if (m_memoryRecorded - m_memorySignal->value() + alignedSize <= maxPending)
           break;
 
         // Unlock the initializer here so that we don't stall the immediate context.
-        // Based on the above, we know that m_memoryRecorded + Size > maxPending.
-        uint64_t targetValue = m_memoryRecorded + Size - maxPending;
+        // Based on the above, we know that m_memoryRecorded + alignedSize > maxPending.
+        uint64_t targetValue = m_memoryRecorded + alignedSize - maxPending;
 
         lock.unlock();
         m_memorySignal->wait(targetValue);
