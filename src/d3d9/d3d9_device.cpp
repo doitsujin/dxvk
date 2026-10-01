@@ -1400,39 +1400,34 @@ namespace dxvk {
     }
 
     if (fastPath) {
-      if (needsResolve) {
-        VkImageResolve region;
-        region.srcSubresource = blitInfo.srcSubresource;
-        region.srcOffset      = blitInfo.srcOffsets[0];
-        region.dstSubresource = blitInfo.dstSubresource;
-        region.dstOffset      = blitInfo.dstOffsets[0];
-        region.extent         = srcCopyExtent;
-
-        EmitCs([
-          cDstImage    = dstImage,
-          cSrcImage    = srcImage,
-          cRegion      = region
-        ] (DxvkContext* ctx) {
-          // Deliberately use AVERAGE even for depth resolves here
-          ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
-            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-        });
-      } else {
-        EmitCs([
-          cDstImage  = dstImage,
-          cSrcImage  = srcImage,
-          cDstLayers = blitInfo.dstSubresource,
-          cSrcLayers = blitInfo.srcSubresource,
-          cDstOffset = blitInfo.dstOffsets[0],
-          cSrcOffset = blitInfo.srcOffsets[0],
-          cExtent    = srcCopyExtent
-        ] (DxvkContext* ctx) {
+      EmitCs([
+        cDstImage  = dstImage,
+        cSrcImage  = srcImage,
+        cDstLayers = blitInfo.dstSubresource,
+        cSrcLayers = blitInfo.srcSubresource,
+        cDstOffset = blitInfo.dstOffsets[0],
+        cSrcOffset = blitInfo.srcOffsets[0],
+        cExtent    = srcCopyExtent,
+        cResolve   = needsResolve
+      ] (DxvkContext* ctx) {
+        if (!cResolve) {
           ctx->copyImage(
             cDstImage, cDstLayers, cDstOffset,
             cSrcImage, cSrcLayers, cSrcOffset,
             cExtent);
-        });
-      }
+        } else {
+          VkImageResolve region;
+          region.srcSubresource = cSrcLayers;
+          region.srcOffset      = cSrcOffset;
+          region.dstSubresource = cDstLayers;
+          region.dstOffset      = cDstOffset;
+          region.extent         = cExtent;
+
+          // Deliberately use AVERAGE even for depth resolves here
+          ctx->resolveImage(cDstImage, cSrcImage, region, cSrcImage->info().format,
+            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+        }
+      });
     }
     else {
       DxvkImageViewKey dstViewInfo;
