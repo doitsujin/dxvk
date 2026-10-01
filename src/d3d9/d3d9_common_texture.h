@@ -496,10 +496,10 @@ namespace dxvk {
     }
 
     /**
-     * \brief Mip level
-     * \returns Size of packed mip level in bytes
+     * \brief Subresource size
+     * \returns Size of packed subresource level in bytes
      */
-    VkDeviceSize GetMipSize(UINT Subresource) const;
+    VkDeviceSize GetSubresourceSize(UINT Subresource) const;
 
     uint32_t GetTotalSize() const {
       return m_totalSize;
