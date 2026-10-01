@@ -498,10 +498,13 @@ namespace dxvk {
      * because the game doesn't manage to respect *
      * pitch for an A8_UNORM image. Resolves are  *
      * not needed because the game dynamically    *
-     * checks sample count in affected shaders.   */
+     * checks sample count in affected shaders.   *
+     * Compute shaders have LDS race conditions.  */
     { R"(\\Pharaoh\.exe$)", {{
       { "d3d11.disableDirectImageMapping",  "True" },
+      { "d3d11.forceComputeLdsBarriers",    "True" },
       { "dxvk.enableImplicitResolves",     "False" },
+      { "dxvk.zeroMappedMemory",            "True" },
     }} },
     /* Skyrim Speshul Edition                     */
     { R"(\\SkyrimSE\.exe$)", {{
