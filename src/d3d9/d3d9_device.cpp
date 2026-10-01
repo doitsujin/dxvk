@@ -655,7 +655,7 @@ namespace dxvk {
         return E_INVALIDARG;
 
       const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
-      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, isExtended, pSharedHandle);
+      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, isExtended, pSharedHandle, initialData);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
@@ -4312,7 +4312,7 @@ namespace dxvk {
 
     try {
       const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle, nullptr);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       m_losableResourceCounter++;
@@ -4387,7 +4387,7 @@ namespace dxvk {
         return E_INVALIDARG;
 
       const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle, initialData);
       m_initializer->InitTexture(surface->GetCommonTexture(), initialData);
       *ppSurface = surface.ref();
 
@@ -4447,7 +4447,7 @@ namespace dxvk {
 
     try {
       const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle, nullptr);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       m_losableResourceCounter++;
@@ -5074,6 +5074,8 @@ namespace dxvk {
       // Wait until the buffer is idle which may include the copy (and resolve) we just issued.
       if (!WaitForResource(*mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
         return D3DERR_WASSTILLDRAWING;
+
+      pResource->CopyBufferToImportedPointer();
     }
 
     const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
@@ -5164,6 +5166,8 @@ namespace dxvk {
 
     MapTexture(pResource, Subresource); // Add it to the list of mapped resources
     pResource->SetLocked(Subresource, false);
+
+    pResource->CopyImportedPointerToBuffer();
 
     // Flush image contents from staging if we aren't read only
     // and we aren't deferring for managed.
@@ -6068,6 +6072,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::ExecuteFlush(bool Synchronize9On12) {
     D3D9DeviceLock lock = LockDevice();
+
+    SyncImportedPointers();
 
     // Update signaled staging buffer counter and signal the fence
     m_stagingMemorySignaled = GetStagingMemoryStatistics().allocatedTotal;
@@ -8897,7 +8903,7 @@ namespace dxvk {
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
         return D3DERR_NOTAVAILABLE;
 
-      m_autoDepthStencil = new D3D9Surface(this, &desc, isExtended, nullptr, nullptr);
+      m_autoDepthStencil = new D3D9Surface(this, &desc, isExtended, nullptr, nullptr, nullptr);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
       m_losableResourceCounter++;
@@ -8977,7 +8983,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::TouchMappedTexture(D3D9CommonTexture* pTexture) {
 #ifdef DXVK_USE_UNMAPPABLE_MEMORY
-    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+    if (unlikely(pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE))
       return;
 
     D3D9DeviceLock lock = LockDevice();
@@ -8988,12 +8994,29 @@ namespace dxvk {
 
   void D3D9DeviceEx::RemoveMappedTexture(D3D9CommonTexture* pTexture) {
 #ifdef DXVK_USE_UNMAPPABLE_MEMORY
-    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+    if (unlikely(pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE))
       return;
 
     D3D9DeviceLock lock = LockDevice();
     m_mappedTextures.remove(pTexture);
 #endif
+  }
+
+
+  void D3D9DeviceEx::RemovePointerTexture(D3D9CommonTexture* pTexture) {
+    if (unlikely(pTexture->GetImportedPointer() == nullptr))
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_pointerImportedTextures.erase(std::remove(m_pointerImportedTextures.begin(), m_pointerImportedTextures.end(), pTexture),
+      m_pointerImportedTextures.end());
+  }
+
+
+  void D3D9DeviceEx::SyncImportedPointers() {
+    for (auto tex : m_pointerImportedTextures) {
+      tex->CopyImportedPointerToBuffer();
+    }
   }
 
 

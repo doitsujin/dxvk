@@ -20,7 +20,8 @@ namespace dxvk {
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
       const bool                      Extended,
             IUnknown*                 pContainer,
-            HANDLE*                   pSharedHandle);
+            HANDLE*                   pSharedHandle,
+            void*                     pImportedPointer);
 
     D3D9Surface(
             D3D9DeviceEx*             pDevice,

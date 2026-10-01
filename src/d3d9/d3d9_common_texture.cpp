@@ -15,8 +15,10 @@ namespace dxvk {
           IUnknown*                 pInterface,
     const D3D9_COMMON_TEXTURE_DESC* pDesc,
           D3DRESOURCETYPE           ResourceType,
-          HANDLE*                   pSharedHandle)
-    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_d3d9Interop(pInterface, this) {
+          HANDLE*                   pSharedHandle,
+          void*                     pImportedPointer)
+    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_d3d9Interop(pInterface, this),
+      m_importedPointer(pImportedPointer) {
     if (m_desc.Format == D3D9Format::Unknown)
       m_desc.Format = (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
                     ? D3D9Format::D24X8
@@ -107,6 +109,9 @@ namespace dxvk {
       m_device->ChangeReportedMemory(m_size);
 
     m_device->RemoveMappedTexture(this);
+
+    if (m_importedPointer)
+      m_device->RemovePointerTexture(this);
 
     if (m_desc.Pool == D3DPOOL_DEFAULT)
       m_device->DecrementLosableCounter();
@@ -326,6 +331,9 @@ namespace dxvk {
 
 
   void* D3D9CommonTexture::GetData(UINT Subresource) {
+    if (unlikely(m_importedPointer))
+      return m_importedPointer; // Importing a pointer is only supported for regular 2D textures with 1 mip level.
+
     if (unlikely(m_buffer))
       return m_buffer->mapPtr(m_memoryOffset[Subresource]);
 
@@ -847,4 +855,17 @@ namespace dxvk {
     return vk::getPlaneCount(formatInfo->aspectMask);
   }
 
+
+  void D3D9CommonTexture::CopyImportedPointerToBuffer() {
+    if (likely(m_importedPointer == nullptr || m_buffer == nullptr))
+      return;
+
+    memcpy(m_importedPointer, m_buffer->mapPtr(0u), m_totalSize);
+  }
+  void D3D9CommonTexture::CopyBufferToImportedPointer() {
+    if (likely(m_importedPointer == nullptr || m_buffer == nullptr))
+      return;
+
+    memcpy(m_buffer->mapPtr(0u), m_importedPointer, m_totalSize);
+  }
 }

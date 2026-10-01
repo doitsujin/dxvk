@@ -82,7 +82,8 @@ namespace dxvk {
             IUnknown*                 pInterface,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType,
-            HANDLE*                   pSharedHandle);
+            HANDLE*                   pSharedHandle,
+            void*                     pImportedPointer);
 
     ~D3D9CommonTexture();
 
@@ -504,6 +505,22 @@ namespace dxvk {
 
     ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
 
+    void* GetImportedPointer() const { return m_importedPointer; }
+
+    /**
+     * \brief Adds a small amount of padding to work around game bugs.
+     * \param size Size to pad.
+     * @return Padded size
+     */
+    static uint64_t PadTotalSize(uint64_t size) {
+      // Add a tiny amount of padding at the end because some games read/write OOB
+      // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
+      return align(size + 1, CACHE_LINE_SIZE);
+    }
+
+    void CopyImportedPointerToBuffer();
+    void CopyBufferToImportedPointer();
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -550,6 +567,8 @@ namespace dxvk {
     std::array<D3DBOX, 6>         m_dirtyBoxes;
 
     D3D9VkInteropTexture          m_d3d9Interop;
+
+    void*                         m_importedPointer = nullptr;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, HANDLE* pSharedHandle) const;
 

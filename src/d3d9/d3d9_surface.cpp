@@ -13,11 +13,12 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* pDesc,
     const bool                      Extended,
           IUnknown*                 pContainer,
-          HANDLE*                   pSharedHandle)
+          HANDLE*                   pSharedHandle,
+          void*                     pImportedPointer)
     : D3D9SurfaceBase(
         pDevice,
         Extended,
-        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_SURFACE, pSharedHandle),
+        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_SURFACE, pSharedHandle, pImportedPointer),
         0, 0,
         nullptr,
         pContainer) { }
@@ -30,6 +31,7 @@ namespace dxvk {
         pDevice,
         pDesc,
         Extended,
+        nullptr,
         nullptr,
         nullptr) { }
 
