@@ -165,12 +165,6 @@ namespace dxvk {
             uint32_t                  bufferCount,
       const DxvkDescriptorCopyBuffer* bufferInfos);
 
-    static void writeBufferDescriptorsGetDescriptorExt(
-      const DxvkDescriptorCopyWorker* worker,
-            DxvkDescriptor*           descriptors,
-            uint32_t                  bufferCount,
-      const DxvkDescriptorCopyBuffer* bufferInfos);
-
     static void writeBufferDescriptorsSteamDeck(
       const DxvkDescriptorCopyWorker* worker,
             DxvkDescriptor*           descriptors,

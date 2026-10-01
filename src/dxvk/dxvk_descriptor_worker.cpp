@@ -9,7 +9,7 @@ namespace dxvk {
     m_appendFence   (new sync::Fence()),
     m_consumeFence  (new sync::Fence()),
     m_writeBufferDescriptorsFn(getWriteBufferDescriptorFn()) {
-    if (m_device->canUseDescriptorHeap() || m_device->canUseDescriptorBuffer())
+    if (m_device->canUseDescriptorHeap())
       m_thread = std::thread([this] { runWorker(); });
   }
 
@@ -65,9 +65,6 @@ namespace dxvk {
 
     if (m_device->canUseDescriptorHeap())
       return &writeBufferDescriptorsGeneric;
-
-    if (m_device->canUseDescriptorBuffer())
-      return &writeBufferDescriptorsGetDescriptorExt;
 
     return nullptr;
   }
@@ -170,33 +167,6 @@ namespace dxvk {
         bufferRanges.clear();
         writes.clear();
       }
-    }
-  }
-
-
-  void DxvkDescriptorCopyWorker::writeBufferDescriptorsGetDescriptorExt(
-    const DxvkDescriptorCopyWorker* worker,
-          DxvkDescriptor*           descriptors,
-          uint32_t                  bufferCount,
-    const DxvkDescriptorCopyBuffer* bufferInfos) {
-    for (uint32_t i = 0u; i < bufferCount; i++) {
-      auto& descriptor = descriptors[i];
-      auto& buffer = bufferInfos[i];
-
-      VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-      bufferInfo.address = buffer.gpuAddress;
-      bufferInfo.range = buffer.size;
-
-      VkDescriptorGetInfoEXT descriptorInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-      descriptorInfo.type = VkDescriptorType(buffer.descriptorType);
-
-      if (bufferInfo.range)
-        descriptorInfo.data.pUniformBuffer = &bufferInfo;
-
-      VkDeviceSize descriptorSize = worker->m_device->getDescriptorProperties().getDescriptorTypeInfo(descriptorInfo.type).size;
-
-      worker->m_vkd->vkGetDescriptorEXT(worker->m_vkd->device(),
-        &descriptorInfo, descriptorSize, descriptor.descriptor.data());
     }
   }
 
