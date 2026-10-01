@@ -204,7 +204,9 @@ namespace dxvk {
       if (FAILED(hr))
         return hr;
     } else if (sampleCount != VK_SAMPLE_COUNT_1_BIT) {
-      // D3D9 only supports MSAA for surfaces
+      // D3D9 only supports MSAA for surfaces.
+      // This is unreachable. Only CreateRT or CreateDSV take in a sample count as a parameter.
+      // Those create D3DPOOL_DEFAULT surfaces.
       return D3DERR_INVALIDCALL;
     }
 
@@ -292,6 +294,10 @@ namespace dxvk {
 
     // A multisample RT/DS must not be lockable
     if (pDesc->IsLockable && sampleCount > VK_SAMPLE_COUNT_1_BIT)
+        return D3DERR_INVALIDCALL;
+
+    // Offscreen plain surfaces don't allow D3DPOOL_MANAGED, all other surface creation functions implicitly use D3DPOOL_DEFAULT
+    if (unlikely(ResourceType == D3DRTYPE_SURFACE && pDesc->Pool == D3DPOOL_MANAGED))
         return D3DERR_INVALIDCALL;
 
     return D3D_OK;
