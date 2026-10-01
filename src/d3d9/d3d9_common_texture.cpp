@@ -93,7 +93,7 @@ namespace dxvk {
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
       m_data = MemoryFileRegion(*m_device->GetAllocator(), GetTotalSize());
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
-      CreateBuffer(false, GetTotalSize());
+      EnsureBufferExists(false); // No need to initialize here, D3D9Initializer takes care of that.
   }
 
 
@@ -312,16 +312,12 @@ namespace dxvk {
   }
 
 
-  void D3D9CommonTexture::CreateBuffer(bool Initialize, uint32_t Size) {
+  const Rc<DxvkBuffer>& D3D9CommonTexture::EnsureBufferExists(bool Initialize) {
     if (likely(m_buffer != nullptr))
-      return;
+      return m_buffer;
 
     DxvkBufferCreateInfo info;
-<<<<<<< HEAD
-    info.size   = Size;
-=======
-    info.size   = PadTotalSize(m_totalSize);
->>>>>>> 2019124f1 ([d3d9] Move size padding to function)
+    info.size   = GetTotalSize();
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -350,6 +346,8 @@ namespace dxvk {
         std::memset(m_buffer->mapPtr(0), 0, m_totalSize);
     }
     m_data = {};
+
+    return m_buffer;
   }
 
 
