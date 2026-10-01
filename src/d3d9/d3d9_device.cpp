@@ -1161,9 +1161,7 @@ namespace dxvk {
     if (unlikely(srcTexInfo->Desc()->Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
-    // Our D3D8 implementation uses it in CopyRects to copy DEFAULT -> SYSTEMMEM/SCRATCH/MANAGED.
-    // TODO: Using it for MANAGED is problematic because it doesn't update the image of a MANAGED texture.
-    if (unlikely(!m_d3dCompatibility.test(D3DCompatibility::D3D8) && dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
+    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(srcTexInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
@@ -5042,24 +5040,22 @@ namespace dxvk {
     pResource->SetNeedsReadback(Subresource, false);
 
     if (unlikely(needsReadback)) {
-      // The texture was written to on the GPU.
-      // This can be either the image (for D3DPOOL_DEFAULT)
-      // or the buffer directly (for D3DPOOL_SYSTEMMEM).
-
-      DxvkBufferSlice mappedBufferSlice = pResource->GetBufferSlice(Subresource);
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer();
+      // The texture (or the buffer) was written to on the GPU.
+      // This can be either the image (for D3DPOOL_DEFAULT) or the buffer directly (for D3DPOOL_SYSTEMMEM).
 
       if (unlikely(pResource->GetFormatMapping().ConversionFormatInfo.FormatType != D3D9ConversionFormat_None)) {
         Logger::err(str::format("Reading back format", pResource->Desc()->Format, " is not supported. It is uploaded using the fomrat converter."));
       }
 
       if (pResource->GetImage() != nullptr) {
+        // If an image exists, all GPU writes modify that. Copy it to the mapping buffer.
+
         // if packedFormat is VK_FORMAT_UNDEFINED
         // DxvkContext::copyImageToBuffer will automatically take the format from the image
         VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
 
         EmitCs([
-          cImageBufferSlice = std::move(mappedBufferSlice),
+          cImageBufferSlice = pResource->GetBufferSlice(Subresource),
           cImage            = pResource->GetImage(),
           cSubresources     = vk::makeSubresourceLayers(subresource),
           cLevelExtent      = levelExtent,
@@ -5074,7 +5070,7 @@ namespace dxvk {
       }
 
       // Wait until the buffer is idle which may include the copy (and resolve) we just issued.
-      if (!WaitForResource(*mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
+      if (!WaitForResource(*pResource->GetBuffer(), pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
         return D3DERR_WASSTILLDRAWING;
     }
 
