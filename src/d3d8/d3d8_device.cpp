@@ -705,9 +705,6 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    // TODO: No stretching or clipping of either source or destination rectangles.
-    // All src/dest rectangles must fit within the dest surface.
-
     Com<D3D8Surface> src = static_cast<D3D8Surface*>(pSourceSurface);
     Com<D3D8Surface> dst = static_cast<D3D8Surface*>(pDestinationSurface);
 
@@ -715,14 +712,18 @@ namespace dxvk {
     src->GetD3D9()->GetDesc(&srcDesc);
     dst->GetD3D9()->GetDesc(&dstDesc);
 
-    // This method does not support format conversion.
+    // "The format of the two surfaces must match [...]"
     if (unlikely(srcDesc.Format != dstDesc.Format))
       return D3DERR_INVALIDCALL;
 
-    // This method cannot be applied to surfaces whose formats
-    // are classified as depth stencil formats.
+    // "This method cannot be applied to surfaces whose formats
+    //  are classified as depth stencil formats."
     if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
       return D3DERR_INVALIDCALL;
+
+    // TODO: "Note that this method will fail unless all the source rectangles
+    // and their corresponding destination rectangles are completely contained
+    // within the source and destination surfaces respectively."
 
     StateChange();
 
@@ -743,23 +744,25 @@ namespace dxvk {
       RECT srcRect, dstRect;
       srcRect = pSourceRectsArray[i];
 
-      // True if the copy is asymmetric
       bool asymmetric = false;
-      // True if the copy requires stretching (not technically supported)
-      bool stretch = false;
 
       if (pDestPointsArray != NULL) {
-        dstRect.left    = pDestPointsArray[i].x;
-        dstRect.right   = dstRect.left + (srcRect.right - srcRect.left);
-        dstRect.top     = pDestPointsArray[i].y;
-        dstRect.bottom  = dstRect.top + (srcRect.bottom - srcRect.top);
-        asymmetric  = dstRect.left  != srcRect.left  || dstRect.top    != srcRect.top
-                   || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
+        dstRect.left   = pDestPointsArray[i].x;
+        dstRect.right  = dstRect.left + (srcRect.right - srcRect.left);
+        dstRect.top    = pDestPointsArray[i].y;
+        dstRect.bottom = dstRect.top + (srcRect.bottom - srcRect.top);
 
-        stretch     = (dstRect.right-dstRect.left) != (srcRect.right-srcRect.left)
-                   || (dstRect.bottom-dstRect.top) != (srcRect.bottom-srcRect.top);
+        const bool stretch = (dstRect.right - dstRect.left) != (srcRect.right - srcRect.left)
+                          || (dstRect.bottom - dstRect.top) != (srcRect.bottom - srcRect.top);
+
+        // "This method does not support stretch [...] of either source or destination rectangles."
+        if (unlikely(stretch))
+          return D3DERR_INVALIDCALL;
+
+        asymmetric = dstRect.left  != srcRect.left  || dstRect.top    != srcRect.top
+                  || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
       } else {
-        dstRect     = srcRect;
+        dstRect = srcRect;
       }
 
       POINT dstPt = { dstRect.left, dstRect.top };
@@ -850,9 +853,6 @@ namespace dxvk {
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
             case d3d9::D3DPOOL_SCRATCH:
-              if (unlikely(stretch))
-                return D3DERR_INVALIDCALL;
-
               return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
 
             default:
