@@ -86,7 +86,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < CountSubresources(); i++) {
       m_memoryOffset[i] = m_totalSize;
-      m_totalSize += GetMipSize(i);
+      m_totalSize += GetSubresourceSize(i);
     }
 
     // Add a tiny amount of padding at the end because some games read/write OOB
@@ -353,7 +353,7 @@ namespace dxvk {
   }
 
 
-  VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource) const {
+  VkDeviceSize D3D9CommonTexture::GetSubresourceSize(UINT Subresource) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
     const DxvkFormatInfo* formatInfo = m_mapping.Format != VK_FORMAT_UNDEFINED
@@ -818,7 +818,7 @@ namespace dxvk {
 
 
   DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
-    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
+    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetSubresourceSize(Subresource));
   }
 
   

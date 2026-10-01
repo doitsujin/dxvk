@@ -5345,7 +5345,7 @@ namespace dxvk {
       srcBlockCount.height *= std::min(pSrcTexture->GetPlaneCount(), 2u);
 
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
-      D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
+      D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetSubresourceSize(SrcSubresource));
       VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
 
       const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.Format);
