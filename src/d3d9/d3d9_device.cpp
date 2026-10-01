@@ -5252,7 +5252,7 @@ namespace dxvk {
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
     if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))) {
-      // The src texutre has to be in POOL_SYSTEMEM, so it cannot use AUTOMIPGEN.
+      // The src texture has to be in POOL_SYSTEMEM, so it cannot use AUTOMIPGEN.
       // That means that NeedsReadback is only true if the texture has been used with GetRTData or GetFrontbufferData before.
       // Those functions create a buffer, so the buffer always exists here.
       const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer();
