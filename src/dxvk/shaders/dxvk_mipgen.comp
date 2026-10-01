@@ -860,12 +860,14 @@ pixel_t filter_shared_mip(uvec2 mip0_size, uvec2 dst_coord) {
 
 
 /* Samples pixel data from LDS */
-pixel_t filter_lds_mip(uvec2 mip0_size, uint base_mip, uvec2 dst_coord) {
+pixel_t filter_lds_mip(uvec2 mip0_size, uint base_mip, uvec2 base_coord, uvec2 local_coord) {
+  uvec2 dst_coord = base_coord + local_coord;
+
   uvec2 src_size = compute_mip_size(mip0_size, base_mip);
   uvec2 dst_size = compute_mip_size(src_size, 1u);
 
   vec2 src_coord_f = (vec2(dst_coord) / vec2(dst_size)) * vec2(src_size) + 0.5f;
-  quad_t quad = load_quad_from_lds(uvec2(src_coord_f));
+  quad_t quad = load_quad_from_lds(uvec2(src_coord_f) - (base_coord << 1u));
   return interpolate_quad_at(quad, src_coord_f, src_size);
 }
 
@@ -1022,17 +1024,17 @@ uvec3 get_block_properties(uvec2 mip0_size, uint dst_mip) {
 
 
 /* Helper function to filter and process the mip stored in LDS */
-pixel_t process_lds_pixels(uvec2 mip0_size, uint base_mip, uint dst_mip, uvec2 local_coord, uvec2 pixel_coord, uvec4 write_area, uint even_count) {
-  pixel_t pixel = filter_lds_mip(mip0_size, base_mip, local_coord);
+pixel_t process_lds_pixels(uvec2 mip0_size, uint base_mip, uint dst_mip, uvec2 local_coord, uvec4 write_area, uint even_count) {
+  pixel_t pixel = filter_lds_mip(mip0_size, base_mip, write_area.xy, local_coord);
 
   return process_even_mips(dst_mip, dst_mip + even_count,
-    pixel_coord, write_area.zw, pixel);
+    write_area.xy + local_coord, write_area.zw, pixel);
 }
 
 
 /* Helper function to conditionally write processed pixel back to LDS */
-void process_lds_writeback(uvec2 local_coord, uvec2 pixel_coord, uvec4 read_area, uint even_count, pixel_t pixel) {
-  if (all(lessThan(pixel_coord, read_area.zw))) {
+void process_lds_writeback(uvec2 local_coord, uvec4 read_area, uint even_count, pixel_t pixel) {
+  if (all(lessThan(read_area.xy + local_coord, read_area.zw))) {
     /* Only use one the first thread of each block to store the result */
     if (bitfieldExtract(gl_SubgroupInvocationID, 0, int(even_count + even_count)) == 0u)
       store_pixel_to_lds(local_coord >> even_count, pixel);
@@ -1074,7 +1076,7 @@ uint process_base_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
         pixel_coord, dst_w_area.zw, pixel);
 
       if (dst_mip + even_count < last_mip)
-        process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+        process_lds_writeback(local_coord, dst_r_area, even_count, pixel);
     }
   }
 
@@ -1102,16 +1104,14 @@ uint process_lds_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
   if (block_count > block_count_per_wave) {
     /* Iterate over blocks */
     for (uint i = 0u; i < block_count; i += block_info.z) {
+      pixel_t pixel = {};
+
       uvec4 block_coord = compute_block_coord(block_info.xy, i);
-
-      pixel_t pixel;
-
       uvec2 local_coord = block_size.x * block_coord.xy + block_coord.zw;
-      uvec2 pixel_coord = dst_r_area.xy + local_coord;
 
       if (block_coord.y < block_info.y) {
         pixel = process_lds_pixels(mip0_size, base_mip, dst_mip,
-          local_coord, pixel_coord, dst_w_area, even_count);
+          local_coord, dst_w_area, even_count);
       }
 
       if (dst_mip + even_count < last_mip) {
@@ -1122,7 +1122,7 @@ uint process_lds_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
           gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
 
         if (block_coord.y < block_info.y)
-          process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+          process_lds_writeback(local_coord, dst_r_area, even_count, pixel);
       }
     }
   } else {
@@ -1131,19 +1131,17 @@ uint process_lds_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
      * some more constant-folding because there will only be one iteration.
      * This is very common when downsampling typical render resolutions. */
     uvec4 block_coord = compute_block_coord(block_info.xy, 0u);
-
     uvec2 local_coord = block_size.x * block_coord.xy + block_coord.zw;
-    uvec2 pixel_coord = dst_r_area.xy + local_coord;
 
     if (block_coord.y < block_info.y) {
       pixel_t pixel = process_lds_pixels(mip0_size, base_mip, dst_mip,
-        local_coord, pixel_coord, dst_w_area, even_count);
+        local_coord, dst_w_area, even_count);
 
       controlBarrier(gl_ScopeSubgroup, gl_ScopeSubgroup,
         gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
 
       if (dst_mip + even_count < last_mip)
-        process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+        process_lds_writeback(local_coord, dst_r_area, even_count, pixel);
     }
   }
 
