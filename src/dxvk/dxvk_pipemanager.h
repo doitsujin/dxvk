@@ -339,8 +339,6 @@ namespace dxvk {
     DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
       const DxvkShaderPipelineLibraryKey& key);
 
-    DxvkShaderPipelineLibrary* createNullFsPipelineLibrary();
-
     DxvkShaderPipelineLibrary* findPipelineLibrary(
       const DxvkShaderPipelineLibraryKey& key);
 
