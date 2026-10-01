@@ -489,7 +489,9 @@ namespace dxvk {
     VkDeviceSize GetSubresourceSize(UINT Subresource) const;
 
     uint32_t GetTotalSize() const {
-      return m_totalSize;
+      // Add a tiny amount of padding at the end because some games read/write OOB
+      // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
+      return align(m_totalSize + 1, CACHE_LINE_SIZE);
     }
 
     /**
