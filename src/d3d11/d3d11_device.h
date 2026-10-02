@@ -489,6 +489,22 @@ namespace dxvk {
 
       return barrierControl;
     }
+
+    HRESULT CreateVertexShaderNvMultiview(
+      const void*                   pShaderBytecode,
+            SIZE_T                  BytecodeLength,
+            ID3D11ClassLinkage*     pClassLinkage,
+      const DxvkNvMultiviewInfo&    NvMultiview,
+            std::vector<DxvkNvPassthroughIoEntry> PassthroughIo,
+            ID3D11VertexShader**    ppVertexShader);
+
+    HRESULT CreateGeometryShaderNvMultiview(
+      const void*                   pShaderBytecode,
+            SIZE_T                  BytecodeLength,
+            ID3D11ClassLinkage*     pClassLinkage,
+      const DxvkNvMultiviewInfo&    NvMultiview,
+            std::vector<DxvkNvPassthroughIoEntry> PassthroughIo,
+            ID3D11GeometryShader**  ppGeometryShader);
     
   private:
     
@@ -544,6 +560,12 @@ namespace dxvk {
             UINT                    NumStrides,
             UINT                    RasterizedStream);
 
+    DxvkShaderHash ComputeShaderKey(
+            VkShaderStageFlagBits   Stage,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength,
+      const DxvkNvMultiviewInfo&    NvMultiview);
+
     HRESULT GetFormatSupportFlags(
             DXGI_FORMAT             Format,
             UINT*                   pFlags1,
@@ -588,7 +610,7 @@ namespace dxvk {
   /**
    * \brief Extended D3D11 device
    */
-  class D3D11DeviceExt : public ID3D11VkExtDevice1 {
+  class D3D11DeviceExt : public ID3D11VkExtDevice2 {
     
   public:
     
@@ -642,6 +664,23 @@ namespace dxvk {
             const D3D11_SAMPLER_DESC* pSamplerDesc,
             ID3D11SamplerState**      ppSamplerState,
             uint32_t*                 pDriverHandle);
+
+HRESULT STDMETHODCALLTYPE CreateVertexShaderNvSemantics(
+      const void*                     pShaderBytecode,
+            SIZE_T                    BytecodeLength,
+            ID3D11ClassLinkage*       pClassLinkage,
+      const D3D11_VK_NV_CUSTOM_SEMANTIC* pSemantics,
+            uint32_t                  NumSemantics,
+            ID3D11VertexShader**      ppVertexShader) override;
+
+    HRESULT STDMETHODCALLTYPE CreateGeometryShaderNvSemantics(
+      const void*                     pShaderBytecode,
+            SIZE_T                    BytecodeLength,
+            ID3D11ClassLinkage*       pClassLinkage,
+      const D3D11_VK_NV_CUSTOM_SEMANTIC* pSemantics,
+            uint32_t                  NumSemantics,
+            BOOL                      UseViewportMask,
+            ID3D11GeometryShader**    ppGeometryShader) override;
     
   private:
     
