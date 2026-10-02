@@ -170,6 +170,9 @@ namespace dxvk {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
 
+    if (pDesc->Width > caps::MaxTextureDimension || pDesc->Height > caps::MaxTextureDimension || pDesc->Depth > caps::MaxTextureDimension)
+      return D3DERR_INVALIDCALL;
+
     // Native drivers won't allow the creation of DXT format
     // textures that aren't aligned to block dimensions.
     if (IsDXTFormat(pDesc->Format)) {
