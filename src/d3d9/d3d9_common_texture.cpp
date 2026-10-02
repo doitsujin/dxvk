@@ -85,6 +85,11 @@ namespace dxvk {
     }
 
     for (uint32_t i = 0; i < CountSubresources(); i++) {
+      if (i % m_desc.MipLevels == 0) {
+        // Align faces to 16 bytes
+        m_totalSize = align(m_totalSize, 16u);
+      }
+
       m_memoryOffset[i] = m_totalSize;
       m_totalSize += GetSubresourceSize(i);
     }
