@@ -111,7 +111,7 @@ namespace dxvk {
           index -= draw.MinVertex;
 
         m_device->DrawIndexedPrimitiveUP(
-          d3d9::D3DPRIMITIVETYPE(draw.PrimitiveType),
+          static_cast<d3d9::D3DPRIMITIVETYPE>(draw.PrimitiveType),
           0,
           draw.MaxVertex - draw.MinVertex,
           draw.PrimitiveCount,

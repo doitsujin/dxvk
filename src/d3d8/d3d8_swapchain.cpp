@@ -24,7 +24,7 @@ namespace dxvk {
     // Same logic as in D3D8Device::GetBackBuffer
     if (BackBuffer >= m_backBuffers.size() || m_backBuffers[BackBuffer] == nullptr) {
       Com<d3d9::IDirect3DSurface9> pSurface9;
-      HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
+      HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, static_cast<d3d9::D3DBACKBUFFER_TYPE>(Type), &pSurface9);
       if (unlikely(FAILED(res)))
         return res;
 
