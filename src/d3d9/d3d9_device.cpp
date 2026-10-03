@@ -448,18 +448,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D9DeviceLock lock = LockDevice();
 
-    Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
-
-    HRESULT hr;
-    // Black Desert creates a D3DDEVTYPE_NULLREF device and
-    // expects reset to work despite passing invalid parameters.
-    if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
-      hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
-
-      if (unlikely(FAILED(hr)))
-        return hr;
-    }
 
     if (!m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
@@ -497,9 +486,21 @@ namespace dxvk {
       SetDepthStencilSurface(nullptr);
     }
 
-    m_cursor.ResetCursor();
-
     const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
+    HRESULT hr;
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects reset to work despite passing invalid parameters.
+    if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
+      hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
+      if (unlikely(FAILED(hr))) {
+        if (!isExtended)
+          m_deviceLostState = D3D9DeviceLostState::NotReset;
+        return hr;
+      }
+    }
+
+    m_cursor.ResetCursor();
 
     /*
       * Before calling the IDirect3DDevice9::Reset method for a device,
@@ -511,7 +512,7 @@ namespace dxvk {
       * This matches what Windows D3D9 does.
     */
     if (unlikely(m_losableResourceCounter.load() != 0 && !isExtended && m_d3d9Options.countLosableResources)) {
-      Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
+      Logger::warn(str::format("D3D9DeviceEx::Reset: Device reset failed due to pending losable resources. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
       // D3D8 returns D3DERR_DEVICELOST here, whereas D3D9 returns D3DERR_INVALIDCALL.
       return m_d3dCompatibility.test(D3DCompatibility::D3D8) ? D3DERR_DEVICELOST : D3DERR_INVALIDCALL;
@@ -519,10 +520,8 @@ namespace dxvk {
 
     hr = ResetSwapChain(pPresentationParameters, nullptr);
     if (unlikely(FAILED(hr))) {
-      if (!isExtended) {
-        Logger::warn("Device reset failed: Device not reset");
+      if (!isExtended)
         m_deviceLostState = D3D9DeviceLostState::NotReset;
-      }
       return hr;
     }
 
@@ -4478,7 +4477,6 @@ namespace dxvk {
     HRESULT hr;
     if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
       hr = m_parent->ValidatePresentationParametersEx(pPresentationParameters, pFullscreenDisplayMode);
-
       if (unlikely(FAILED(hr)))
         return hr;
     }
