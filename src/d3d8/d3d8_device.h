@@ -431,8 +431,9 @@ namespace dxvk {
         m_validTextures.erase(textureIter);
     }
 
-    friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle);
-    friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8Device* device, DWORD Handle);
+    friend d3d9::IDirect3DPixelShader9* GetPixelShaderPtr(D3D8Device* device, DWORD Handle);
+    
+    friend D3D8VertexShaderInfo*        GetVertexShaderInfo(D3D8Device* device, DWORD Handle);
 
   private:
 

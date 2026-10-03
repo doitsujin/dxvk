@@ -624,9 +624,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
@@ -707,10 +706,9 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures. Volume textures do not
-    // exempt private, FOURCC, driver formats from these checks.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be
+    // locked unless they are dynamic textures. Volume textures do
+    // not exempt private, FOURCC, driver formats from these checks."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC);
 
@@ -774,9 +772,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));

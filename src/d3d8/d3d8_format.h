@@ -4,68 +4,93 @@
 
 namespace dxvk {
 
-  inline bool isDXTFormat(D3DFORMAT fmt) {
-    return fmt == D3DFMT_DXT1
-        || fmt == D3DFMT_DXT2
-        || fmt == D3DFMT_DXT3
-        || fmt == D3DFMT_DXT4
-        || fmt == D3DFMT_DXT5;
+  inline bool IsDXTFormat(D3DFORMAT fmt) {
+    switch (fmt) {
+      case D3DFMT_DXT1:
+      case D3DFMT_DXT2:
+      case D3DFMT_DXT3:
+      case D3DFMT_DXT4:
+      case D3DFMT_DXT5:
+        return true;
+      default:
+        return false;
+    }
   }
 
-  inline bool isDepthStencilFormat(D3DFORMAT fmt) {
-    return fmt == D3DFMT_D16_LOCKABLE
-        || fmt == D3DFMT_D16
-        || fmt == D3DFMT_D32
-        || fmt == D3DFMT_D15S1
-        || fmt == D3DFMT_D24X4S4
-        || fmt == D3DFMT_D24S8
-        || fmt == D3DFMT_D24X8;
+  inline bool IsDepthStencilFormat(D3DFORMAT fmt) {
+    switch (fmt) {
+      case D3DFMT_D16_LOCKABLE:
+      case D3DFMT_D16:
+      case D3DFMT_D32:
+      case D3DFMT_D15S1:
+      case D3DFMT_D24X4S4:
+      case D3DFMT_D24S8:
+      case D3DFMT_D24X8:
+        return true;
+      default:
+        return false;
+    }
   }
 
-  // The d3d8 documentation states: Render target formats are restricted to
+  // The D3D8 documentation states: Render target formats are restricted to
   // D3DFMT_X1R5G5B5, D3DFMT_R5G6B5, D3DFMT_X8R8G8B8, and D3DFMT_A8R8G8B8.
   // This limited RT format support is confirmed by age-accurate drivers.
-  inline bool isRenderTargetFormat(D3DFORMAT fmt) {
-    return fmt == D3DFMT_X1R5G5B5
-        || fmt == D3DFMT_R5G6B5
-        || fmt == D3DFMT_X8R8G8B8
-        || fmt == D3DFMT_A8R8G8B8
-        // NULL format support was later added to d3d9 with
-        // GeForce 6 series cards, and also advertised in d3d8.
-        || fmt == (D3DFORMAT) MAKEFOURCC('N', 'U', 'L', 'L');
+  inline bool IsRenderTargetFormat(D3DFORMAT fmt) {
+    // NULL format support was later added to D3D9 and is also advertised
+    // in D3D8, though it's unlikely to ever have been used in practice.
+    if (unlikely(fmt == static_cast<D3DFORMAT>(MAKEFOURCC('N', 'U', 'L', 'L'))))
+      return true;
+
+    switch (fmt) {
+      case D3DFMT_X1R5G5B5:
+      case D3DFMT_R5G6B5:
+      case D3DFMT_X8R8G8B8:
+      case D3DFMT_A8R8G8B8:
+        return true;
+      default:
+        return false;
+    }
   }
 
   // Some games will exhaustively query all formats in the 0-100 range,
-  // so filter out some known formats which are exclusive to d3d9
-  inline bool isD3D9ExclusiveFormat(D3DFORMAT fmt) {
-    const d3d9::D3DFORMAT d3d9Fmt = d3d9::D3DFORMAT(fmt);
+  // so filter out some known formats which are exclusive to D3D9.
+  inline bool IsD3D9ExclusiveFormat(D3DFORMAT fmt) {
+    d3d9::D3DFORMAT fmt9 = static_cast<d3d9::D3DFORMAT>(fmt);
 
-    return d3d9Fmt == d3d9::D3DFMT_A8B8G8R8            //32
-        || d3d9Fmt == d3d9::D3DFMT_X8B8G8R8            //33
-        || d3d9Fmt == d3d9::D3DFMT_A2R10G10B10         //35
-        || d3d9Fmt == d3d9::D3DFMT_A16B16G16R16        //36
-        || d3d9Fmt == d3d9::D3DFMT_L16                 //81
-        || d3d9Fmt == d3d9::D3DFMT_D32F_LOCKABLE       //82
-        || d3d9Fmt == d3d9::D3DFMT_D24FS8              //83
-        || d3d9Fmt == d3d9::D3DFMT_D32_LOCKABLE        //84
-        || d3d9Fmt == d3d9::D3DFMT_S8_LOCKABLE         //85
-        || d3d9Fmt == d3d9::D3DFMT_Q16W16V16U16        //110
-        || d3d9Fmt == d3d9::D3DFMT_R16F                //111
-        || d3d9Fmt == d3d9::D3DFMT_G16R16F             //112
-        || d3d9Fmt == d3d9::D3DFMT_A16B16G16R16F       //113
-        || d3d9Fmt == d3d9::D3DFMT_R32F                //114
-        || d3d9Fmt == d3d9::D3DFMT_G32R32F             //115
-        || d3d9Fmt == d3d9::D3DFMT_A32B32G32R32F       //116
-        || d3d9Fmt == d3d9::D3DFMT_CxV8U8              //117
-        || d3d9Fmt == d3d9::D3DFMT_A1                  //118
-        || d3d9Fmt == d3d9::D3DFMT_A2B10G10R10_XR_BIAS //119
-        || d3d9Fmt == (d3d9::D3DFORMAT) MAKEFOURCC('D', 'F', '1', '6')
-        || d3d9Fmt == (d3d9::D3DFORMAT) MAKEFOURCC('D', 'F', '2', '4')
-        || d3d9Fmt == (d3d9::D3DFORMAT) MAKEFOURCC('I', 'N', 'T', 'Z');
+    // Get some very unlikely FOURCCs out of the way first
+    if (unlikely(fmt9 == static_cast<d3d9::D3DFORMAT>(MAKEFOURCC('D', 'F', '1', '6'))
+              || fmt9 == static_cast<d3d9::D3DFORMAT>(MAKEFOURCC('D', 'F', '2', '4'))
+              || fmt9 == static_cast<d3d9::D3DFORMAT>(MAKEFOURCC('I', 'N', 'T', 'Z'))))
+      return true;
+
+    switch (fmt9) {
+      case d3d9::D3DFMT_A8B8G8R8:            //32
+      case d3d9::D3DFMT_X8B8G8R8:            //33
+      case d3d9::D3DFMT_A2R10G10B10:         //35
+      case d3d9::D3DFMT_A16B16G16R16:        //36
+      case d3d9::D3DFMT_L16:                 //81
+      case d3d9::D3DFMT_D32F_LOCKABLE:       //82
+      case d3d9::D3DFMT_D24FS8:              //83
+      case d3d9::D3DFMT_D32_LOCKABLE:        //84
+      case d3d9::D3DFMT_S8_LOCKABLE:         //85
+      case d3d9::D3DFMT_Q16W16V16U16:        //110
+      case d3d9::D3DFMT_R16F:                //111
+      case d3d9::D3DFMT_G16R16F:             //112
+      case d3d9::D3DFMT_A16B16G16R16F:       //113
+      case d3d9::D3DFMT_R32F:                //114
+      case d3d9::D3DFMT_G32R32F:             //115
+      case d3d9::D3DFMT_A32B32G32R32F:       //116
+      case d3d9::D3DFMT_CxV8U8:              //117
+      case d3d9::D3DFMT_A1:                  //118
+      case d3d9::D3DFMT_A2B10G10R10_XR_BIAS: //119
+        return true;
+      default:
+        return false;
+    }
   }
 
   // Get bytes per pixel (or 4x4 block for DXT)
-  inline UINT getFormatStride(D3DFORMAT fmt) {
+  inline UINT GetFormatStride(D3DFORMAT fmt) {
     switch (fmt) {
       default:
       case D3DFMT_UNKNOWN:
@@ -118,12 +143,12 @@ namespace dxvk {
     }
   }
 
-  inline UINT getSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
-    if (isDXTFormat(Format)) {
-      Width = ((Width + 3) >> 2);
+  inline UINT GetSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
+    if (IsDXTFormat(Format)) {
+      Width  = ((Width  + 3) >> 2);
       Height = ((Height + 3) >> 2);
     }
-    return Width * Height * getFormatStride(Format);
+    return Width * Height * GetFormatStride(Format);
   }
 
 }
