@@ -93,10 +93,10 @@ namespace dxvk {
     d3d9::D3DPRESENT_PARAMETERS params;
     params.BackBufferWidth = pParams->BackBufferWidth;
     params.BackBufferHeight = pParams->BackBufferHeight;
-    params.BackBufferFormat = d3d9::D3DFORMAT(pParams->BackBufferFormat);
+    params.BackBufferFormat = static_cast<d3d9::D3DFORMAT>(pParams->BackBufferFormat);
     params.BackBufferCount = pParams->BackBufferCount;
 
-    params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
+    params.MultiSampleType = static_cast<d3d9::D3DMULTISAMPLE_TYPE>(pParams->MultiSampleType);
     // MultiSampleQuality is only used with D3DMULTISAMPLE_NONMASKABLE, which is not available in D3D8
     params.MultiSampleQuality = 0;
 
@@ -122,11 +122,11 @@ namespace dxvk {
       }
     }
 
-    params.SwapEffect = d3d9::D3DSWAPEFFECT(SwapEffect);
+    params.SwapEffect = static_cast<d3d9::D3DSWAPEFFECT>(SwapEffect);
     params.hDeviceWindow = pParams->hDeviceWindow;
     params.Windowed = pParams->Windowed;
     params.EnableAutoDepthStencil = pParams->EnableAutoDepthStencil;
-    params.AutoDepthStencilFormat = d3d9::D3DFORMAT(pParams->AutoDepthStencilFormat);
+    params.AutoDepthStencilFormat = static_cast<d3d9::D3DFORMAT>(pParams->AutoDepthStencilFormat);
     params.Flags = pParams->Flags;
 
     // D3DPRESENT_RATE_UNLIMITED is unsupported, use D3DPRESENT_RATE_DEFAULT (or 0)
@@ -144,13 +144,13 @@ namespace dxvk {
 
   // (8<-9) Convert D3DSURFACE_DESC
   inline void ConvertSurfaceDesc8(const d3d9::D3DSURFACE_DESC* pSurf9, D3DSURFACE_DESC* pSurf8) {
-    pSurf8->Format  = D3DFORMAT(pSurf9->Format);
-    pSurf8->Type    = D3DRESOURCETYPE(pSurf9->Type);
+    pSurf8->Format  = static_cast<D3DFORMAT>(pSurf9->Format);
+    pSurf8->Type    = static_cast<D3DRESOURCETYPE>(pSurf9->Type);
     pSurf8->Usage   = pSurf9->Usage;
-    pSurf8->Pool    = D3DPOOL(pSurf9->Pool);
+    pSurf8->Pool    = static_cast<D3DPOOL>(pSurf9->Pool);
     pSurf8->Size    = getSurfaceSize(pSurf8->Format, pSurf9->Width, pSurf9->Height);
 
-    pSurf8->MultiSampleType = D3DMULTISAMPLE_TYPE(pSurf9->MultiSampleType);
+    pSurf8->MultiSampleType = static_cast<D3DMULTISAMPLE_TYPE>(pSurf9->MultiSampleType);
     // DX8: No multisample quality
     pSurf8->Width   = pSurf9->Width;
     pSurf8->Height  = pSurf9->Height;
@@ -158,10 +158,10 @@ namespace dxvk {
 
   // (8<-9) Convert D3DVOLUME_DESC
   inline void ConvertVolumeDesc8(const d3d9::D3DVOLUME_DESC* pVol9, D3DVOLUME_DESC* pVol8) {
-    pVol8->Format = D3DFORMAT(pVol9->Format);
-    pVol8->Type   = D3DRESOURCETYPE(pVol9->Type);
+    pVol8->Format = static_cast<D3DFORMAT>(pVol9->Format);
+    pVol8->Type   = static_cast<D3DRESOURCETYPE>(pVol9->Type);
     pVol8->Usage  = pVol9->Usage;
-    pVol8->Pool   = D3DPOOL(pVol9->Pool);
+    pVol8->Pool   = static_cast<D3DPOOL>(pVol9->Pool);
     pVol8->Size   = getSurfaceSize(pVol8->Format, pVol9->Width, pVol9->Height) * pVol9->Depth;
     pVol8->Width  = pVol9->Width;
     pVol8->Height = pVol9->Height;
