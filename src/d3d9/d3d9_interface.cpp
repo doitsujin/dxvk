@@ -397,7 +397,6 @@ namespace dxvk {
     // expects it be created despite passing invalid parameters.
     if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
       hr = ValidatePresentationParameters(pPresentationParameters);
-
       if (unlikely(FAILED(hr)))
         return hr;
     }
@@ -501,11 +500,23 @@ namespace dxvk {
     if (unlikely(!pPresentationParameters->SwapEffect))
       return D3DERR_INVALIDCALL;
 
+    const bool isD3D8Compatible = m_d3dCompatibility.test(D3DCompatibility::D3D8);
+
+    // Docs state: "Back buffers created as part of the device are only lockable if
+    //  D3DPRESENTFLAG_LOCKABLE_BACKBUFFER is specified in the presentation parameters.
+    //  (Multisampled back buffers and depth surfaces are never lockable.)"
+    // Tests have shown that D3D9 simply errors out in this case, even during device reset.
+    // D3D8 allows the combination, but rejects any locks on multisampled back buffers.
+    if (unlikely(!isD3D8Compatible
+              &&  pPresentationParameters->MultiSampleType != D3DMULTISAMPLE_NONE
+              && (pPresentationParameters->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER)))
+      return D3DERR_INVALIDCALL;
+
     // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
     // Allow D3DSWAPEFFECT_COPY to bypass this restriction in D3D8 compatibility
     // mode, since it may be a remapping of D3DSWAPEFFECT_COPY_VSYNC and RC Cars
     // depends on it not being validated.
-    if (unlikely(!m_d3dCompatibility.test(D3DCompatibility::D3D8)
+    if (unlikely(!isD3D8Compatible
               && pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
               && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;

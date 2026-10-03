@@ -247,69 +247,93 @@ namespace dxvk {
   };
 
   inline bool IsFourCCFormat(D3D9Format format) {
-    // BINARYBUFFER is the largest non-fourcc format
+    // BINARYBUFFER is the largest non-FOURCC format
     return format > D3D9Format::BINARYBUFFER;
   }
 
   inline bool IsVendorFormat(D3D9Format format) {
-    return IsFourCCFormat(format)
-      && format != D3D9Format::MULTI2_ARGB8
-      && format != D3D9Format::UYVY
-      && format != D3D9Format::R8G8_B8G8
-      && format != D3D9Format::YUY2
-      && format != D3D9Format::G8R8_G8B8
-      && format != D3D9Format::DXT1
-      && format != D3D9Format::DXT2
-      && format != D3D9Format::DXT3
-      && format != D3D9Format::DXT4
-      && format != D3D9Format::DXT5;
+    switch (format) {
+      case D3D9Format::MULTI2_ARGB8:
+      case D3D9Format::UYVY:
+      case D3D9Format::R8G8_B8G8:
+      case D3D9Format::YUY2:
+      case D3D9Format::G8R8_G8B8:
+      case D3D9Format::DXT1:
+      case D3D9Format::DXT2:
+      case D3D9Format::DXT3:
+      case D3D9Format::DXT4:
+      case D3D9Format::DXT5:
+        return false;
+      default:
+        return IsFourCCFormat(format);
+    }
   }
 
   inline bool IsDXTFormat(D3D9Format format) {
-    return format == D3D9Format::DXT1
-        || format == D3D9Format::DXT2
-        || format == D3D9Format::DXT3
-        || format == D3D9Format::DXT4
-        || format == D3D9Format::DXT5;
+    switch (format) {
+      case D3D9Format::DXT1:
+      case D3D9Format::DXT2:
+      case D3D9Format::DXT3:
+      case D3D9Format::DXT4:
+      case D3D9Format::DXT5:
+        return true;
+      default:
+        return false;
+    }
   }
 
   // D3D9 documentation says: IDirect3DSurface9::GetDC is valid on the following formats only:
   // D3DFMT_R5G6B5, D3DFMT_X1R5G5B5, D3DFMT_R8G8B8, and D3DFMT_X8R8G8B8. However,
   // the equivalent formats of D3DFMT_A1R5G5B5 and D3DFMT_A8R8G8B8 are also supported.
   inline bool IsSurfaceGetDCCompatibleFormat(D3D9Format format) {
-    return format == D3D9Format::R5G6B5
-        || format == D3D9Format::X1R5G5B5
-        || format == D3D9Format::A1R5G5B5
-        || format == D3D9Format::R8G8B8
-        || format == D3D9Format::X8R8G8B8
-        || format == D3D9Format::A8R8G8B8;
+    switch (format) {
+      case D3D9Format::R5G6B5:
+      case D3D9Format::X1R5G5B5:
+      case D3D9Format::A1R5G5B5:
+      case D3D9Format::R8G8B8:
+      case D3D9Format::X8R8G8B8:
+      case D3D9Format::A8R8G8B8:
+        return true;
+      default:
+        return false;
+    }
   }
 
-  inline bool IsDepthFormat(D3D9Format Format) {
-    return Format == D3D9Format::D16_LOCKABLE
-        || Format == D3D9Format::D32
-        || Format == D3D9Format::D15S1
-        || Format == D3D9Format::D24S8
-        || Format == D3D9Format::D24X8
-        || Format == D3D9Format::D24X4S4
-        || Format == D3D9Format::D16
-        || Format == D3D9Format::D32F_LOCKABLE
-        || Format == D3D9Format::D24FS8
-        || Format == D3D9Format::D32_LOCKABLE
-        || Format == D3D9Format::DF16
-        || Format == D3D9Format::DF24
-        || Format == D3D9Format::INTZ;
+  inline bool IsDepthFormat(D3D9Format format) {
+    switch (format) {
+      case D3D9Format::D16_LOCKABLE:
+      case D3D9Format::D32:
+      case D3D9Format::D15S1:
+      case D3D9Format::D24S8:
+      case D3D9Format::D24X8:
+      case D3D9Format::D24X4S4:
+      case D3D9Format::D16:
+      case D3D9Format::D32F_LOCKABLE:
+      case D3D9Format::D24FS8:
+      case D3D9Format::D32_LOCKABLE:
+      case D3D9Format::DF16:
+      case D3D9Format::DF24:
+      case D3D9Format::INTZ:
+        return true;
+      default:
+        return false;
+    }
   }
 
-  inline bool IsDepthStencilFormat(D3D9Format Format) {
-    return IsDepthFormat(Format) || Format == D3D9Format::S8_LOCKABLE;
+  inline bool IsDepthStencilFormat(D3D9Format format) {
+    return IsDepthFormat(format) || format == D3D9Format::S8_LOCKABLE;
   }
 
-  inline bool IsLockableDepthStencilFormat(D3D9Format Format) {
-    return Format == D3D9Format::S8_LOCKABLE
-        || Format == D3D9Format::D16_LOCKABLE
-        || Format == D3D9Format::D32_LOCKABLE
-        || Format == D3D9Format::D32F_LOCKABLE;
+  inline bool IsLockableDepthStencilFormat(D3D9Format format) {
+    switch (format) {
+      case D3D9Format::S8_LOCKABLE:
+      case D3D9Format::D16_LOCKABLE:
+      case D3D9Format::D32_LOCKABLE:
+      case D3D9Format::D32F_LOCKABLE:
+        return true;
+      default:
+        return false;
+    }
   }
 
 }

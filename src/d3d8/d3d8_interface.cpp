@@ -99,10 +99,10 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    pMode->Width        = m_adapterModes[Adapter][Mode].Width;
-    pMode->Height       = m_adapterModes[Adapter][Mode].Height;
-    pMode->RefreshRate  = m_adapterModes[Adapter][Mode].RefreshRate;
-    pMode->Format       = D3DFORMAT(m_adapterModes[Adapter][Mode].Format);
+    pMode->Width       = m_adapterModes[Adapter][Mode].Width;
+    pMode->Height      = m_adapterModes[Adapter][Mode].Height;
+    pMode->RefreshRate = m_adapterModes[Adapter][Mode].RefreshRate;
+    pMode->Format      = static_cast<D3DFORMAT>(m_adapterModes[Adapter][Mode].Format);
 
     return D3D_OK;
   }
@@ -127,7 +127,7 @@ namespace dxvk {
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     res = m_d3d9->CreateDevice(
       Adapter,
-      (d3d9::D3DDEVTYPE)DeviceType,
+      static_cast<d3d9::D3DDEVTYPE>(DeviceType),
       hFocusWindow,
       BehaviorFlags,
       &params,

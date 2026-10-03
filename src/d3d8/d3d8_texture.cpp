@@ -153,7 +153,7 @@ namespace dxvk {
           const RECT* pRect,
           DWORD Flags) {
     return GetD3D9()->LockRect(
-      d3d9::D3DCUBEMAP_FACES(Face),
+      static_cast<d3d9::D3DCUBEMAP_FACES>(Face),
       Level,
       reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect),
       pRect,
@@ -161,11 +161,11 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8TextureCube::UnlockRect(D3DCUBEMAP_FACES Face, UINT Level) {
-    return GetD3D9()->UnlockRect(d3d9::D3DCUBEMAP_FACES(Face), Level);
+    return GetD3D9()->UnlockRect(static_cast<d3d9::D3DCUBEMAP_FACES>(Face), Level);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8TextureCube::AddDirtyRect(D3DCUBEMAP_FACES Face, const RECT* pDirtyRect) {
-    return GetD3D9()->AddDirtyRect(d3d9::D3DCUBEMAP_FACES(Face), pDirtyRect);
+    return GetD3D9()->AddDirtyRect(static_cast<d3d9::D3DCUBEMAP_FACES>(Face), pDirtyRect);
   }
 
 }
