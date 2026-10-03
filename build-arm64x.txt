@@ -1,0 +1,21 @@
+[binaries]
+c = 'arm64ec-w64-mingw32-gcc'
+cpp = 'arm64ec-w64-mingw32-g++'
+ar = 'arm64ec-w64-mingw32-ar'
+strip = 'arm64ec-w64-mingw32-strip'
+windres = 'arm64ec-w64-mingw32-windres'
+
+[properties]
+needs_exe_wrapper = true
+
+[built-in options]
+c_args = ['-march=armv8.2-a','-mtune=cortex-x3','-marm64x']
+cpp_args = ['-march=armv8.2-a','-mtune=cortex-x3','-marm64x']
+c_link_args = ['-marm64x']
+cpp_link_args = ['-marm64x']
+
+[host_machine]
+system = 'windows'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
