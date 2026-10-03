@@ -272,6 +272,10 @@ namespace dxvk {
 
     // When in SWVP mode, 256 matrices can be used for indexed vertex blending
     pCaps->MaxVertexBlendMatrixIndex = m_isSWVP ? 255 : 8;
+    // When in SWVP mode, 8192 vertex shader constants can be used,
+    // however D3D8 always reports the programmable VS constant limits
+    if (m_isSWVP && !m_d3dCompatibility.test(D3DCompatibility::D3D8))
+      pCaps->MaxVertexShaderConst = caps::MaxFloatConstantsSoftware;
 
     return D3D_OK;
   }
