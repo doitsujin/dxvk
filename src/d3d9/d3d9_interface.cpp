@@ -397,7 +397,6 @@ namespace dxvk {
     // expects it be created despite passing invalid parameters.
     if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
       hr = ValidatePresentationParameters(pPresentationParameters);
-
       if (unlikely(FAILED(hr)))
         return hr;
     }
