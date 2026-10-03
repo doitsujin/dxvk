@@ -93,10 +93,10 @@ namespace dxvk {
         DWORD           Usage,
         D3DRESOURCETYPE RType,
         D3DFORMAT       CheckFormat) {
-      if (unlikely(isD3D9ExclusiveFormat(CheckFormat)))
+      if (unlikely(IsD3D9ExclusiveFormat(CheckFormat)))
         return D3DERR_NOTAVAILABLE;
 
-      if (unlikely((Usage & D3DUSAGE_RENDERTARGET) && !isRenderTargetFormat(CheckFormat)))
+      if (unlikely((Usage & D3DUSAGE_RENDERTARGET) && !IsRenderTargetFormat(CheckFormat)))
         return D3DERR_NOTAVAILABLE;
 
       return m_d3d9->CheckDeviceFormat(
@@ -132,11 +132,11 @@ namespace dxvk {
         D3DFORMAT AdapterFormat,
         D3DFORMAT RenderTargetFormat,
         D3DFORMAT DepthStencilFormat) {
-      if (unlikely(isD3D9ExclusiveFormat(RenderTargetFormat)
-                || isD3D9ExclusiveFormat(DepthStencilFormat)))
+      if (unlikely(IsD3D9ExclusiveFormat(RenderTargetFormat)
+                || IsD3D9ExclusiveFormat(DepthStencilFormat)))
         return D3DERR_NOTAVAILABLE;
 
-      if (unlikely(!isRenderTargetFormat(RenderTargetFormat)))
+      if (unlikely(!IsRenderTargetFormat(RenderTargetFormat)))
         return D3DERR_NOTAVAILABLE;
 
       return m_d3d9->CheckDepthStencilMatch(
