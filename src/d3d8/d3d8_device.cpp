@@ -293,7 +293,7 @@ namespace dxvk {
     if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     // Nvidia & Intel workaround for The Lord of the Rings: The Fellowship of the Ring
@@ -344,7 +344,7 @@ namespace dxvk {
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DVolumeTexture9> pVolume9;
@@ -390,7 +390,7 @@ namespace dxvk {
     if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DCubeTexture9> pCube9;
@@ -507,10 +507,10 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(!isRenderTargetFormat(Format)))
+    if (unlikely(!IsRenderTargetFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DSurface9> pSurf9;
@@ -547,7 +547,7 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DSurface9> pSurf9;
@@ -585,7 +585,7 @@ namespace dxvk {
 
     // CreateImageSurface is generally guaranteed to succeed even with unsupported
     // formats, however D3D9 exclusive formats fail on native D3D8.
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(static_cast<d3d9::D3DFORMAT>(Format));
@@ -619,7 +619,7 @@ namespace dxvk {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
 
-    const bool compressed = isDXTFormat(static_cast<D3DFORMAT>(srcDesc.Format));
+    const bool compressed = IsDXTFormat(static_cast<D3DFORMAT>(srcDesc.Format));
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (unlikely(FAILED(res)))
@@ -739,7 +739,7 @@ namespace dxvk {
 
     // This method cannot be applied to surfaces whose formats
     // are classified as depth stencil formats.
-    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
+    if (unlikely(IsDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
       return D3DERR_INVALIDCALL;
 
     StateChange();
@@ -1397,7 +1397,7 @@ namespace dxvk {
       if (tex) {
         D3DSURFACE_DESC surf;
         tex->GetLevelDesc(0, &surf);
-        if (isDepthStencilFormat(surf.Format)) {
+        if (IsDepthStencilFormat(surf.Format)) {
           // If we bound a depth texture to stage 0 then we need to set the projected flag for stage 0 and 1
           // Stage 1 is a non-depth light cookie texture but still requires perspective divide to work
           GetD3D9()->SetTextureStageState(0, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
@@ -1887,13 +1887,13 @@ namespace dxvk {
     }
 
     // Set bit to indicate this is not an FVF
-    *pHandle = getShaderHandle(m_vertexShaders.size());
+    *pHandle = GetShaderHandle(m_vertexShaders.size());
 
     return D3D_OK;
   }
 
   inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8Device* device, DWORD Handle) {
-    Handle = getShaderIndex(Handle);
+    Handle = GetShaderIndex(Handle);
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
       Logger::warn(str::format("D3D8Device: Invalid vertex shader handle ", std::hex, Handle));
       return nullptr;
@@ -1918,7 +1918,7 @@ namespace dxvk {
     }
 
     // Check for extra bit that indicates this is not an FVF
-    if (!isFVF(Handle)) {
+    if (!IsFVF(Handle)) {
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
       if (unlikely(!info))
@@ -1972,7 +1972,7 @@ namespace dxvk {
       D3D8VertexShaderInfo& info = m_vertexShaders[i];
 
       if (info.pVertexShader == pVertexShader) {
-        *pHandle = getShaderHandle(i);
+        *pHandle = GetShaderHandle(i);
         return D3D_OK;
       }
     }
@@ -1984,7 +1984,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteVertexShader(DWORD Handle) {
     D3D8DeviceLock lock = LockDevice();
 
-    if (likely(!isFVF(Handle))) {
+    if (likely(!IsFVF(Handle))) {
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
       if (unlikely(!info))
@@ -2080,13 +2080,13 @@ namespace dxvk {
 
     m_pixelShaders.push_back(std::move(pPixelShader));
     // Still set the shader bit, to prevent conflicts with NULL.
-    *pHandle = getShaderHandle(m_pixelShaders.size());
+    *pHandle = GetShaderHandle(m_pixelShaders.size());
 
     return D3D_OK;
   }
 
   inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle) {
-    Handle = getShaderIndex(Handle);
+    Handle = GetShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
       Logger::warn(str::format("D3D8Device: Invalid pixel shader handle ", std::hex, Handle));
@@ -2152,7 +2152,7 @@ namespace dxvk {
     if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;
 
-    m_pixelShaders[getShaderIndex(Handle)] = nullptr;
+    m_pixelShaders[GetShaderIndex(Handle)] = nullptr;
 
     if (m_currentPixelShader == Handle)
       m_currentPixelShader = 0;

@@ -148,7 +148,7 @@ namespace dxvk {
     pSurf8->Type    = static_cast<D3DRESOURCETYPE>(pSurf9->Type);
     pSurf8->Usage   = pSurf9->Usage;
     pSurf8->Pool    = static_cast<D3DPOOL>(pSurf9->Pool);
-    pSurf8->Size    = getSurfaceSize(pSurf8->Format, pSurf9->Width, pSurf9->Height);
+    pSurf8->Size    = GetSurfaceSize(pSurf8->Format, pSurf9->Width, pSurf9->Height);
 
     pSurf8->MultiSampleType = static_cast<D3DMULTISAMPLE_TYPE>(pSurf9->MultiSampleType);
     // DX8: No multisample quality
@@ -162,7 +162,7 @@ namespace dxvk {
     pVol8->Type   = static_cast<D3DRESOURCETYPE>(pVol9->Type);
     pVol8->Usage  = pVol9->Usage;
     pVol8->Pool   = static_cast<D3DPOOL>(pVol9->Pool);
-    pVol8->Size   = getSurfaceSize(pVol8->Format, pVol9->Width, pVol9->Height) * pVol9->Depth;
+    pVol8->Size   = GetSurfaceSize(pVol8->Format, pVol9->Width, pVol9->Height) * pVol9->Depth;
     pVol8->Width  = pVol9->Width;
     pVol8->Height = pVol9->Height;
     pVol8->Depth  = pVol9->Depth;
@@ -188,15 +188,15 @@ namespace dxvk {
     }
   }
 
-  inline DWORD isFVF(DWORD Handle) {
+  inline DWORD IsFVF(DWORD Handle) {
     return (Handle & D3DFVF_RESERVED0) == 0;
   }
 
-  inline DWORD getShaderHandle(DWORD Index) {
+  inline DWORD GetShaderHandle(DWORD Index) {
     return (Index << 1) | D3DFVF_RESERVED0;
   }
 
-  inline DWORD getShaderIndex(DWORD Handle) {
+  inline DWORD GetShaderIndex(DWORD Handle) {
     if ((Handle & D3DFVF_RESERVED0) != 0) {
       return ((Handle & ~(D3DFVF_RESERVED0)) >> 1) - 1;
     } else {
