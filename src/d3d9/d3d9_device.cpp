@@ -8626,81 +8626,82 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    rs[D3DRS_SEPARATEALPHABLENDENABLE] = FALSE;
-    rs[D3DRS_ALPHABLENDENABLE]         = FALSE;
-    rs[D3DRS_BLENDOP]                  = D3DBLENDOP_ADD;
-    rs[D3DRS_BLENDOPALPHA]             = D3DBLENDOP_ADD;
-    rs[D3DRS_DESTBLEND]                = D3DBLEND_ZERO;
-    rs[D3DRS_DESTBLENDALPHA]           = D3DBLEND_ZERO;
-    rs[D3DRS_COLORWRITEENABLE]         = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE1]        = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE2]        = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE3]        = 0x0000000f;
-    rs[D3DRS_SRCBLEND]                 = D3DBLEND_ONE;
-    rs[D3DRS_SRCBLENDALPHA]            = D3DBLEND_ONE;
+    rs[D3DRS_SEPARATEALPHABLENDENABLE]   = FALSE;
+    rs[D3DRS_ALPHABLENDENABLE]           = FALSE;
+    rs[D3DRS_BLENDOP]                    = D3DBLENDOP_ADD;
+    rs[D3DRS_BLENDOPALPHA]               = D3DBLENDOP_ADD;
+    rs[D3DRS_DESTBLEND]                  = D3DBLEND_ZERO;
+    rs[D3DRS_DESTBLENDALPHA]             = D3DBLEND_ZERO;
+    rs[D3DRS_COLORWRITEENABLE]           = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE1]          = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE2]          = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE3]          = 0x0000000f;
+    rs[D3DRS_SRCBLEND]                   = D3DBLEND_ONE;
+    rs[D3DRS_SRCBLENDALPHA]              = D3DBLEND_ONE;
     BindBlendState();
 
-    rs[D3DRS_BLENDFACTOR]              = 0xffffffff;
+    rs[D3DRS_BLENDFACTOR]                = 0xffffffff;
     BindBlendFactor();
 
-    rs[D3DRS_ZENABLE]                  = pPresentationParameters->EnableAutoDepthStencil
-                                       ? D3DZB_TRUE
-                                       : D3DZB_FALSE;
-    rs[D3DRS_ZFUNC]                    = D3DCMP_LESSEQUAL;
-    rs[D3DRS_TWOSIDEDSTENCILMODE]      = FALSE;
-    rs[D3DRS_ZWRITEENABLE]             = TRUE;
-    rs[D3DRS_STENCILENABLE]            = FALSE;
-    rs[D3DRS_STENCILFAIL]              = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILZFAIL]             = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILPASS]              = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILFUNC]              = D3DCMP_ALWAYS;
-    rs[D3DRS_CCW_STENCILFAIL]          = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILZFAIL]         = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILPASS]          = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILFUNC]          = D3DCMP_ALWAYS;
-    rs[D3DRS_STENCILMASK]              = 0xFFFFFFFF;
-    rs[D3DRS_STENCILWRITEMASK]         = 0xFFFFFFFF;
+    rs[D3DRS_ZENABLE]                    = pPresentationParameters->EnableAutoDepthStencil
+                                         ? D3DZB_TRUE
+                                         : D3DZB_FALSE;
+    rs[D3DRS_ZFUNC]                      = D3DCMP_LESSEQUAL;
+    rs[D3DRS_TWOSIDEDSTENCILMODE]        = FALSE;
+    rs[D3DRS_ZWRITEENABLE]               = TRUE;
+    rs[D3DRS_STENCILENABLE]              = FALSE;
+    rs[D3DRS_STENCILFAIL]                = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILZFAIL]               = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILPASS]                = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILFUNC]                = D3DCMP_ALWAYS;
+    rs[D3DRS_CCW_STENCILFAIL]            = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILZFAIL]           = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILPASS]            = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILFUNC]            = D3DCMP_ALWAYS;
+    rs[D3DRS_STENCILMASK]                = 0xFFFFFFFF;
+    rs[D3DRS_STENCILWRITEMASK]           = 0xFFFFFFFF;
     BindDepthStencilState();
 
-    rs[D3DRS_STENCILREF] = 0;
+    rs[D3DRS_STENCILREF]                 = 0;
     BindDepthStencilReference();
 
-    rs[D3DRS_FILLMODE]            = D3DFILL_SOLID;
-    rs[D3DRS_CULLMODE]            = D3DCULL_CCW;
-    rs[D3DRS_DEPTHBIAS]           = bit::cast<DWORD>(0.0f);
-    rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_FILLMODE]                   = D3DFILL_SOLID;
+    rs[D3DRS_CULLMODE]                   = D3DCULL_CCW;
+    rs[D3DRS_DEPTHBIAS]                  = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_SLOPESCALEDEPTHBIAS]        = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
     BindDepthBias();
 
-    rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
+    rs[D3DRS_SCISSORTESTENABLE]          = FALSE;
 
-    rs[D3DRS_ALPHATESTENABLE]     = FALSE;
-    rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
+    rs[D3DRS_ALPHATESTENABLE]            = FALSE;
+    rs[D3DRS_ALPHAFUNC]                  = D3DCMP_ALWAYS;
     BindAlphaTestState();
-    rs[D3DRS_ALPHAREF]            = 0;
-    m_pushData.shared.alphaRef    = rs[D3DRS_ALPHAREF];
+    rs[D3DRS_ALPHAREF]                   = 0;
+    m_pushData.shared.alphaRef           = rs[D3DRS_ALPHAREF];
 
-    rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
+    rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
+    rs[D3DRS_MULTISAMPLEMASK]            = 0xffffffff;
     BindMultiSampleState();
 
-    rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
-    m_pushData.ffps.textureFactor = rs[D3DRS_TEXTUREFACTOR];
+    rs[D3DRS_TEXTUREFACTOR]              = 0xffffffff;
+    m_pushData.ffps.textureFactor        = rs[D3DRS_TEXTUREFACTOR];
 
-    rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
-    rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
-    rs[D3DRS_AMBIENTMATERIALSOURCE]  = D3DMCS_MATERIAL;
-    rs[D3DRS_EMISSIVEMATERIALSOURCE] = D3DMCS_MATERIAL;
-    rs[D3DRS_LIGHTING]               = TRUE;
-    rs[D3DRS_COLORVERTEX]            = TRUE;
-    rs[D3DRS_LOCALVIEWER]            = TRUE;
-    rs[D3DRS_RANGEFOGENABLE]         = FALSE;
-    rs[D3DRS_NORMALIZENORMALS]       = FALSE;
+    rs[D3DRS_DIFFUSEMATERIALSOURCE]      = D3DMCS_COLOR1;
+    rs[D3DRS_SPECULARMATERIALSOURCE]     = D3DMCS_COLOR2;
+    rs[D3DRS_AMBIENTMATERIALSOURCE]      = D3DMCS_MATERIAL;
+    rs[D3DRS_EMISSIVEMATERIALSOURCE]     = D3DMCS_MATERIAL;
+    rs[D3DRS_LIGHTING]                   = TRUE;
+    rs[D3DRS_COLORVERTEX]                = TRUE;
+    rs[D3DRS_LOCALVIEWER]                = TRUE;
+    rs[D3DRS_RANGEFOGENABLE]             = FALSE;
+    rs[D3DRS_NORMALIZENORMALS]           = FALSE;
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     // PS
-    rs[D3DRS_SPECULARENABLE] = FALSE;
+    rs[D3DRS_SPECULARENABLE]             = FALSE;
 
-    rs[D3DRS_AMBIENT]                = 0;
+    rs[D3DRS_AMBIENT]                    = 0;
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     rs[D3DRS_FOGENABLE]                  = FALSE;
@@ -8712,7 +8713,7 @@ namespace dxvk {
     rs[D3DRS_FOGVERTEXMODE]              = D3DFOG_NONE;
     m_dirty.set(D3D9DeviceDirtyFlag::Fog);
 
-    rs[D3DRS_CLIPPLANEENABLE] = 0;
+    rs[D3DRS_CLIPPLANEENABLE]            = 0;
     m_dirty.set(D3D9DeviceDirtyFlag::ClipPlanes);
 
     const auto& limits = m_dxvkDevice->properties().core.properties.limits;
@@ -8753,7 +8754,6 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
     rs[D3DRS_PATCHEDGESTYLE]             = D3DPATCHEDGE_DISCRETE;
     rs[D3DRS_DEBUGMONITORTOKEN]          = D3DDMT_ENABLE;
     rs[D3DRS_POSITIONDEGREE]             = D3DDEGREE_CUBIC;
