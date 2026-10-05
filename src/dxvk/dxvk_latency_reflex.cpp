@@ -280,6 +280,7 @@ namespace dxvk {
     uint64_t frameId = lookupFrameId(appFrameId);
 
     if (!frameId && (marker == VK_LATENCY_MARKER_SIMULATION_START_NV
+                  || marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV
                   || marker == VK_LATENCY_MARKER_INPUT_SAMPLE_NV))
       frameId = allocateFrameId(appFrameId);
 
