@@ -102,6 +102,9 @@ namespace dxvk {
     /// Some games are broken and ignore row pitch.
     bool disableDirectImageMapping = false;
 
+    /// Whether to ignore all calls to Flush() without signal
+    bool ignoreExplicitFlush = false;
+
     /// Shader dump path
     std::string shaderDumpPath;
   };

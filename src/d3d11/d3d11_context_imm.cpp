@@ -1219,11 +1219,12 @@ namespace dxvk {
     // If we're in tiler mode and a render pass hasn't been resolved yet,
     // ignore explicit flushes. This is a very dirty heuristic to work
     // around some Unity Engine performance issues.
-    if (m_hasPendingUnresolvedPass && !m_parent->Is11on12Device())
+    if (!m_parent->Is11on12Device() && !hEvent
+     && (m_hasPendingUnresolvedPass || m_parent->GetOptions()->ignoreExplicitFlush))
       return;
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      m_flushReason = "Explicit Flush";
+      m_flushReason = hEvent ? "Explicit Flush (with event)" : "Explicit Flush";
 
     ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
