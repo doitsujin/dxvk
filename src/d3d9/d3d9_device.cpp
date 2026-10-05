@@ -8351,6 +8351,7 @@ namespace dxvk {
 
       // All subsequent stages are disabled too following the first disabled stage.
       auto colorOp = D3DTEXTUREOP(data[DXVK_TSS_COLOROP]);
+      auto alphaOp = D3DTEXTUREOP(data[DXVK_TSS_ALPHAOP]);
 
       if (colorOp == D3DTOP_DISABLE)
         break;
@@ -8372,6 +8373,11 @@ namespace dxvk {
       // Keep bump stages since they feed into texcoords for the next stage.
       if (colorOp == D3DTOP_BUMPENVMAP || colorOp == D3DTOP_BUMPENVMAPLUMINANCE)
         preserveColorStageMask |= 1u << i;
+
+      // Dot product can be used as an alpha op, but consumes color. Might need
+      // to preserve all previous color stages.
+      if (alphaOp == D3DTOP_DOTPRODUCT3)
+        preserveColorStageMask |= (1u << i) - 1u;
 
       activeTextureStageCount += 1u;
     }
