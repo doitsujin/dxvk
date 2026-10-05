@@ -872,6 +872,17 @@ namespace dxvk {
     if (m_properties.vk12.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::IndependentDenormMode);
 
+    if (m_options.vendorNeutralShaders) {
+      // Small push data types are packed into dwords on drivers without
+      // 8/16-bit push constants; do so everywhere. Constant buffers stay
+      // descriptors rather than the BDA path chosen for AMD drivers.
+      m_shaderOptions.flags.clr(
+        DxvkShaderCompileFlag::SupportsSubDwordPushData,
+        DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
+
+      Logger::info("DxvkDevice: Using vendor-neutral shader options");
+    }
+
     if (m_features.khrShaderFloatControls2.shaderFloatControls2)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
 
