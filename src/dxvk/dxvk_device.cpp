@@ -911,6 +911,9 @@ namespace dxvk {
       DxvkShaderCompileFlag::SupportsSubDwordPushData,
       DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
 
+    // FP16 arithmetic depends on device support, so leave it off
+    m_shaderOptions.flags.clr(DxvkShaderCompileFlag::Supports16BitArithmetic);
+
     // Float controls: drivers advertise different modes, and with
     // float_controls2 the shader declares them differently again.
     // Keep the one mode D3D9 shaders need. Raw access chains are an
