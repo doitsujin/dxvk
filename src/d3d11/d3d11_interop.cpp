@@ -83,9 +83,12 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11VkInterop::FlushRenderingCommands() {
+    // Callers can expect the submission to have happened on the Vulkan queue
+    // by the time this returns, so we need to unconditionally synchronize
     auto immediateContext = m_device->GetContext();
-    immediateContext->Flush();
-    immediateContext->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+    auto immediateContextLock = immediateContext->LockContext();
+
+    immediateContext->ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
   
   
