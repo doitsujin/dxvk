@@ -785,6 +785,8 @@ namespace dxvk {
 
     void determineShaderOptions();
 
+    void applyVendorNeutralShaderOptions();
+
     void logBindingModel();
 
   };

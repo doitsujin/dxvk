@@ -872,17 +872,6 @@ namespace dxvk {
     if (m_properties.vk12.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::IndependentDenormMode);
 
-    if (m_options.vendorNeutralShaders) {
-      // Small push data types are packed into dwords on drivers without
-      // 8/16-bit push constants; do so everywhere. Constant buffers stay
-      // descriptors rather than the BDA path chosen for AMD drivers.
-      m_shaderOptions.flags.clr(
-        DxvkShaderCompileFlag::SupportsSubDwordPushData,
-        DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
-
-      Logger::info("DxvkDevice: Using vendor-neutral shader options");
-    }
-
     if (m_features.khrShaderFloatControls2.shaderFloatControls2)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
 
@@ -907,6 +896,54 @@ namespace dxvk {
     // Descriptor heap implicitly also enables resource indexing
     if (canUseDescriptorHeap())
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
+
+    // Runs last, so that every per-device choice above is overridden.
+    if (m_options.vendorNeutralShaders)
+      applyVendorNeutralShaderOptions();
+  }
+
+
+  void DxvkDevice::applyVendorNeutralShaderOptions() {
+    // Small push data types are packed into dwords on drivers without
+    // 8/16-bit push constants; do so everywhere. Constant buffers stay
+    // descriptors rather than the BDA path chosen for AMD drivers.
+    m_shaderOptions.flags.clr(
+      DxvkShaderCompileFlag::SupportsSubDwordPushData,
+      DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
+
+    // Float controls: drivers advertise different modes, and with
+    // float_controls2 the shader declares them differently again.
+    // Keep the one mode D3D9 shaders need. Raw access chains are an
+    // Nvidia-only optimization that changes the code as well.
+    bool szInfNan32 = m_shaderOptions.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
+
+    m_shaderOptions.spirv.clr(
+      DxvkShaderSpirvFlag::SupportsNvRawAccessChains,
+      DxvkShaderSpirvFlag::SupportsSzInfNanPreserve16,
+      DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32,
+      DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64,
+      DxvkShaderSpirvFlag::SupportsRte16,
+      DxvkShaderSpirvFlag::SupportsRte32,
+      DxvkShaderSpirvFlag::SupportsRte64,
+      DxvkShaderSpirvFlag::SupportsRtz16,
+      DxvkShaderSpirvFlag::SupportsRtz32,
+      DxvkShaderSpirvFlag::SupportsRtz64,
+      DxvkShaderSpirvFlag::SupportsDenormFlush16,
+      DxvkShaderSpirvFlag::SupportsDenormFlush32,
+      DxvkShaderSpirvFlag::SupportsDenormFlush64,
+      DxvkShaderSpirvFlag::SupportsDenormPreserve16,
+      DxvkShaderSpirvFlag::SupportsDenormPreserve32,
+      DxvkShaderSpirvFlag::SupportsDenormPreserve64,
+      DxvkShaderSpirvFlag::IndependentRoundMode,
+      DxvkShaderSpirvFlag::IndependentDenormMode,
+      DxvkShaderSpirvFlag::SupportsFloatControls2);
+
+    if (szInfNan32)
+      m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
+    else
+      Logger::warn("DxvkDevice: Vendor-neutral shaders: no 32-bit SignedZeroInfNanPreserve, shaders will differ from other devices");
+
+    Logger::info("DxvkDevice: Using vendor-neutral shader options");
   }
 
 
