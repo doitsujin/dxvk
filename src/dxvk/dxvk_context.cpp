@@ -2458,18 +2458,20 @@ namespace dxvk {
                                           | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
                                           | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-      bool needsNewBackingStorage = (dstImage->info().stages & graphicsStages)
-        && dstImage->isTracked(m_trackingId, DxvkAccess::Write);
+      bool needsNewBackingStorage = false;
 
-      // We never make MSAA passes unsynchronized, so this should be fine
-      if (needsNewBackingStorage && dstImage->hasGfxStores()) {
-        needsNewBackingStorage = resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Read, DxvkAccessOp::None)
-                              || resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Write, DxvkAccessOp::None);
+      if (dstImage->info().stages & graphicsStages) {
+        // We never make MSAA passes unsynchronized, so this should be fine
+        if (dstImage->hasGfxStores()) {
+          needsNewBackingStorage = resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Read, DxvkAccessOp::None)
+                                || resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Write, DxvkAccessOp::None);
+        } else {
+          dstImage->trackGfxStores();
+
+          needsNewBackingStorage = dstImage->isTracked(
+            m_trackingId, DxvkAccess::Write);
+        }
       }
-
-      // Enable tracking so that we don't unnecessarily hit slow paths in the future
-      if (dstImage->info().stages & graphicsStages)
-        needsNewBackingStorage |= !dstImage->trackGfxStores();
 
       if (needsNewBackingStorage) {
         auto imageSubresource = dstImage->getAvailableSubresources();
