@@ -358,11 +358,10 @@ namespace dxvk {
     if (unlikely(!Size))
       return DxvkBufferSlice();
 
-    VkDeviceSize maxPending = std::max<VkDeviceSize>(Size, MaxMemoryInFlight);
+    VkDeviceSize alignedSize = dxvk::align(Size, StagingBufferAlignment);
+    VkDeviceSize maxPending = std::max<VkDeviceSize>(alignedSize, MaxMemoryInFlight);
 
     { std::unique_lock lock(m_mutex);
-
-      VkDeviceSize alignedSize = dxvk::align(Size, StagingBufferAlignment);
 
       // Serialize allocation requests so that we don't end up starving large
       // allocations in case we have to throttle. Usually this will not wait.
