@@ -368,12 +368,14 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11VideoProcessorOutputView>(pDevice),
     m_common(pDevice, pResource, CreateViewInfo(Desc)),
     m_desc(Desc), m_destructionNotifier(this) {
-
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::registerView(this);
   }
 
 
   D3D11VideoProcessorOutputView::~D3D11VideoProcessorOutputView() {
-
+    if (m_parent->GetOptions()->viewUAFGuard)
+      D3D11ViewUAFGuard::unregisterView(this);
   }
 
 
