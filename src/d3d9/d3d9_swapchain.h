@@ -156,6 +156,8 @@ namespace dxvk {
     D3D9WindowContext*        m_wctx = nullptr;
 
     std::vector<Com<D3D9Surface, false>> m_backBuffers;
+
+    Com<D3D9Surface>          m_gdiCopySurface = nullptr;
     
     RECT                      m_srcRect;
     RECT                      m_dstRect;

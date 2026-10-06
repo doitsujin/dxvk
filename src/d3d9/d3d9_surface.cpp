@@ -213,6 +213,8 @@ namespace dxvk {
     if (unlikely(!IsSurfaceGetDCCompatibleFormat(desc.Format)))
       return D3DERR_INVALIDCALL;
 
+    // GetDC only succeeds if the surface is lockable.
+    // This also means we don't need to worry about multisampling here.
     D3DLOCKED_RECT lockedRect;
     HRESULT hr = LockRect(&lockedRect, nullptr, 0);
     if (FAILED(hr))
