@@ -779,9 +779,13 @@ namespace dxvk {
     if (!(r32Features & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT))
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
 
-    // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
-    bool lowerSinCos = m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
-                    || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS);
+    // Up to the Intel Xe2 GPU architecture, the hardware sin/cos precision was low
+    // (but spec compliant) close to zero, which causes rendering issues in some games.
+    // Precision close to 0 is significantly improved with Xe3 (arch 30) and newer.
+    bool lowerSinCos =
+        (m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+         || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS))
+         && (!m_features.intelDeviceInfo || m_properties.intelDeviceInfo.deviceIpVersionArch < 30u);
     applyTristate(lowerSinCos, m_options.lowerSinCos);
 
 
