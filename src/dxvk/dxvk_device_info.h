@@ -44,6 +44,7 @@ namespace dxvk {
     VkPhysicalDeviceMaintenance7PropertiesKHR                 khrMaintenance7                 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR };
     VkPhysicalDeviceMaintenance9PropertiesKHR                 khrMaintenance9                 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_9_PROPERTIES_KHR };
     VkPhysicalDeviceMaintenance10PropertiesKHR                khrMaintenance10                = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_10_PROPERTIES_KHR };
+    VkPhysicalDeviceInfoPropertiesINTEL                       intelDeviceInfo                 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INFO_PROPERTIES_INTEL };
   };
 
 
@@ -120,6 +121,7 @@ namespace dxvk {
     VkPhysicalDeviceRawAccessChainsFeaturesNV                 nvRawAccessChains               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV };
     VkBool32                                                  nvxBinaryImport                 = VK_FALSE;
     VkBool32                                                  nvxImageViewHandle              = VK_FALSE;
+    VkBool32                                                  intelDeviceInfo                 = VK_FALSE;
   };
 
 
@@ -197,6 +199,7 @@ namespace dxvk {
     VkExtensionProperties nvRawAccessChains                 = vk::makeExtension(VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME);
     VkExtensionProperties nvxBinaryImport                   = vk::makeExtension(VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
     VkExtensionProperties nvxImageViewHandle                = vk::makeExtension(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
+    VkExtensionProperties intelDeviceInfo                   = vk::makeExtension(VK_INTEL_DEVICE_INFO_EXTENSION_NAME);
   };
 
 

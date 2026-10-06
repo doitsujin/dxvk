@@ -76,7 +76,8 @@ namespace dxvk {
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
     HANDLE_EXT(nvxBinaryImport);                   \
-    HANDLE_EXT(nvxImageViewHandle);
+    HANDLE_EXT(nvxImageViewHandle);                \
+    HANDLE_EXT(intelDeviceInfo);
 
   #define EXTENSIONS_WITH_PROPERTIES               \
     HANDLE_EXT(extConservativeRasterization);      \
@@ -96,7 +97,8 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance9);                   \
-    HANDLE_EXT(khrMaintenance10);
+    HANDLE_EXT(khrMaintenance10);                  \
+    HANDLE_EXT(intelDeviceInfo);
 
 
   DxvkDeviceCapabilities::DxvkDeviceCapabilities(
@@ -1114,6 +1116,9 @@ namespace dxvk {
       /* CUDA interop extensions */
       ENABLE_EXT(nvxBinaryImport, false),
       ENABLE_EXT(nvxImageViewHandle, false),
+
+      /* Intel device info, used to detect the GPU architecture generation */
+      ENABLE_EXT(intelDeviceInfo, false),
     }};
 
     #undef ENABLE_FEATURE
