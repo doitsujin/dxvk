@@ -265,7 +265,14 @@ namespace dxvk {
           waitInfo.pSemaphores = semaphores.data();
           waitInfo.pValues = timelines.data();
 
-          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
+          // Treat a timeout here as DEVICE_LOST. Sometimes we just don't get
+          // DEVICE_LOST from the driver for some reason.
+          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, 5'000'000'000ull);
+
+          if (status == VK_TIMEOUT) {
+            Logger::err("DxvkSubmissionQueue: Timeout occured, GPU likely hung.");
+            status = VK_ERROR_DEVICE_LOST;
+          }
 
           if (entry.latency.tracker && status == VK_SUCCESS)
             entry.latency.tracker->notifyGpuExecutionEnd(entry.latency.frameId);
