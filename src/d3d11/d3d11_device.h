@@ -831,7 +831,6 @@ namespace dxvk {
   private:
 
     D3D11DXGIDevice*  m_container;
-    D3D11Device*      m_device;
 
     bool              m_reflexEnabled = false;
 

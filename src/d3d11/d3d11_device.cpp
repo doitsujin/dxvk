@@ -3493,7 +3493,7 @@ namespace dxvk {
   D3D11ReflexDevice::D3D11ReflexDevice(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
-  : m_container(pContainer), m_device(pDevice) {
+  : m_container(pContainer) {
     auto dxvkDevice = pDevice->GetDXVKDevice();
 
     m_reflexEnabled = dxvkDevice->features().nvLowLatency2
@@ -3579,24 +3579,6 @@ namespace dxvk {
     if (m_tracker) {
       auto marker = VkLatencyMarkerNV(MarkerType);
       m_tracker->setLatencyMarker(FrameId, marker);
-
-      if (marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV) {
-        m_device->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
-          cTracker  = m_tracker,
-          cFrameId  = FrameId
-        ] (DxvkContext* ctx) {
-          uint64_t frameId = cTracker->frameIdFromAppFrameId(cFrameId);
-
-          if (frameId)
-            ctx->beginLatencyTracking(cTracker, frameId);
-        });
-      } else if (marker == VK_LATENCY_MARKER_RENDERSUBMIT_END_NV) {
-        m_device->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
-          cTracker  = m_tracker
-        ] (DxvkContext* ctx) {
-          ctx->endLatencyTracking(cTracker);
-        });
-      }
     }
 
     return S_OK;

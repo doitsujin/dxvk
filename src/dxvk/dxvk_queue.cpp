@@ -132,9 +132,6 @@ namespace dxvk {
   void DxvkSubmissionQueue::submitCmdLists() {
     env::setThreadName("dxvk-submit");
 
-    uint64_t trackedSubmitId = 0u;
-    uint64_t trackedPresentId = 0u;
-
     while (!m_stopped.load()) {
       DxvkSubmitEntry entry;
 
@@ -161,15 +158,11 @@ namespace dxvk {
           m_callback(true);
 
         if (entry.submit.cmdList != nullptr) {
-          if (entry.latency.tracker) {
+          if (entry.latency.tracker)
             entry.latency.tracker->notifyQueueSubmit(entry.latency.frameId);
 
-            if (!trackedSubmitId && entry.latency.frameId > trackedPresentId)
-              trackedSubmitId = entry.latency.frameId;
-          }
-
           status = entry.submit.cmdList->submit(
-            m_semaphores, m_timelines, trackedSubmitId);
+            m_semaphores, m_timelines);
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
           if (entry.latency.tracker)
@@ -179,13 +172,9 @@ namespace dxvk {
             entry.present.frameId, entry.latency.tracker,
             entry.present.rects.size(), entry.present.rects.data());
 
-          if (entry.latency.tracker) {
+          if (entry.latency.tracker)
             entry.latency.tracker->notifyQueuePresentEnd(
               entry.latency.frameId, status);
-
-            trackedPresentId = entry.latency.frameId;
-            trackedSubmitId = 0u;
-          }
         }
 
         if (m_callback)

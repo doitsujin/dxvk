@@ -135,15 +135,6 @@ namespace dxvk {
             uint32_t                  maxCount,
             DxvkReflexFrameReport*    reports);
 
-    /**
-     * \brief Looks up frame ID from application frame ID
-     *
-     * \param [in] appFrameId Application-provided frame ID
-     * \returns Internal frame ID, or 0 if none was found
-     */
-    uint64_t frameIdFromAppFrameId(
-            uint64_t                  appFrameId);
-
   private:
 
     Rc<Presenter>             m_presenter;

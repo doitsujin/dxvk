@@ -82,31 +82,11 @@ namespace dxvk {
 
   void DxvkReflexLatencyTrackerNv::notifyCsRenderBegin(
           uint64_t                  frameId) {
-    bool setMarker = false;
-
-    { std::lock_guard lock(m_mutex);
-
-      auto& frame = getFrameData(frameId);
-      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
-    }
-
-    if (setMarker)
-      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
   }
 
 
   void DxvkReflexLatencyTrackerNv::notifyCsRenderEnd(
           uint64_t                  frameId) {
-    bool setMarker = false;
-
-    { std::lock_guard lock(m_mutex);
-
-      auto& frame = getFrameData(frameId);
-      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
-    }
-
-    if (setMarker)
-      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
   }
 
 
@@ -306,6 +286,8 @@ namespace dxvk {
     if (marker == VK_LATENCY_MARKER_INPUT_SAMPLE_NV
      || marker == VK_LATENCY_MARKER_SIMULATION_START_NV
      || marker == VK_LATENCY_MARKER_SIMULATION_END_NV
+     || marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV
+     || marker == VK_LATENCY_MARKER_RENDERSUBMIT_END_NV
      || marker == VK_LATENCY_MARKER_TRIGGER_FLASH_NV) {
       lock.unlock();
 
@@ -439,13 +421,6 @@ namespace dxvk {
     }
 
     return count;
-  }
-
-
-  uint64_t DxvkReflexLatencyTrackerNv::frameIdFromAppFrameId(
-          uint64_t                  appFrameId) {
-    std::lock_guard lock(m_mutex);
-    return lookupFrameId(appFrameId);
   }
 
 
