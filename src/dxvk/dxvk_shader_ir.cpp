@@ -2260,6 +2260,7 @@ namespace dxvk {
     options.derivativeOptions.hoistDescriptorLoads = true;
 
     options.cseOptions.relocateDescriptorLoad = true;
+    options.cseOptions.resolveOverlappingLoads = true;
 
     if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsResourceIndexing))
       options.descriptorIndexing.optimizeDescriptorIndexing = true;
