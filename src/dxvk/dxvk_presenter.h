@@ -56,14 +56,14 @@ namespace dxvk {
    * \brief Queued frame
    */
   struct PresenterFrame {
-    uint64_t                frameId       = 0u;
-    Rc<DxvkLatencyTracker>  tracker       = nullptr;
-    VkPresentModeKHR        mode          = VK_PRESENT_MODE_FIFO_KHR;
-    VkResult                result        = VK_NOT_READY;
-    uint64_t                targetTime    = 0u;
-    uint64_t                deadline      = 0u;
-    bool                    isTimed       = false;
-    bool                    doWait        = false;
+    uint64_t                frameId         = 0u;
+    Rc<DxvkLatencyTracker>  tracker         = nullptr;
+    VkPresentModeKHR        mode            = VK_PRESENT_MODE_FIFO_KHR;
+    VkResult                result          = VK_NOT_READY;
+    uint64_t                targetTime      = 0u;
+    uint64_t                targetDeadline  = 0u;
+    bool                    isTimed         = false;
+    bool                    doWait          = false;
   };
 
   /**
