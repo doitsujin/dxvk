@@ -524,10 +524,10 @@ namespace dxvk {
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
-      ctx->flushCommandList(nullptr, nullptr);
+      ctx->flushCommandList(nullptr, 0u);
 
       cDevice->presentImage(cPresenter, cLatency, cFrameId,
-        cDirtyRects.size(), cDirtyRects.data(), nullptr);
+        cDirtyRects.size(), cDirtyRects.data(), 0u);
     });
 
     if (m_backBuffers.size() > 1u)

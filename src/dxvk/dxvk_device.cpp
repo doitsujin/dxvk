@@ -607,7 +607,7 @@ namespace dxvk {
           uint64_t                  frameId,
           uint32_t                  rectCount,
     const VkRectLayerKHR*           rects,
-          DxvkSubmitStatus*         status) {
+          uint64_t                  submissionId) {
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
     presentInfo.frameId = frameId;
@@ -619,7 +619,7 @@ namespace dxvk {
     latencyInfo.tracker = tracker;
     latencyInfo.frameId = frameId;
 
-    m_submissionQueue.present(presentInfo, latencyInfo, status);
+    m_submissionQueue.present(presentInfo, latencyInfo, submissionId);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
@@ -630,7 +630,7 @@ namespace dxvk {
     const Rc<DxvkCommandList>&      commandList,
     const Rc<DxvkLatencyTracker>&   tracker,
           uint64_t                  frameId,
-          DxvkSubmitStatus*         status) {
+          uint64_t                  submissionId) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
 
@@ -638,22 +638,15 @@ namespace dxvk {
     latencyInfo.tracker = tracker;
     latencyInfo.frameId = frameId;
 
-    m_submissionQueue.submit(submitInfo, latencyInfo, status);
+    m_submissionQueue.submit(submitInfo, latencyInfo, submissionId);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
   }
   
   
-  VkResult DxvkDevice::waitForSubmission(DxvkSubmitStatus* status) {
-    VkResult result = status->result.load();
-
-    if (result == VK_NOT_READY) {
-      m_submissionQueue.synchronizeSubmission(status);
-      result = status->result.load();
-    }
-
-    return result;
+  void DxvkDevice::waitForSubmission(uint64_t submissionId) {
+    m_submissionQueue.synchronizeSubmission(submissionId);
   }
 
 

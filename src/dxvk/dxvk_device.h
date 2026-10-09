@@ -652,7 +652,7 @@ namespace dxvk {
      * \param [in] frameId Frame ID
      * \param [in] rectCount Number of dirty rectangles,
      * \param [in] rects Dirty rectangles
-     * \param [out] status Present status
+     * \param [in] submissionId Submission timeline
      */
     void presentImage(
       const Rc<Presenter>&            presenter,
@@ -660,7 +660,7 @@ namespace dxvk {
             uint64_t                  frameId,
             uint32_t                  rectCount,
       const VkRectLayerKHR*           rects,
-            DxvkSubmitStatus*         status);
+            uint64_t                  submissionId);
     
     /**
      * \brief Submits a command list
@@ -670,13 +670,13 @@ namespace dxvk {
      * \param [in] commandList The command list to submit
      * \param [in] tracker Latency tracker
      * \param [in] frameId Frame ID
-     * \param [out] status Submission feedback
+     * \param [in] submissionId Submission timeline
      */
     void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
       const Rc<DxvkLatencyTracker>&   tracker,
             uint64_t                  frameId,
-            DxvkSubmitStatus*         status);
+            uint64_t                  submissionId);
 
     /**
      * \brief Locks submission queue
@@ -712,12 +712,10 @@ namespace dxvk {
     }
 
     /**
-     * \brief Waits for a given submission
-     * 
-     * \param [in,out] status Submission status
-     * \returns Result of the submission
+     * \brief Waits for a given submission to be sent to the GPU
+     * \param [in] submission Submission timeline to wait for
      */
-    VkResult waitForSubmission(DxvkSubmitStatus* status);
+    void waitForSubmission(uint64_t submissionId);
 
     /**
      * \brief Waits for a fence to become signaled

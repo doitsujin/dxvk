@@ -1093,12 +1093,12 @@ namespace dxvk {
           GpuFlushType                FlushType,
           HANDLE                      hEvent,
           BOOL                        Synchronize) {
-    if (Synchronize)
-      m_submitStatus.result = VK_NOT_READY;
-
     // Exit early if there's nothing to do
-    if (!GetPendingCsChunks() && !hEvent)
+    if (!GetPendingCsChunks() && !hEvent) {
+      if (Synchronize)
+        m_device->waitForSubmission(m_submissionId);
       return;
+    }
 
     m_hasPendingUnresolvedPass = false;
 
@@ -1117,7 +1117,6 @@ namespace dxvk {
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId,
-      cSubmissionStatus = Synchronize ? &m_submitStatus : nullptr,
       cStagingFence     = m_stagingBufferFence,
       cStagingMemory    = GetStagingMemoryStatistics().allocatedTotal,
       cFlushReason      = std::exchange(m_flushReason, std::string())
@@ -1126,7 +1125,7 @@ namespace dxvk {
 
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingFence, cStagingMemory);
-      ctx->flushCommandList(&debugLabel, cSubmissionStatus);
+      ctx->flushCommandList(&debugLabel, cSubmissionId);
     });
 
     FlushCsChunk();
@@ -1138,7 +1137,7 @@ namespace dxvk {
     // If necessary, block calling thread until the
     // Vulkan queue submission is performed.
     if (Synchronize)
-      m_device->waitForSubmission(&m_submitStatus);
+      m_device->waitForSubmission(submissionId);
 
     // Free local staging buffer so that we don't
     // end up with a persistent allocation

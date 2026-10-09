@@ -97,11 +97,11 @@ namespace dxvk {
      * Transparently submits the current command
      * buffer and allocates a new one.
      * \param [in] reason Optional debug label describing the reason
-     * \param [out] status Submission feedback
+     * \param [in] submissionId Submission timeline
      */
     void flushCommandList(
       const VkDebugUtilsLabelEXT*       reason,
-            DxvkSubmitStatus*           status);
+            uint64_t                    submissionId);
 
     /**
      * \brief Synchronizes command list with WSI

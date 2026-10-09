@@ -322,7 +322,7 @@ namespace dxvk {
 
   void D3D11Initializer::ExecuteFlushLocked() {
     EmitCsLocked([] (DxvkContext* ctx) {
-      ctx->flushCommandList(nullptr, nullptr);
+      ctx->flushCommandList(nullptr, 0u);
     });
 
     FlushCsChunkLocked();
