@@ -19,7 +19,9 @@ d3d8_link_depends = []
 
 if platform != 'windows'
   lib_d3d9 = d3d9_dep
-  d3d8_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d8.sym') ]
+  if platform != 'darwin'
+    d3d8_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d8.sym') ]
+  endif
   d3d8_link_depends += files('d3d8.sym')
 endif
 
