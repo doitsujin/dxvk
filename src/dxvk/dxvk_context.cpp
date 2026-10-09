@@ -162,7 +162,7 @@ namespace dxvk {
 
   void DxvkContext::flushCommandList(
     const VkDebugUtilsLabelEXT*       reason,
-          DxvkSubmitStatus*           status) {
+          uint64_t                    submissionId) {
     // If necessary, block any async queue on previous command completion
     if (m_submitWaitId)
       m_cmd->waitFence(m_trackingFence, std::exchange(m_submitWaitId, 0ull));
@@ -183,7 +183,7 @@ namespace dxvk {
       m_latencyTracker->notifyCsRenderEnd(m_latencyFrameId);
 
     m_device->submitCommandList(this->endRecording(reason),
-      m_latencyTracker, m_latencyFrameId, status);
+      m_latencyTracker, m_latencyFrameId, submissionId);
 
     // Ensure that subsequent submissions do not see the tracker.
     // It is important to hide certain internal submissions in

@@ -6122,9 +6122,6 @@ namespace dxvk {
   void D3D9DeviceEx::ExecuteFlush(bool Synchronize9On12) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (Synchronize9On12)
-      m_submitStatus.result = VK_NOT_READY;
-
     // Update signaled staging buffer counter and signal the fence
     m_stagingMemorySignaled = GetStagingMemoryStatistics().allocatedTotal;
 
@@ -6138,13 +6135,12 @@ namespace dxvk {
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId,
-      cSubmissionStatus = Synchronize9On12 ? &m_submitStatus : nullptr,
       cStagingBufferFence = m_stagingBufferFence,
       cStagingBufferAllocated = m_stagingMemorySignaled
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingBufferFence, cStagingBufferAllocated);
-      ctx->flushCommandList(nullptr, cSubmissionStatus);
+      ctx->flushCommandList(nullptr, cSubmissionId);
     });
 
     FlushCsChunk();
@@ -6155,7 +6151,7 @@ namespace dxvk {
     // If necessary, block calling thread until the
     // Vulkan queue submission is performed.
     if (Synchronize9On12)
-      m_dxvkDevice->waitForSubmission(&m_submitStatus);
+      m_dxvkDevice->waitForSubmission(submissionId);
 
     // Notify the device that the context has been flushed,
     // this resets some resource initialization heuristics.

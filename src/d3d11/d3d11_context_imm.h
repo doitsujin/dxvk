@@ -126,7 +126,6 @@ namespace dxvk {
 
     Rc<sync::CallbackFence> m_submissionFence;
     uint64_t                m_submissionId = 0ull;
-    DxvkSubmitStatus        m_submitStatus;
 
     uint64_t                m_flushSeqNum = 0ull;
     GpuFlushTracker         m_flushTracker;

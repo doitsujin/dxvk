@@ -912,9 +912,9 @@ namespace dxvk {
 
         // Submit command list and present
         ctx->synchronizeWsi(cSync);
-        ctx->flushCommandList(nullptr, nullptr);
+        ctx->flushCommandList(nullptr, 0u);
 
-        cDevice->presentImage(cPresenter, cLatency, cFrameId, 0, nullptr, nullptr);
+        cDevice->presentImage(cPresenter, cLatency, cFrameId, 0, nullptr, 0);
       });
 
       m_parent->FlushCsChunk();
