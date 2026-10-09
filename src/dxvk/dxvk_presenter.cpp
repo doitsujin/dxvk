@@ -303,6 +303,7 @@ namespace dxvk {
     frame.result = status;
     frame.targetTime = frameTargetTime;
     frame.targetDeadline = frameTargetTime ? frameTargetTime + m_timingMode.frameIntervalNs : 0u;
+    frame.timingDomainId = timingInfo.timeDomainId;
     frame.isTimed = bool(timingInfo.targetTime);
     frame.doWait = waitForPresent;
 
@@ -1629,9 +1630,23 @@ namespace dxvk {
       if (!report.reportComplete || !time.time || time.stage != m_timingMode.presentStage)
         continue;
 
+      // Find queued frame entry so we can properly correlate the report
+      // with expected timings
+      const PresenterFrame* frameEntry = nullptr;
+
+      for (const auto& frame : m_frameQueue) {
+        if (frame.frameId == report.presentId)
+          frameEntry = &frame;
+      }
+
+      if (!frameEntry || frameEntry->timingDomainId != m_timingMode.timeDomainId) {
+        Logger::warn(str::format("Presenter: Skipping report for frame ", report.presentId));
+        continue;
+      }
+
       uint64_t reportTimeLocal = translateTimestamp(
         report.timeDomain, report.timeDomainId, time.time,
-        VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId);
+        VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frameEntry->timingDomainId);
 
       uint64_t reportTimeQpc = 0u;
 
@@ -1646,12 +1661,7 @@ namespace dxvk {
         m_timingMode.lastFrameTimeLocal = reportTimeLocal;
         m_timingMode.lastFrameTimeQpc = reportTimeQpc;
 
-        // Implicitly handles the case where deadline is 0, i.e. no
-        // absolute timing was used to control the actual presentation.
-        for (const auto& frame : m_frameQueue) {
-          if (frame.frameId == report.presentId)
-            hasMissedDeadline = reportTimeLocal > frame.targetDeadline;
-        }
+        hasMissedDeadline = reportTimeLocal > frameEntry->targetDeadline;
       }
     }
 
@@ -1693,7 +1703,7 @@ namespace dxvk {
     { std::lock_guard lock(m_timingMutex);
       if (hasQpcDomain()) {
         qpcTargetTime = translateTimestamp(
-          VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId, frame.targetTime,
+          VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frame.timingDomainId, frame.targetTime,
           VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
       }
     }

@@ -62,6 +62,7 @@ namespace dxvk {
     VkResult                result          = VK_NOT_READY;
     uint64_t                targetTime      = 0u;
     uint64_t                targetDeadline  = 0u;
+    uint64_t                timingDomainId  = 0u;
     bool                    isTimed         = false;
     bool                    doWait          = false;
   };
