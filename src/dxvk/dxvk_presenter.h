@@ -370,6 +370,9 @@ namespace dxvk {
     VkSurfaceFormatKHR          m_preferredFormat = { };
     uint32_t                    m_preferredSyncInterval = 1u;
 
+    bool                        m_calibrationWarned = false;
+    bool                        m_calibrationFailed = false;
+
     bool                        m_dirtySwapchain = false;
     bool                        m_dirtySurface = false;
 
@@ -479,14 +482,14 @@ namespace dxvk {
 
     void updateTimingMode();
 
-    void recalibrateTimeDomains();
+    bool recalibrateTimeDomains();
 
     bool updatePresentTiming(uint64_t frameId);
 
     void commitTimingFeedback(
       const PresenterTimingFeedback&  feedback);
 
-    void waitUntilFrameTargetTime(
+    bool waitUntilFrameTargetTime(
       const PresenterFrame&           frame);
 
     bool hasQpcDomain();
@@ -501,6 +504,11 @@ namespace dxvk {
     VkResult createSurface();
 
     VkResult createLatencySemaphore();
+
+    VkResult getCalibratedTimestamps(
+            uint32_t                  timestampCount,
+      const VkCalibratedTimestampInfoKHR* pTimestampInfos,
+            uint64_t*                 pTimestamps);
 
     void destroySwapchain();
 
