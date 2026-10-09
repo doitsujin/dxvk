@@ -255,6 +255,11 @@ namespace dxvk {
       info.enabledExtensionCount    = extensionNames.size();
       info.ppEnabledExtensionNames  = extensionNames.data();
 
+      // Portability drivers (e.g. MoltenVK) are only enumerated by the
+      // loader if the application opts in.
+      if (m_extensionInfo.khrPortabilityEnumeration.specVersion)
+        info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+
       VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &instance);
 
       if (status != VK_SUCCESS) {
@@ -374,6 +379,7 @@ namespace dxvk {
       &extensions.extSurfaceMaintenance1,
       &extensions.extSwapchainColorSpace,
       &extensions.khrGetSurfaceCapabilities2,
+      &extensions.khrPortabilityEnumeration,
       &extensions.khrSurface,
       &extensions.khrSurfaceMaintenance1,
     }};
