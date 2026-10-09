@@ -1463,11 +1463,13 @@ namespace dxvk {
       return;
     }
 
-    // Probe relative timing first since that is most likely to give us
-    // consistent pacing, without any setup work required from our side.
-    if (m_timingMode.supportsRelative) {
+    if (m_timingMode.supportsAbsolute) {
+      // Always prefer absolute timimg if available. We need absolute timestamps
+      // anyway in order to synchronize and return feedback to the application.
+      m_timingMode.absoluteTiming = true;
+    } else if (m_timingMode.supportsRelative) {
       if (m_timingDisplayInfo->isVariableRefresh) {
-        // Always enable relative timing for VRR
+        // In VRR mode, presentation should be driving display refresh
         m_timingMode.relativeTiming = true;
       } else if (m_timingDisplayInfo->refreshIntervalNs) {
         // Otherwise, check if the frame duration is reasonably close
@@ -1481,10 +1483,6 @@ namespace dxvk {
           m_timingMode.frameIntervalNs = (m_timingMode.frameIntervalNs + maxDeltaNs) - realDeltaNs;
       }
     }
-
-    // Fall back to absolute timing if we cannot use relative timimg.
-    if (m_timingMode.supportsAbsolute)
-      m_timingMode.absoluteTiming = !m_timingMode.relativeTiming;
 
     // Reset reference time and frame ID for absolute timing
     // so that we don't end up submitting bogus timestamps.
