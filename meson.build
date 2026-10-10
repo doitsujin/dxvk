@@ -73,6 +73,13 @@ if platform == 'windows'
       '-Wl,--file-alignment=4096',
     ]
 
+    # Workaround a crash with EA anti-cheat's code signing checks.
+    if not get_option('debug')
+      link_args += [
+        '-Wl,--disable-long-section-names',
+      ]
+    endif
+
     # Wine's built-in back traces only work with dwarf4 symbols
     if get_option('debug')
       compiler_args += [
