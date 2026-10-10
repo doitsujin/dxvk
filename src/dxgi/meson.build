@@ -20,7 +20,9 @@ dxgi_extra_dep    = []
 if platform == 'windows'
   dxgi_extra_dep    += [ cpp.find_library('version') ]
 else
-  dxgi_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'dxgi.sym') ]
+  if platform != 'darwin'
+    dxgi_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'dxgi.sym') ]
+  endif
   dxgi_link_depends += files('dxgi.sym')
 endif
 
