@@ -57,19 +57,22 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
 
     LARGE_INTEGER timeout = { };
+    timeout.QuadPart = int64_t(milliseconds) * -10000;
+
     D3DKMT_ACQUIREKEYEDMUTEX acquire = { };
     acquire.hKeyedMutex = m_kmtLocal;
     acquire.Key = key;
     acquire.pTimeout = &timeout;
-    timeout.QuadPart = milliseconds * -10000;
 
     NTSTATUS status = D3DKMTAcquireKeyedMutex(&acquire);
+
     if (status == STATUS_TIMEOUT)
       return WAIT_TIMEOUT;
     if (status)
       return DXGI_ERROR_INVALID_CALL;
 
     VkSemaphore semaphore = m_fence->handle();
+
     VkSemaphoreWaitInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
     info.semaphoreCount = 1;
     info.pSemaphores = &semaphore;
