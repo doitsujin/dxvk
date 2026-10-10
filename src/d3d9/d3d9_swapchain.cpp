@@ -117,6 +117,9 @@ namespace dxvk {
     if (unlikely(m_parent->IsDeviceLost()))
       return D3DERR_DEVICELOST;
 
+    // Documentation says that pSourceRect or pDestRect only works with SWAPEFFECT_COPY
+    // but tests show that's not actually the case (Nvidia driver).
+
     // If we have no backbuffers, error out.
     // This handles the case where a ::Reset failed due to OOM
     // or whatever.
@@ -211,8 +214,25 @@ namespace dxvk {
     if (!std::exchange(m_warnedAboutGDIFallback, true))
       Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
 
+    const D3D9_COMMON_TEXTURE_DESC* backbufferDesc = m_backBuffers[0]->GetCommonTexture()->Desc();
+    D3D9Surface* gdiSrc = m_backBuffers[0].ptr();
+    if (!backbufferDesc->IsLockable) {
+      // Multisampled images cannot be lockable, no need to check that too.
+      if (!m_gdiCopySurface) {
+        D3D9_COMMON_TEXTURE_DESC desc = *backbufferDesc;
+        desc.MultiSample = D3DMULTISAMPLE_NONE;
+        desc.IsLockable = true;
+        m_gdiCopySurface = new D3D9Surface(m_parent, &desc, m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex));
+      }
+      // Copy/Resolve to a 1 sample lockable surface
+      if (FAILED(m_parent->StretchRect(m_backBuffers[0].ptr(), &m_srcRect, m_gdiCopySurface.ptr(), &m_srcRect, D3DTEXF_NONE)))
+        return D3DERR_INVALIDCALL;
+
+      gdiSrc = m_gdiCopySurface.ptr();
+    }
+
     HDC hDC;
-    HRESULT result = m_backBuffers[0]->GetDC(&hDC);
+    HRESULT result = gdiSrc->GetDC(&hDC);
     if (result) {
       Logger::err("D3D9SwapChainEx::BlitGDI Surface GetDC failed");
       return D3DERR_DEVICEREMOVED;
@@ -221,7 +241,7 @@ namespace dxvk {
     HDC dstDC = GetDCEx(Window, 0, DCX_CACHE | DCX_USESTYLE);
     if (!dstDC) {
       Logger::err("D3D9SwapChainEx::BlitGDI: GetDCEx failed");
-      m_backBuffers[0]->ReleaseDC(hDC);
+      gdiSrc->ReleaseDC(hDC);
       return D3DERR_DEVICEREMOVED;
     }
 
@@ -281,7 +301,7 @@ namespace dxvk {
                        || dstTexExtent.width > srcTexExtent.width
                        || dstTexExtent.height > srcTexExtent.height;
 
-    dstTexInfo->CreateBuffer(clearDst, dstTexInfo->GetTotalSize());
+    dstTexInfo->EnsureBufferExists(clearDst);
     DxvkBufferSlice dstBufferSlice = dstTexInfo->GetBufferSlice(dst->GetSubresource());
     Rc<DxvkImage>   srcImage       = srcTexInfo->GetImage();
 
@@ -991,6 +1011,7 @@ namespace dxvk {
       backBuffer->ClearContainer();
 
     m_backBuffers.clear();
+    m_gdiCopySurface = nullptr;
   }
 
 
@@ -1040,13 +1061,11 @@ namespace dxvk {
     desc.MultisampleQuality = m_presentParams.MultiSampleQuality;
     desc.Pool               = D3DPOOL_DEFAULT;
     desc.Usage              = D3DUSAGE_RENDERTARGET;
-    desc.Discard            = FALSE;
-    desc.IsBackBuffer       = TRUE;
+    desc.Discard            = false;
+    desc.IsBackBuffer       = true;
     // The texture will get sampled for presentation.
-    desc.IsAttachmentOnly   = FALSE;
-    // we cannot respect D3DPRESENTFLAG_LOCKABLE_BACKBUFFER here because
-    // we might need to lock for the BlitGDI fallback path
-    desc.IsLockable         = true;
+    desc.IsAttachmentOnly   = false;
+    desc.IsLockable         = m_presentParams.Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER;
 
     const bool isExtended = m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex);
 

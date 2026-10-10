@@ -85,19 +85,20 @@ namespace dxvk {
     }
 
     for (uint32_t i = 0; i < CountSubresources(); i++) {
-      m_memoryOffset[i] = m_totalSize;
-      m_totalSize += GetMipSize(i);
-    }
+      if (i % m_desc.MipLevels == 0) {
+        // Align faces to 16 bytes
+        m_totalSize = align(m_totalSize, 16u);
+      }
 
-    // Add a tiny amount of padding at the end because some games read/write OOB
-    // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
-    uint32_t paddedSize = align(m_totalSize + 1, CACHE_LINE_SIZE);
+      m_memoryOffset[i] = m_totalSize;
+      m_totalSize += GetSubresourceSize(i);
+    }
 
     // Initialization is handled by D3D9Initializer
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
-      m_data = MemoryFileRegion(*m_device->GetAllocator(), paddedSize);
+      m_data = MemoryFileRegion(*m_device->GetAllocator(), GetTotalSize());
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
-      CreateBuffer(false, paddedSize);
+      EnsureBufferExists(false); // No need to initialize here, D3D9Initializer takes care of that.
   }
 
 
@@ -174,6 +175,9 @@ namespace dxvk {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
 
+    if (pDesc->Width > caps::MaxTextureDimension || pDesc->Height > caps::MaxTextureDimension || pDesc->Depth > caps::MaxTextureDimension)
+      return D3DERR_INVALIDCALL;
+
     // Native drivers won't allow the creation of DXT format
     // textures that aren't aligned to block dimensions.
     if (IsDXTFormat(pDesc->Format)) {
@@ -208,7 +212,9 @@ namespace dxvk {
       if (FAILED(hr))
         return hr;
     } else if (sampleCount != VK_SAMPLE_COUNT_1_BIT) {
-      // D3D9 only supports MSAA for surfaces
+      // D3D9 only supports MSAA for surfaces.
+      // This is unreachable. Only CreateRT or CreateDSV take in a sample count as a parameter.
+      // Those create D3DPOOL_DEFAULT surfaces.
       return D3DERR_INVALIDCALL;
     }
 
@@ -298,6 +304,10 @@ namespace dxvk {
     if (pDesc->IsLockable && sampleCount > VK_SAMPLE_COUNT_1_BIT)
         return D3DERR_INVALIDCALL;
 
+    // Offscreen plain surfaces don't allow D3DPOOL_MANAGED, all other surface creation functions implicitly use D3DPOOL_DEFAULT
+    if (unlikely(ResourceType == D3DRTYPE_SURFACE && pDesc->Pool == D3DPOOL_MANAGED))
+        return D3DERR_INVALIDCALL;
+
     return D3D_OK;
   }
 
@@ -316,12 +326,12 @@ namespace dxvk {
   }
 
 
-  void D3D9CommonTexture::CreateBuffer(bool Initialize, uint32_t Size) {
+  const Rc<DxvkBuffer>& D3D9CommonTexture::EnsureBufferExists(bool Initialize) {
     if (likely(m_buffer != nullptr))
-      return;
+      return m_buffer;
 
     DxvkBufferCreateInfo info;
-    info.size   = Size;
+    info.size   = GetTotalSize();
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -350,10 +360,12 @@ namespace dxvk {
         std::memset(m_buffer->mapPtr(0), 0, m_totalSize);
     }
     m_data = {};
+
+    return m_buffer;
   }
 
 
-  VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource) const {
+  VkDeviceSize D3D9CommonTexture::GetSubresourceSize(UINT Subresource) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
     const DxvkFormatInfo* formatInfo = m_mapping.Format != VK_FORMAT_UNDEFINED
@@ -818,7 +830,7 @@ namespace dxvk {
 
 
   DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
-    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
+    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetSubresourceSize(Subresource));
   }
 
   

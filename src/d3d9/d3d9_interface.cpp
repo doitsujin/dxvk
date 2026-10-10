@@ -501,6 +501,15 @@ namespace dxvk {
     if (unlikely(!pPresentationParameters->SwapEffect))
       return D3DERR_INVALIDCALL;
 
+    // Multisampling is only allowed with DISCARD and without locking.
+    if (unlikely(pPresentationParameters->MultiSampleType != D3DMULTISAMPLE_NONE
+      && pPresentationParameters->SwapEffect != D3DSWAPEFFECT_DISCARD))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pPresentationParameters->MultiSampleType != D3DMULTISAMPLE_NONE
+      && pPresentationParameters->Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER))
+      return D3DERR_INVALIDCALL;
+
     // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
     // Allow D3DSWAPEFFECT_COPY to bypass this restriction in D3D8 compatibility
     // mode, since it may be a remapping of D3DSWAPEFFECT_COPY_VSYNC and RC Cars

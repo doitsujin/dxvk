@@ -139,19 +139,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Get a copy of the main image, but with a single sample
-     * This function will allocate/reuse an image with the same info
-     * as the main image
-     * \returns An image with identical info, but 1 sample
-     */
-    const Rc<DxvkImage>& GetResolveImage() {
-      if (unlikely(m_resolveImage == nullptr))
-        m_resolveImage = CreateResolveImage();
-
-      return m_resolveImage;
-    }
-
-    /**
      * \brief Returns a pointer to the internal data used for LockRect/LockBox
      *
      * This works regardless of the map mode used by this texture
@@ -496,23 +483,24 @@ namespace dxvk {
     }
 
     /**
-     * \brief Mip level
-     * \returns Size of packed mip level in bytes
+     * \brief Subresource size
+     * \returns Size of packed subresource level in bytes
      */
-    VkDeviceSize GetMipSize(UINT Subresource) const;
+    VkDeviceSize GetSubresourceSize(UINT Subresource) const;
 
     uint32_t GetTotalSize() const {
-      return m_totalSize;
+      // Add a tiny amount of padding at the end because some games read/write OOB
+      // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
+      return align(m_totalSize + 1, CACHE_LINE_SIZE);
     }
 
     /**
      * \brief Creates a buffer
      * Creates the mapping buffer if necessary
      * \param [in] Initialize Whether to copy over existing data (or clear if there is no data)
-     * \param [in] Size The size of the buffer
      * \returns Whether an allocation happened
      */
-    void CreateBuffer(bool Initialize, uint32_t Size);
+    const Rc<DxvkBuffer>& EnsureBufferExists(bool Initialize = true);
 
     ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
 
@@ -524,7 +512,6 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE  m_mapMode;
 
     Rc<DxvkImage>                 m_image;
-    Rc<DxvkImage>                 m_resolveImage;
     Rc<DxvkBuffer>                m_buffer;
     MemoryFileRegion              m_data = { };
 
