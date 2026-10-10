@@ -272,6 +272,10 @@ namespace dxvk {
 
     // When in SWVP mode, 256 matrices can be used for indexed vertex blending
     pCaps->MaxVertexBlendMatrixIndex = m_isSWVP ? 255 : 8;
+    // When in SWVP mode, 8192 vertex shader constants can be used,
+    // however D3D8 always reports the programmable VS constant limits
+    if (m_isSWVP && !m_d3dCompatibility.test(D3DCompatibility::D3D8))
+      pCaps->MaxVertexShaderConst = caps::MaxFloatConstantsSoftware;
 
     return D3D_OK;
   }
@@ -448,18 +452,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D9DeviceLock lock = LockDevice();
 
-    Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
-
-    HRESULT hr;
-    // Black Desert creates a D3DDEVTYPE_NULLREF device and
-    // expects reset to work despite passing invalid parameters.
-    if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
-      hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
-
-      if (unlikely(FAILED(hr)))
-        return hr;
-    }
 
     if (!m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
@@ -497,9 +490,21 @@ namespace dxvk {
       SetDepthStencilSurface(nullptr);
     }
 
-    m_cursor.ResetCursor();
-
     const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
+    HRESULT hr;
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects reset to work despite passing invalid parameters.
+    if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
+      hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
+      if (unlikely(FAILED(hr))) {
+        if (!isExtended)
+          m_deviceLostState = D3D9DeviceLostState::NotReset;
+        return hr;
+      }
+    }
+
+    m_cursor.ResetCursor();
 
     /*
       * Before calling the IDirect3DDevice9::Reset method for a device,
@@ -511,7 +516,7 @@ namespace dxvk {
       * This matches what Windows D3D9 does.
     */
     if (unlikely(m_losableResourceCounter.load() != 0 && !isExtended && m_d3d9Options.countLosableResources)) {
-      Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
+      Logger::warn(str::format("D3D9DeviceEx::Reset: Device reset failed due to pending losable resources. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
       // D3D8 returns D3DERR_DEVICELOST here, whereas D3D9 returns D3DERR_INVALIDCALL.
       return m_d3dCompatibility.test(D3DCompatibility::D3D8) ? D3DERR_DEVICELOST : D3DERR_INVALIDCALL;
@@ -519,10 +524,8 @@ namespace dxvk {
 
     hr = ResetSwapChain(pPresentationParameters, nullptr);
     if (unlikely(FAILED(hr))) {
-      if (!isExtended) {
-        Logger::warn("Device reset failed: Device not reset");
+      if (!isExtended)
         m_deviceLostState = D3D9DeviceLostState::NotReset;
-      }
       return hr;
     }
 
@@ -624,9 +627,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
@@ -707,10 +709,9 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures. Volume textures do not
-    // exempt private, FOURCC, driver formats from these checks.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be
+    // locked unless they are dynamic textures. Volume textures do
+    // not exempt private, FOURCC, driver formats from these checks."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC);
 
@@ -774,9 +775,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    // Docs: "Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats."
     desc.IsLockable         = Pool != D3DPOOL_DEFAULT
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
@@ -4481,7 +4481,6 @@ namespace dxvk {
     HRESULT hr;
     if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
       hr = m_parent->ValidatePresentationParametersEx(pPresentationParameters, pFullscreenDisplayMode);
-
       if (unlikely(FAILED(hr)))
         return hr;
     }
@@ -8631,81 +8630,82 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    rs[D3DRS_SEPARATEALPHABLENDENABLE] = FALSE;
-    rs[D3DRS_ALPHABLENDENABLE]         = FALSE;
-    rs[D3DRS_BLENDOP]                  = D3DBLENDOP_ADD;
-    rs[D3DRS_BLENDOPALPHA]             = D3DBLENDOP_ADD;
-    rs[D3DRS_DESTBLEND]                = D3DBLEND_ZERO;
-    rs[D3DRS_DESTBLENDALPHA]           = D3DBLEND_ZERO;
-    rs[D3DRS_COLORWRITEENABLE]         = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE1]        = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE2]        = 0x0000000f;
-    rs[D3DRS_COLORWRITEENABLE3]        = 0x0000000f;
-    rs[D3DRS_SRCBLEND]                 = D3DBLEND_ONE;
-    rs[D3DRS_SRCBLENDALPHA]            = D3DBLEND_ONE;
+    rs[D3DRS_SEPARATEALPHABLENDENABLE]   = FALSE;
+    rs[D3DRS_ALPHABLENDENABLE]           = FALSE;
+    rs[D3DRS_BLENDOP]                    = D3DBLENDOP_ADD;
+    rs[D3DRS_BLENDOPALPHA]               = D3DBLENDOP_ADD;
+    rs[D3DRS_DESTBLEND]                  = D3DBLEND_ZERO;
+    rs[D3DRS_DESTBLENDALPHA]             = D3DBLEND_ZERO;
+    rs[D3DRS_COLORWRITEENABLE]           = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE1]          = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE2]          = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE3]          = 0x0000000f;
+    rs[D3DRS_SRCBLEND]                   = D3DBLEND_ONE;
+    rs[D3DRS_SRCBLENDALPHA]              = D3DBLEND_ONE;
     BindBlendState();
 
-    rs[D3DRS_BLENDFACTOR]              = 0xffffffff;
+    rs[D3DRS_BLENDFACTOR]                = 0xffffffff;
     BindBlendFactor();
 
-    rs[D3DRS_ZENABLE]                  = pPresentationParameters->EnableAutoDepthStencil
-                                       ? D3DZB_TRUE
-                                       : D3DZB_FALSE;
-    rs[D3DRS_ZFUNC]                    = D3DCMP_LESSEQUAL;
-    rs[D3DRS_TWOSIDEDSTENCILMODE]      = FALSE;
-    rs[D3DRS_ZWRITEENABLE]             = TRUE;
-    rs[D3DRS_STENCILENABLE]            = FALSE;
-    rs[D3DRS_STENCILFAIL]              = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILZFAIL]             = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILPASS]              = D3DSTENCILOP_KEEP;
-    rs[D3DRS_STENCILFUNC]              = D3DCMP_ALWAYS;
-    rs[D3DRS_CCW_STENCILFAIL]          = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILZFAIL]         = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILPASS]          = D3DSTENCILOP_KEEP;
-    rs[D3DRS_CCW_STENCILFUNC]          = D3DCMP_ALWAYS;
-    rs[D3DRS_STENCILMASK]              = 0xFFFFFFFF;
-    rs[D3DRS_STENCILWRITEMASK]         = 0xFFFFFFFF;
+    rs[D3DRS_ZENABLE]                    = pPresentationParameters->EnableAutoDepthStencil
+                                         ? D3DZB_TRUE
+                                         : D3DZB_FALSE;
+    rs[D3DRS_ZFUNC]                      = D3DCMP_LESSEQUAL;
+    rs[D3DRS_TWOSIDEDSTENCILMODE]        = FALSE;
+    rs[D3DRS_ZWRITEENABLE]               = TRUE;
+    rs[D3DRS_STENCILENABLE]              = FALSE;
+    rs[D3DRS_STENCILFAIL]                = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILZFAIL]               = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILPASS]                = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILFUNC]                = D3DCMP_ALWAYS;
+    rs[D3DRS_CCW_STENCILFAIL]            = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILZFAIL]           = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILPASS]            = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILFUNC]            = D3DCMP_ALWAYS;
+    rs[D3DRS_STENCILMASK]                = 0xFFFFFFFF;
+    rs[D3DRS_STENCILWRITEMASK]           = 0xFFFFFFFF;
     BindDepthStencilState();
 
-    rs[D3DRS_STENCILREF] = 0;
+    rs[D3DRS_STENCILREF]                 = 0;
     BindDepthStencilReference();
 
-    rs[D3DRS_FILLMODE]            = D3DFILL_SOLID;
-    rs[D3DRS_CULLMODE]            = D3DCULL_CCW;
-    rs[D3DRS_DEPTHBIAS]           = bit::cast<DWORD>(0.0f);
-    rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_FILLMODE]                   = D3DFILL_SOLID;
+    rs[D3DRS_CULLMODE]                   = D3DCULL_CCW;
+    rs[D3DRS_DEPTHBIAS]                  = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_SLOPESCALEDEPTHBIAS]        = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
     BindDepthBias();
 
-    rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
+    rs[D3DRS_SCISSORTESTENABLE]          = FALSE;
 
-    rs[D3DRS_ALPHATESTENABLE]     = FALSE;
-    rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
+    rs[D3DRS_ALPHATESTENABLE]            = FALSE;
+    rs[D3DRS_ALPHAFUNC]                  = D3DCMP_ALWAYS;
     BindAlphaTestState();
-    rs[D3DRS_ALPHAREF]            = 0;
-    m_pushData.shared.alphaRef    = rs[D3DRS_ALPHAREF];
+    rs[D3DRS_ALPHAREF]                   = 0;
+    m_pushData.shared.alphaRef           = rs[D3DRS_ALPHAREF];
 
-    rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
+    rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
+    rs[D3DRS_MULTISAMPLEMASK]            = 0xffffffff;
     BindMultiSampleState();
 
-    rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
-    m_pushData.ffps.textureFactor = rs[D3DRS_TEXTUREFACTOR];
+    rs[D3DRS_TEXTUREFACTOR]              = 0xffffffff;
+    m_pushData.ffps.textureFactor        = rs[D3DRS_TEXTUREFACTOR];
 
-    rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
-    rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
-    rs[D3DRS_AMBIENTMATERIALSOURCE]  = D3DMCS_MATERIAL;
-    rs[D3DRS_EMISSIVEMATERIALSOURCE] = D3DMCS_MATERIAL;
-    rs[D3DRS_LIGHTING]               = TRUE;
-    rs[D3DRS_COLORVERTEX]            = TRUE;
-    rs[D3DRS_LOCALVIEWER]            = TRUE;
-    rs[D3DRS_RANGEFOGENABLE]         = FALSE;
-    rs[D3DRS_NORMALIZENORMALS]       = FALSE;
+    rs[D3DRS_DIFFUSEMATERIALSOURCE]      = D3DMCS_COLOR1;
+    rs[D3DRS_SPECULARMATERIALSOURCE]     = D3DMCS_COLOR2;
+    rs[D3DRS_AMBIENTMATERIALSOURCE]      = D3DMCS_MATERIAL;
+    rs[D3DRS_EMISSIVEMATERIALSOURCE]     = D3DMCS_MATERIAL;
+    rs[D3DRS_LIGHTING]                   = TRUE;
+    rs[D3DRS_COLORVERTEX]                = TRUE;
+    rs[D3DRS_LOCALVIEWER]                = TRUE;
+    rs[D3DRS_RANGEFOGENABLE]             = FALSE;
+    rs[D3DRS_NORMALIZENORMALS]           = FALSE;
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     // PS
-    rs[D3DRS_SPECULARENABLE] = FALSE;
+    rs[D3DRS_SPECULARENABLE]             = FALSE;
 
-    rs[D3DRS_AMBIENT]                = 0;
+    rs[D3DRS_AMBIENT]                    = 0;
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     rs[D3DRS_FOGENABLE]                  = FALSE;
@@ -8717,7 +8717,7 @@ namespace dxvk {
     rs[D3DRS_FOGVERTEXMODE]              = D3DFOG_NONE;
     m_dirty.set(D3D9DeviceDirtyFlag::Fog);
 
-    rs[D3DRS_CLIPPLANEENABLE] = 0;
+    rs[D3DRS_CLIPPLANEENABLE]            = 0;
     m_dirty.set(D3D9DeviceDirtyFlag::ClipPlanes);
 
     const auto& limits = m_dxvkDevice->properties().core.properties.limits;
@@ -8758,7 +8758,6 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
     rs[D3DRS_PATCHEDGESTYLE]             = D3DPATCHEDGE_DISCRETE;
     rs[D3DRS_DEBUGMONITORTOKEN]          = D3DDMT_ENABLE;
     rs[D3DRS_POSITIONDEGREE]             = D3DDEGREE_CUBIC;

@@ -431,8 +431,9 @@ namespace dxvk {
         m_validTextures.erase(textureIter);
     }
 
-    friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle);
-    friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8Device* device, DWORD Handle);
+    friend d3d9::IDirect3DPixelShader9* GetPixelShaderPtr(D3D8Device* device, DWORD Handle);
+    
+    friend D3D8VertexShaderInfo*        GetVertexShaderInfo(D3D8Device* device, DWORD Handle);
 
   private:
 
@@ -442,7 +443,7 @@ namespace dxvk {
     Com<D3D8Interface>              m_parent;
 
     D3DPRESENT_PARAMETERS           m_presentParams;
-    
+
     // Value of D3DRS_LINEPATTERN
     D3DLINEPATTERN                  m_linePattern = { };
     // Value of D3DRS_ZVISIBLE (although the RS is not supported, its value is stored)
@@ -475,10 +476,12 @@ namespace dxvk {
     Com<D3D8Surface, false>              m_renderTarget;
     Com<D3D8Surface, false>              m_depthStencil;
 
+    // can be a FVF or a programmable VS index (marked by D3DFVF_RESERVED0)
+    DWORD                                         m_currentVertexShader = 0;
     std::vector<D3D8VertexShaderInfo>             m_vertexShaders;
+
+    DWORD                                         m_currentPixelShader  = 0;
     std::vector<Com<d3d9::IDirect3DPixelShader9>> m_pixelShaders;
-    DWORD                                         m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
-    DWORD                                         m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;

@@ -246,7 +246,11 @@ namespace dxvk {
 
     if (iBackBuffer >= m_backBuffers.size() || m_backBuffers[iBackBuffer] == nullptr) {
       Com<d3d9::IDirect3DSurface9> pSurface9;
-      HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
+      HRESULT res = GetD3D9()->GetBackBuffer(
+        0,
+        iBackBuffer,
+        static_cast<d3d9::D3DBACKBUFFER_TYPE>(Type),
+        &pSurface9);
       if (unlikely(FAILED(res)))
         return res;
 
@@ -289,7 +293,7 @@ namespace dxvk {
     if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     // Nvidia & Intel workaround for The Lord of the Rings: The Fellowship of the Ring
@@ -302,8 +306,8 @@ namespace dxvk {
       Height,
       Levels,
       Usage,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DPOOL(Pool),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DPOOL>(Pool),
       &pTex9,
       NULL);
     if (unlikely(FAILED(res)))
@@ -340,15 +344,18 @@ namespace dxvk {
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DVolumeTexture9> pVolume9;
     HRESULT res = GetD3D9()->CreateVolumeTexture(
-      Width, Height, Depth, Levels,
+      Width,
+      Height,
+      Depth,
+      Levels,
       Usage,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DPOOL(Pool),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DPOOL>(Pool),
       &pVolume9,
       NULL);
     if (unlikely(FAILED(res)))
@@ -383,7 +390,7 @@ namespace dxvk {
     if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DCubeTexture9> pCube9;
@@ -391,8 +398,8 @@ namespace dxvk {
       EdgeLength,
       Levels,
       Usage,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DPOOL(Pool),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DPOOL>(Pool),
       &pCube9,
       NULL);
     if (unlikely(FAILED(res)))
@@ -424,7 +431,7 @@ namespace dxvk {
     // Mark all D3DPOOL_DEFAULT D3DUSAGE_WRITEONLY buffers as
     // D3DUSAGE_DYNAMIC, to ensure they're directly mapped
     if (unlikely(m_d3d8Options.forceLegacyBuffers
-              && d3d9::D3DPOOL(Pool) == d3d9::D3DPOOL_DEFAULT
+              && Pool == D3DPOOL_DEFAULT
               && (Usage & D3DUSAGE_WRITEONLY)))
       Usage |= D3DUSAGE_DYNAMIC;
 
@@ -434,7 +441,13 @@ namespace dxvk {
     }
 
     Com<d3d9::IDirect3DVertexBuffer9> pVertexBuffer9;
-    HRESULT res = GetD3D9()->CreateVertexBuffer(Length, Usage, FVF, d3d9::D3DPOOL(Pool), &pVertexBuffer9, NULL);
+    HRESULT res = GetD3D9()->CreateVertexBuffer(
+      Length,
+      Usage,
+      FVF,
+      static_cast<d3d9::D3DPOOL>(Pool),
+      &pVertexBuffer9,
+      NULL);
     if (unlikely(FAILED(res)))
       return res;
 
@@ -457,12 +470,18 @@ namespace dxvk {
     // Mark all D3DPOOL_DEFAULT D3DUSAGE_WRITEONLY buffers as
     // D3DUSAGE_DYNAMIC, to ensure they're directly mapped
     if (unlikely(m_d3d8Options.forceLegacyBuffers
-              && d3d9::D3DPOOL(Pool) == d3d9::D3DPOOL_DEFAULT
+              && Pool == D3DPOOL_DEFAULT
               && (Usage & D3DUSAGE_WRITEONLY)))
       Usage |= D3DUSAGE_DYNAMIC;
 
     Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9;
-    HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
+    HRESULT res = GetD3D9()->CreateIndexBuffer(
+      Length,
+      Usage,
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DPOOL>(Pool),
+      &pIndexBuffer9,
+      NULL);
     if (unlikely(FAILED(res)))
       return res;
 
@@ -488,18 +507,18 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(!isRenderTargetFormat(Format)))
+    if (unlikely(!IsRenderTargetFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DSurface9> pSurf9;
     HRESULT res = GetD3D9()->CreateRenderTarget(
       Width,
       Height,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DMULTISAMPLE_TYPE>(MultiSample),
       0,
       Lockable,
       &pSurf9,
@@ -528,15 +547,15 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DSurface9> pSurf9;
     HRESULT res = GetD3D9()->CreateDepthStencilSurface(
       Width,
       Height,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DMULTISAMPLE_TYPE>(MultiSample),
       0,
       FALSE, // z-buffer discarding is not used in D3D8
       &pSurf9,
@@ -566,18 +585,18 @@ namespace dxvk {
 
     // CreateImageSurface is generally guaranteed to succeed even with unsupported
     // formats, however D3D9 exclusive formats fail on native D3D8.
-    if (unlikely(isD3D9ExclusiveFormat(Format)))
+    if (unlikely(IsD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
-    const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(d3d9::D3DFORMAT(Format));
-    const D3DPOOL pool = isSupportedSurfaceFormat ? D3DPOOL_SYSTEMMEM : D3DPOOL_SCRATCH;
+    const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(static_cast<d3d9::D3DFORMAT>(Format));
+    D3DPOOL pool = isSupportedSurfaceFormat ? D3DPOOL_SYSTEMMEM : D3DPOOL_SCRATCH;
 
     Com<d3d9::IDirect3DSurface9> pSurf;
     HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
       Width,
       Height,
-      d3d9::D3DFORMAT(Format),
-      d3d9::D3DPOOL(pool),
+      static_cast<d3d9::D3DFORMAT>(Format),
+      static_cast<d3d9::D3DPOOL>(pool),
       &pSurf,
       NULL);
     if (unlikely(FAILED(res)))
@@ -600,7 +619,7 @@ namespace dxvk {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
 
-    const bool compressed = isDXTFormat(D3DFORMAT(srcDesc.Format));
+    const bool compressed = IsDXTFormat(static_cast<D3DFORMAT>(srcDesc.Format));
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (unlikely(FAILED(res)))
@@ -720,7 +739,7 @@ namespace dxvk {
 
     // This method cannot be applied to surfaces whose formats
     // are classified as depth stencil formats.
-    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
+    if (unlikely(IsDepthStencilFormat(static_cast<D3DFORMAT>(srcDesc.Format))))
       return D3DERR_INVALIDCALL;
 
     StateChange();
@@ -809,7 +828,7 @@ namespace dxvk {
               HRESULT res = CreateImageSurface(
                 srcDesc.Width,
                 srcDesc.Height,
-                D3DFORMAT(srcDesc.Format),
+                static_cast<D3DFORMAT>(srcDesc.Format),
                 &pTempImageSurface
               );
               if (unlikely(FAILED(res)))
@@ -1226,7 +1245,7 @@ namespace dxvk {
     }
 
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
-    HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
+    HRESULT res = GetD3D9()->CreateStateBlock(static_cast<d3d9::D3DSTATEBLOCKTYPE>(Type), &pStateBlock9);
     if (unlikely(FAILED(res)))
       return res;
 
@@ -1378,7 +1397,7 @@ namespace dxvk {
       if (tex) {
         D3DSURFACE_DESC surf;
         tex->GetLevelDesc(0, &surf);
-        if (isDepthStencilFormat(surf.Format)) {
+        if (IsDepthStencilFormat(surf.Format)) {
           // If we bound a depth texture to stage 0 then we need to set the projected flag for stage 0 and 1
           // Stage 1 is a non-depth light cookie texture but still requires perspective divide to work
           GetD3D9()->SetTextureStageState(0, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
@@ -1417,7 +1436,7 @@ namespace dxvk {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->GetSamplerState(Stage, stateType, pValue);
     } else {
-      return GetD3D9()->GetTextureStageState(Stage, d3d9::D3DTEXTURESTAGESTATETYPE(Type), pValue);
+      return GetD3D9()->GetTextureStageState(Stage, static_cast<d3d9::D3DTEXTURESTAGESTATETYPE>(Type), pValue);
     }
   }
 
@@ -1439,7 +1458,7 @@ namespace dxvk {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->SetSamplerState(Stage, stateType, Value);
     } else {
-      return GetD3D9()->SetTextureStageState(Stage, d3d9::D3DTEXTURESTAGESTATETYPE(Type), Value);
+      return GetD3D9()->SetTextureStageState(Stage, static_cast<d3d9::D3DTEXTURESTAGESTATETYPE>(Type), Value);
     }
   }
 
@@ -1473,7 +1492,11 @@ namespace dxvk {
 
     if (unlikely(ShouldBatch()))
       return m_batcher->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
-    return GetD3D9()->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
+
+    return GetD3D9()->DrawPrimitive(
+      static_cast<d3d9::D3DPRIMITIVETYPE>(PrimitiveType),
+      StartVertex,
+      PrimitiveCount);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DrawIndexedPrimitive(
@@ -1485,7 +1508,7 @@ namespace dxvk {
     D3D8DeviceLock lock = LockDevice();
 
     return GetD3D9()->DrawIndexedPrimitive(
-      d3d9::D3DPRIMITIVETYPE(PrimitiveType),
+      static_cast<d3d9::D3DPRIMITIVETYPE>(PrimitiveType),
       static_cast<INT>(std::min(m_baseVertexIndex, // set by SetIndices()
                                 static_cast<UINT>(std::numeric_limits<int32_t>::max()))),
       MinVertexIndex,
@@ -1507,7 +1530,7 @@ namespace dxvk {
     m_streams[0] = D3D8VBO {nullptr, 0};
 
     return GetD3D9()->DrawPrimitiveUP(
-      d3d9::D3DPRIMITIVETYPE(PrimitiveType),
+      static_cast<d3d9::D3DPRIMITIVETYPE>(PrimitiveType),
       PrimitiveCount,
       pVertexStreamZeroData,
       VertexStreamZeroStride);
@@ -1532,12 +1555,12 @@ namespace dxvk {
     m_baseVertexIndex = 0;
 
     return GetD3D9()->DrawIndexedPrimitiveUP(
-      d3d9::D3DPRIMITIVETYPE(PrimitiveType),
+      static_cast<d3d9::D3DPRIMITIVETYPE>(PrimitiveType),
       MinVertexIndex,
       NumVertices,
       PrimitiveCount,
       pIndexData,
-      d3d9::D3DFORMAT(IndexDataFormat),
+      static_cast<d3d9::D3DFORMAT>(IndexDataFormat),
       pVertexStreamZeroData,
       VertexStreamZeroStride);
   }
@@ -1700,7 +1723,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     D3D8DeviceLock lock = LockDevice();
 
-    d3d9::D3DRENDERSTATETYPE State9 = d3d9::D3DRENDERSTATETYPE(State);
+    d3d9::D3DRENDERSTATETYPE State9 = static_cast<d3d9::D3DRENDERSTATETYPE>(State);
 
     switch (State) {
       // Most render states translate 1:1 to D3D9
@@ -1775,7 +1798,7 @@ namespace dxvk {
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
-    d3d9::D3DRENDERSTATETYPE State9 = d3d9::D3DRENDERSTATETYPE(State);
+    d3d9::D3DRENDERSTATETYPE State9 = static_cast<d3d9::D3DRENDERSTATETYPE>(State);
 
     switch (State) {
       // Most render states translate 1:1 to D3D9
@@ -1864,13 +1887,13 @@ namespace dxvk {
     }
 
     // Set bit to indicate this is not an FVF
-    *pHandle = getShaderHandle(m_vertexShaders.size());
+    *pHandle = GetShaderHandle(m_vertexShaders.size());
 
     return D3D_OK;
   }
 
-  inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8Device* device, DWORD Handle) {
-    Handle = getShaderIndex(Handle);
+  inline D3D8VertexShaderInfo* GetVertexShaderInfo(D3D8Device* device, DWORD Handle) {
+    Handle = GetShaderIndex(Handle);
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
       Logger::warn(str::format("D3D8Device: Invalid vertex shader handle ", std::hex, Handle));
       return nullptr;
@@ -1895,8 +1918,8 @@ namespace dxvk {
     }
 
     // Check for extra bit that indicates this is not an FVF
-    if (!isFVF(Handle)) {
-      D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
+    if (!IsFVF(Handle)) {
+      D3D8VertexShaderInfo* info = GetVertexShaderInfo(this, Handle);
 
       if (unlikely(!info))
         return D3DERR_INVALIDCALL;
@@ -1949,7 +1972,7 @@ namespace dxvk {
       D3D8VertexShaderInfo& info = m_vertexShaders[i];
 
       if (info.pVertexShader == pVertexShader) {
-        *pHandle = getShaderHandle(i);
+        *pHandle = GetShaderHandle(i);
         return D3D_OK;
       }
     }
@@ -1961,8 +1984,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteVertexShader(DWORD Handle) {
     D3D8DeviceLock lock = LockDevice();
 
-    if (!isFVF(Handle)) {
-      D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
+    if (likely(!IsFVF(Handle))) {
+      D3D8VertexShaderInfo* info = GetVertexShaderInfo(this, Handle);
 
       if (unlikely(!info))
         return D3DERR_INVALIDCALL;
@@ -1982,7 +2005,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData) {
     D3D8DeviceLock lock = LockDevice();
 
-    D3D8VertexShaderInfo* pInfo = getVertexShaderInfo(this, Handle);
+    D3D8VertexShaderInfo* pInfo = GetVertexShaderInfo(this, Handle);
 
     if (unlikely(!pInfo))
       return D3DERR_INVALIDCALL;
@@ -2012,7 +2035,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) {
     D3D8DeviceLock lock = LockDevice();
 
-    D3D8VertexShaderInfo* pInfo = getVertexShaderInfo(this, Handle);
+    D3D8VertexShaderInfo* pInfo = GetVertexShaderInfo(this, Handle);
 
     if (unlikely(!pInfo))
       return D3DERR_INVALIDCALL;
@@ -2057,13 +2080,13 @@ namespace dxvk {
 
     m_pixelShaders.push_back(std::move(pPixelShader));
     // Still set the shader bit, to prevent conflicts with NULL.
-    *pHandle = getShaderHandle(m_pixelShaders.size());
+    *pHandle = GetShaderHandle(m_pixelShaders.size());
 
     return D3D_OK;
   }
 
-  inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle) {
-    Handle = getShaderIndex(Handle);
+  inline d3d9::IDirect3DPixelShader9* GetPixelShaderPtr(D3D8Device* device, DWORD Handle) {
+    Handle = GetShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
       Logger::warn(str::format("D3D8Device: Invalid pixel shader handle ", std::hex, Handle));
@@ -2093,7 +2116,7 @@ namespace dxvk {
       return GetD3D9()->SetPixelShader(nullptr);
     }
 
-    d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
+    d3d9::IDirect3DPixelShader9* pPixelShader = GetPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;
@@ -2124,12 +2147,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeletePixelShader(DWORD Handle) {
     D3D8DeviceLock lock = LockDevice();
 
-    d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
+    d3d9::IDirect3DPixelShader9* pPixelShader = GetPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;
 
-    m_pixelShaders[getShaderIndex(Handle)] = nullptr;
+    m_pixelShaders[GetShaderIndex(Handle)] = nullptr;
 
     if (m_currentPixelShader == Handle)
       m_currentPixelShader = 0;
@@ -2140,7 +2163,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) {
     D3D8DeviceLock lock = LockDevice();
 
-    d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
+    d3d9::IDirect3DPixelShader9* pPixelShader = GetPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;

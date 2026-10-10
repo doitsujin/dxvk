@@ -4,6 +4,7 @@
 #include "d3d8_util.h"
 #include "d3d8_options.h"
 #include "d3d8_format.h"
+
 #include "../d3d9/d3d9_bridge.h"
 
 namespace dxvk {
@@ -68,15 +69,20 @@ namespace dxvk {
         D3DFORMAT   AdapterFormat,
         D3DFORMAT   BackBufferFormat,
         BOOL        bWindowed) {
-      // Ignore the bWindowed parameter when querying D3D9. D3D8 does
-      // identical validations between windowed and fullscreen modes, adhering
-      // to the stricter fullscreen adapter and back buffer format validations.
+      // D3D8 adheres to the stricter fullscreen adapter and back buffer format
+      // validations, so generally ignore the bWindowed value and use FALSE.
+      //
+      // The only exception to this rule is D3DFMT_X1R5G5B5, which is available
+      // as a windowed back buffer format for the same adapter format.
+      const BOOL windowed = AdapterFormat    == D3DFMT_X1R5G5B5 &&
+                            BackBufferFormat == D3DFMT_X1R5G5B5 ? bWindowed : FALSE;
+
       return m_d3d9->CheckDeviceType(
-          Adapter,
-          (d3d9::D3DDEVTYPE)DevType,
-          (d3d9::D3DFORMAT)AdapterFormat,
-          (d3d9::D3DFORMAT)BackBufferFormat,
-          FALSE
+        Adapter,
+        static_cast<d3d9::D3DDEVTYPE>(DevType),
+        static_cast<d3d9::D3DFORMAT>(AdapterFormat),
+        static_cast<d3d9::D3DFORMAT>(BackBufferFormat),
+        windowed
       );
     }
 
@@ -87,19 +93,19 @@ namespace dxvk {
         DWORD           Usage,
         D3DRESOURCETYPE RType,
         D3DFORMAT       CheckFormat) {
-      if (unlikely(isD3D9ExclusiveFormat(CheckFormat)))
+      if (unlikely(IsD3D9ExclusiveFormat(CheckFormat)))
         return D3DERR_NOTAVAILABLE;
 
-      if (unlikely((Usage & D3DUSAGE_RENDERTARGET) && !isRenderTargetFormat(CheckFormat)))
+      if (unlikely((Usage & D3DUSAGE_RENDERTARGET) && !IsRenderTargetFormat(CheckFormat)))
         return D3DERR_NOTAVAILABLE;
 
       return m_d3d9->CheckDeviceFormat(
         Adapter,
-        (d3d9::D3DDEVTYPE)DeviceType,
-        (d3d9::D3DFORMAT)AdapterFormat,
+        static_cast<d3d9::D3DDEVTYPE>(DeviceType),
+        static_cast<d3d9::D3DFORMAT>(AdapterFormat),
         Usage,
-        (d3d9::D3DRESOURCETYPE)RType,
-        (d3d9::D3DFORMAT)CheckFormat
+        static_cast<d3d9::D3DRESOURCETYPE>(RType),
+        static_cast<d3d9::D3DFORMAT>(CheckFormat)
       );
     }
 
@@ -112,10 +118,10 @@ namespace dxvk {
       DWORD* pQualityLevels = nullptr;
       return m_d3d9->CheckDeviceMultiSampleType(
         Adapter,
-        (d3d9::D3DDEVTYPE)DeviceType,
-        (d3d9::D3DFORMAT)SurfaceFormat,
+        static_cast<d3d9::D3DDEVTYPE>(DeviceType),
+        static_cast<d3d9::D3DFORMAT>(SurfaceFormat),
         Windowed,
-        (d3d9::D3DMULTISAMPLE_TYPE)MultiSampleType,
+        static_cast<d3d9::D3DMULTISAMPLE_TYPE>(MultiSampleType),
         pQualityLevels
       );
     }
@@ -126,19 +132,19 @@ namespace dxvk {
         D3DFORMAT AdapterFormat,
         D3DFORMAT RenderTargetFormat,
         D3DFORMAT DepthStencilFormat) {
-      if (unlikely(isD3D9ExclusiveFormat(RenderTargetFormat)
-                || isD3D9ExclusiveFormat(DepthStencilFormat)))
+      if (unlikely(IsD3D9ExclusiveFormat(RenderTargetFormat)
+                || IsD3D9ExclusiveFormat(DepthStencilFormat)))
         return D3DERR_NOTAVAILABLE;
 
-      if (unlikely(!isRenderTargetFormat(RenderTargetFormat)))
+      if (unlikely(!IsRenderTargetFormat(RenderTargetFormat)))
         return D3DERR_NOTAVAILABLE;
 
       return m_d3d9->CheckDepthStencilMatch(
         Adapter,
-        (d3d9::D3DDEVTYPE)DeviceType,
-        (d3d9::D3DFORMAT)AdapterFormat,
-        (d3d9::D3DFORMAT)RenderTargetFormat,
-        (d3d9::D3DFORMAT)DepthStencilFormat
+        static_cast<d3d9::D3DDEVTYPE>(DeviceType),
+        static_cast<d3d9::D3DFORMAT>(AdapterFormat),
+        static_cast<d3d9::D3DFORMAT>(RenderTargetFormat),
+        static_cast<d3d9::D3DFORMAT>(DepthStencilFormat)
       );
     }
 
