@@ -73,6 +73,15 @@ if platform == 'windows'
       '-Wl,--file-alignment=4096',
     ]
 
+    # Follow PE standards with 8 character name sections, some software that
+    # inspects our DLLs may otherwise crash. For dwarf2 symbols to work we
+    # need to keep the mingw defaults.
+    if not get_option('debug')
+      link_args += [
+        '-Wl,--disable-long-section-names',
+      ]
+    endif
+
     # Wine's built-in back traces only work with dwarf4 symbols
     if get_option('debug')
       compiler_args += [
