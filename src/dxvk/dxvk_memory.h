@@ -1164,11 +1164,6 @@ namespace dxvk {
       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
       VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-    // Possible buffer usage flags for descriptor buffers
-    constexpr static VkBufferUsageFlags DescriptorBufferUsage =
-      VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT |
-      VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
-
     // Buffer usage flag for descriptor heaps
     constexpr static VkBufferUsageFlags DescriptorHeapUsage =
       VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT;

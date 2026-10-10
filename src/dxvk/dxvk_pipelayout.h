@@ -1011,8 +1011,6 @@ namespace dxvk {
 
     void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
 
-    void initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key);
-
     void initDescriptorHeapLayout(const DxvkDescriptorSetLayoutKey& key);
 
   };

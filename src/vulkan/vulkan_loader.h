@@ -375,20 +375,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
     #endif
 
-    #ifdef VK_EXT_descriptor_buffer
-    VULKAN_FN(vkGetDescriptorSetLayoutSizeEXT);
-    VULKAN_FN(vkGetDescriptorSetLayoutBindingOffsetEXT);
-    VULKAN_FN(vkGetDescriptorEXT);
-    VULKAN_FN(vkCmdBindDescriptorBuffersEXT);
-    VULKAN_FN(vkCmdSetDescriptorBufferOffsetsEXT);
-    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplersEXT);
-    VULKAN_FN(vkGetBufferOpaqueCaptureDescriptorDataEXT);
-    VULKAN_FN(vkGetImageOpaqueCaptureDescriptorDataEXT);
-    VULKAN_FN(vkGetImageViewOpaqueCaptureDescriptorDataEXT);
-    VULKAN_FN(vkGetSamplerOpaqueCaptureDescriptorDataEXT);
-    VULKAN_FN(vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT);
-    #endif
-
     #ifdef VK_EXT_descriptor_heap
     VULKAN_FN(vkWriteSamplerDescriptorsEXT);
     VULKAN_FN(vkWriteResourceDescriptorsEXT);
@@ -511,8 +497,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdPushConstants2KHR);
     VULKAN_FN(vkCmdPushDescriptorSet2KHR);
     VULKAN_FN(vkCmdPushDescriptorSetWithTemplate2KHR);
-    VULKAN_FN(vkCmdSetDescriptorBufferOffsets2EXT);
-    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplers2EXT);
     #endif
 
     #ifdef VK_KHR_present_wait
