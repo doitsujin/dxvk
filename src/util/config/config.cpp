@@ -267,6 +267,13 @@ namespace dxvk {
     { R"(\\SGWContracts\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "a" },
     }} },
+    /* Alien: Isolation - reads back dynamic      *
+     * buffers on the CPU every frame, which      *
+     * stalls the render thread when they live    *
+     * in host-visible VRAM (Resizable BAR)       */
+    { R"(\\AI\.exe$)", {{
+      { "d3d11.cachedDynamicResources",        "a" },
+    }} },
     /* Armored Warfare             */
     { R"(\\armoredwarfare\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "c" },
