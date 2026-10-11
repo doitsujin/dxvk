@@ -77,6 +77,7 @@ namespace dxvk::hud {
     
     HudRenderer           m_renderer;
     HudItemSet            m_hudItems;
+    HudPos                m_position;
 
     HudOptions            m_options;
     

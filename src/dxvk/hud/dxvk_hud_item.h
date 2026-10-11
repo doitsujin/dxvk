@@ -74,13 +74,15 @@ namespace dxvk::hud {
      * \brief Renders the HUD
      *
      * \param [in] renderer HUD renderer
+     * \param [in] position where to place the top left corner of the HUD
      * \returns Base offset for next item
      */
     void render(
       const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
-            HudRenderer&        renderer);
+            HudRenderer&        renderer,
+            HudPos              position);
 
     /**
      * \brief Checks whether the item set is empty
