@@ -191,11 +191,25 @@ namespace dxvk {
     if (!pResourceView || (NumRects && pRects))
       return;
 
-    // ID3D11View has no methods to query the exact type of
-    // the view, so we'll have to check each possible class
-    auto dsv = dynamic_cast<D3D11DepthStencilView*>(pResourceView);
-    auto rtv = dynamic_cast<D3D11RenderTargetView*>(pResourceView);
-    auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pResourceView);
+    // ID3D11View has no methods to query the exact type of the view,
+    // so we'll have to check each possible class. Query through COM
+    // rather than dynamic_cast: dynamic_cast relies on RTTI metadata
+    // stored just before the object's vtable, which third-party
+    // vtable-swapping hooks (e.g. overlay/injector DLLs that clone
+    // only the visible function-pointer table) do not preserve, even
+    // though they preserve the table itself well enough for ordinary
+    // virtual calls like QueryInterface to keep working correctly.
+    Com<ID3D11DepthStencilView> qiDsv;
+    Com<ID3D11RenderTargetView> qiRtv;
+    Com<ID3D11UnorderedAccessView> qiUav;
+
+    pResourceView->QueryInterface(IID_PPV_ARGS(&qiDsv));
+    pResourceView->QueryInterface(IID_PPV_ARGS(&qiRtv));
+    pResourceView->QueryInterface(IID_PPV_ARGS(&qiUav));
+
+    auto dsv = static_cast<D3D11DepthStencilView*>(qiDsv.ptr());
+    auto rtv = static_cast<D3D11RenderTargetView*>(qiRtv.ptr());
+    auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
 
     if (rtv && rtv->GetBufferView())
       return;
@@ -725,12 +739,23 @@ namespace dxvk {
 
     AddCost(GpuCostEstimate::Transfer);
 
-    // ID3D11View has no methods to query the exact type of
-    // the view, so we'll have to check each possible class
-    auto dsv = dynamic_cast<D3D11DepthStencilView*>(pView);
-    auto rtv = dynamic_cast<D3D11RenderTargetView*>(pView);
-    auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pView);
-    auto vov = dynamic_cast<D3D11VideoProcessorOutputView*>(pView);
+    // ID3D11View has no methods to query the exact type of the view,
+    // so we'll have to check each possible class. Query through COM
+    // rather than dynamic_cast; see DiscardViewBase for why.
+    Com<ID3D11DepthStencilView> qiDsv;
+    Com<ID3D11RenderTargetView> qiRtv;
+    Com<ID3D11UnorderedAccessView> qiUav;
+    Com<ID3D11VideoProcessorOutputView> qiVov;
+
+    pView->QueryInterface(IID_PPV_ARGS(&qiDsv));
+    pView->QueryInterface(IID_PPV_ARGS(&qiRtv));
+    pView->QueryInterface(IID_PPV_ARGS(&qiUav));
+    pView->QueryInterface(IID_PPV_ARGS(&qiVov));
+
+    auto dsv = static_cast<D3D11DepthStencilView*>(qiDsv.ptr());
+    auto rtv = static_cast<D3D11RenderTargetView*>(qiRtv.ptr());
+    auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
+    auto vov = static_cast<D3D11VideoProcessorOutputView*>(qiVov.ptr());
 
     // Retrieve underlying resource view
     if (dsv) {
