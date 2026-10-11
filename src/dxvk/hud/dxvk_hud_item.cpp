@@ -88,15 +88,6 @@ namespace dxvk::hud {
   }
 
 
-  void HudItemSet::parseOption(const std::string& str, float& value) {
-    try {
-      value = std::stof(str);
-    } catch (const std::invalid_argument&) {
-      return;
-    }
-  }
-
-
   HudPos HudVersionItem::render(
     const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
