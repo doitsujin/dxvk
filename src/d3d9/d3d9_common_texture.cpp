@@ -211,7 +211,7 @@ namespace dxvk {
       );
       if (FAILED(hr))
         return hr;
-    } else if (sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+    } else if (pDesc->Format != D3D9Format::NULL_FORMAT && sampleCount != VK_SAMPLE_COUNT_1_BIT) {
       // D3D9 only supports MSAA for surfaces.
       // This is unreachable. Only CreateRT or CreateDSV take in a sample count as a parameter.
       // Those create D3DPOOL_DEFAULT surfaces.
