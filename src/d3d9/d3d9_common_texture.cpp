@@ -255,9 +255,9 @@ namespace dxvk {
         (!isDepthStencilFormat && (pDesc->Usage & D3DUSAGE_DEPTHSTENCIL)))
       return D3DERR_INVALIDCALL;
 
-    // Volume textures can not be used as render targets
+    // Volume textures can not be used as render targets or depth stencil surfaces
     if (ResourceType == D3DRTYPE_VOLUMETEXTURE &&
-        (pDesc->Usage & D3DUSAGE_RENDERTARGET))
+        (pDesc->Usage & usageRTOrDS))
       return D3DERR_INVALIDCALL;
 
     // Volume textures in D3DPOOL_SCRATCH must not have DYNAMIC usage
@@ -307,6 +307,19 @@ namespace dxvk {
     // Offscreen plain surfaces don't allow D3DPOOL_MANAGED, all other surface creation functions implicitly use D3DPOOL_DEFAULT
     if (unlikely(ResourceType == D3DRTYPE_SURFACE && pDesc->Pool == D3DPOOL_MANAGED))
         return D3DERR_INVALIDCALL;
+
+    // The NULL format can only be used with textures or render targets in D3DPOOL_DEFAULT
+    if (pDesc->Format == D3D9Format::NULL_FORMAT) {
+      if (unlikely(pDesc->Usage & D3DUSAGE_DEPTHSTENCIL))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(pDesc->Pool != D3DPOOL_DEFAULT))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(ResourceType != D3DRTYPE_TEXTURE &&
+        (ResourceType != D3DRTYPE_SURFACE || (pDesc->Usage & D3DUSAGE_RENDERTARGET))))
+        return D3DERR_INVALIDCALL;
+    }
 
     return D3D_OK;
   }
