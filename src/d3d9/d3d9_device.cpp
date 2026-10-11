@@ -5254,14 +5254,19 @@ namespace dxvk {
 
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
-    if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))) {
+    const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer();
+    if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))
+      && !WaitForResource(*buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), D3DLOCK_DONOTWAIT | D3DLOCK_READONLY)) {
       // The src texture has to be in POOL_SYSTEMEM, so it cannot use AUTOMIPGEN.
       // That means that NeedsReadback is only true if the texture has been used with GetRTData or GetFrontbufferData before.
       // Those functions create a buffer, so the buffer always exists here.
-      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer();
-      WaitForResource(*buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
-      pSrcTexture->SetNeedsReadback(SrcSubresource, false);
+
+      // If we run into this frequently, consider dynamically skipping the staging buffer if the src texture needs a sync.
+      Logger::warn("Stalling in UpdateTextureFromBuffer.");
+
+      WaitForResource(*buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), D3DLOCK_READONLY);
     }
+    pSrcTexture->SetNeedsReadback(SrcSubresource, false);
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
       // The texture does not use a format that needs to be converted in a compute shader.
