@@ -281,7 +281,7 @@ namespace dxvk {
                        || dstTexExtent.width > srcTexExtent.width
                        || dstTexExtent.height > srcTexExtent.height;
 
-    dstTexInfo->CreateBuffer(clearDst, dstTexInfo->GetTotalSize());
+    dstTexInfo->EnsureBufferExists(clearDst);
     DxvkBufferSlice dstBufferSlice = dstTexInfo->GetBufferSlice(dst->GetSubresource());
     Rc<DxvkImage>   srcImage       = srcTexInfo->GetImage();
 
@@ -1053,7 +1053,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < bufferCount; i++) {
       D3D9Surface* surface;
       try {
-        surface = new D3D9Surface(m_parent, &desc, isExtended, this, nullptr);
+        surface = new D3D9Surface(m_parent, &desc, isExtended, this, nullptr, nullptr);
         m_parent->IncrementLosableCounter();
       } catch (const DxvkError& e) {
         DestroyBackBuffers();

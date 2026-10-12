@@ -1124,6 +1124,8 @@ namespace dxvk {
      */
     void RemoveMappedTexture(D3D9CommonTexture* pTexture);
 
+    void RemovePointerTexture(D3D9CommonTexture* pTexture);
+
     /**
      * \brief Returns whether the device is currently recording a StateBlock
      */
@@ -1547,6 +1549,8 @@ namespace dxvk {
 
     void InitShaderOptions();
 
+    void SyncImportedPointers();
+
     static uint32_t GetTextureStageArgMask(
             D3DTEXTUREOP          Op);
 
@@ -1674,6 +1678,8 @@ namespace dxvk {
     std::atomic<uint32_t>           m_losableResourceCounter   = { 0 };
 
     D3D9SwapChainEx*                m_mostRecentlyUsedSwapchain = nullptr;
+
+    std::vector<D3D9CommonTexture*> m_pointerImportedTextures;
 
 #ifdef DXVK_USE_UNMAPPABLE_MEMORY
     lru_list<D3D9CommonTexture*>    m_mappedTextures;

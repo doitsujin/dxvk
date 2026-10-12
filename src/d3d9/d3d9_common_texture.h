@@ -82,7 +82,8 @@ namespace dxvk {
             IUnknown*                 pInterface,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType,
-            HANDLE*                   pSharedHandle);
+            HANDLE*                   pSharedHandle,
+            void*                     pImportedPointer);
 
     ~D3D9CommonTexture();
 
@@ -136,19 +137,6 @@ namespace dxvk {
      */
     const Rc<DxvkImage>& GetImage() const {
       return m_image;
-    }
-
-    /**
-     * \brief Get a copy of the main image, but with a single sample
-     * This function will allocate/reuse an image with the same info
-     * as the main image
-     * \returns An image with identical info, but 1 sample
-     */
-    const Rc<DxvkImage>& GetResolveImage() {
-      if (unlikely(m_resolveImage == nullptr))
-        m_resolveImage = CreateResolveImage();
-
-      return m_resolveImage;
     }
 
     /**
@@ -496,25 +484,42 @@ namespace dxvk {
     }
 
     /**
-     * \brief Mip level
-     * \returns Size of packed mip level in bytes
+     * \brief Subresource size
+     * \returns Size of packed subresource level in bytes
      */
-    VkDeviceSize GetMipSize(UINT Subresource) const;
+    VkDeviceSize GetSubresourceSize(UINT Subresource) const;
 
     uint32_t GetTotalSize() const {
-      return m_totalSize;
+      // Add a tiny amount of padding at the end because some games read/write OOB
+      // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
+      return align(m_totalSize + 1, CACHE_LINE_SIZE);
     }
 
     /**
      * \brief Creates a buffer
      * Creates the mapping buffer if necessary
      * \param [in] Initialize Whether to copy over existing data (or clear if there is no data)
-     * \param [in] Size The size of the buffer
      * \returns Whether an allocation happened
      */
-    void CreateBuffer(bool Initialize, uint32_t Size);
+    const Rc<DxvkBuffer>& EnsureBufferExists(bool Initialize = true);
 
     ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
+
+    void* GetImportedPointer() const { return m_importedPointer; }
+
+    /**
+     * \brief Adds a small amount of padding to work around game bugs.
+     * \param size Size to pad.
+     * @return Padded size
+     */
+    static uint64_t PadTotalSize(uint64_t size) {
+      // Add a tiny amount of padding at the end because some games read/write OOB
+      // Medieval: Total War 1 for example seems to have an off-by-one bug in copying data for a managed texture.
+      return align(size + 1, CACHE_LINE_SIZE);
+    }
+
+    void CopyImportedPointerToBuffer();
+    void CopyBufferToImportedPointer();
 
   private:
 
@@ -524,7 +529,6 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE  m_mapMode;
 
     Rc<DxvkImage>                 m_image;
-    Rc<DxvkImage>                 m_resolveImage;
     Rc<DxvkBuffer>                m_buffer;
     MemoryFileRegion              m_data = { };
 
@@ -564,9 +568,9 @@ namespace dxvk {
 
     D3D9VkInteropTexture          m_d3d9Interop;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, HANDLE* pSharedHandle) const;
+    void*                         m_importedPointer = nullptr;
 
-    Rc<DxvkImage> CreateResolveImage() const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, HANDLE* pSharedHandle) const;
 
     BOOL DetermineShadowState() const;
 

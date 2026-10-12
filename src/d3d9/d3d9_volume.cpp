@@ -12,7 +12,7 @@ namespace dxvk {
     : D3D9VolumeBase(
         pDevice,
         Extended,
-        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr ),
+        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr, nullptr),
         0, 0,
         nullptr,
         nullptr) { }
