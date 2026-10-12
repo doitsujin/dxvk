@@ -412,7 +412,6 @@ namespace dxvk {
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
-    void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
     void SetNeedsMipGen(bool value) { m_needsMipGen = value; }
     bool NeedsMipGen() const { return m_needsMipGen; }

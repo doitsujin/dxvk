@@ -5217,6 +5217,10 @@ namespace dxvk {
     if (pResource->IsAutomaticMip())
       MarkTextureMipsDirty(pResource);
 
+    pResource->SetNeedsUpload(Subresource, false);
+    if (!pResource->NeedsAnyUpload())
+      MarkTextureUploaded(pResource);
+
     return D3D_OK;
   }
 
@@ -6430,7 +6434,6 @@ namespace dxvk {
     }
 
     pResource->ClearDirtyBoxes();
-    pResource->ClearNeedsUpload();
   }
 
 
