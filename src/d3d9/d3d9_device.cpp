@@ -5018,25 +5018,28 @@ namespace dxvk {
     if (desc.Usage & D3DUSAGE_WRITEONLY)
       Flags &= ~D3DLOCK_READONLY;
 
-    // If we recently wrote to the texture on the gpu,
-    // then we need to copy -> buffer
-    // We are also always dirty if we are a render target,
-    // a depth stencil, or auto generate mipmaps.
+    // If we recently wrote to the texture on the gpu, then we need to copy -> buffer
+    // We are also always dirty if we are a render target, a depth stencil.
     bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
     bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
+
+    // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
+    void* mapPtr = pResource->GetData(Subresource);
+
+    bool needsBuffer = mapPtr == nullptr;
+    needsBuffer |= pResource->GetBuffer() == nullptr && (pResource->NeedsAnyReadback() || renderable);
+    if (unlikely(needsBuffer)) {
+      // Creating a buffer (or switching from a MemoryFile to a buffer) is done for the entire resource and invalidates
+      // the pointers. So do it once for the entire resource if any subresource gives us a reason.
+      // Do it even if we might be able to bypass the readback for this subresource later.
+      pResource->EnsureBufferExists(true);
+      mapPtr = pResource->GetData(Subresource);
+    }
 
     // Skip readback if we discard is specified. We can only do this for textures that have an associated Vulkan image.
     // Any other texture might write to the Vulkan staging buffer directly. (GetBackbufferData for example)
     needsReadback &= pResource->GetImage() != nullptr || !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
-
-    if (unlikely(pResource->GetImage() != nullptr || needsReadback)) {
-      // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
-      pResource->EnsureBufferExists(!needsReadback);
-    }
-
-    // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
-    void* mapPtr = pResource->GetData(Subresource);
 
     if (unlikely(needsReadback)) {
       // The texture was written to on the GPU.
