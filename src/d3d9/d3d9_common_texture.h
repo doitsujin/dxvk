@@ -161,7 +161,9 @@ namespace dxvk {
      */
     void* GetData(UINT Subresource);
 
-    const Rc<DxvkBuffer>& GetBuffer();
+    const Rc<DxvkBuffer>& GetBuffer() const {
+      return m_buffer;
+    }
 
     DxvkBufferSlice GetBufferSlice(UINT Subresource);
 
@@ -372,7 +374,7 @@ namespace dxvk {
 
     D3DPOOL GetPool() const { return m_desc.Pool; }
 
-    const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
+    const D3D9_VK_FORMAT_MAPPING& GetMapping() const { return m_mapping; }
 
     void SetLocked(UINT Subresource, bool value) { m_locked.set(Subresource, value); }
 
@@ -383,6 +385,8 @@ namespace dxvk {
     void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
     bool NeedsReadback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
+
+    bool NeedsAnyReadback() const { return m_needsReadback.any(); }
 
     void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
