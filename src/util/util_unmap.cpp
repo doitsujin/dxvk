@@ -44,7 +44,7 @@ namespace dxvk {
 
     // Bump granularity to the allocator's page size for consistenty
     result = sysInfo.dwAllocationGranularity;
-    result = std::max(result, uint32_t(DxvkPageAllocator::PageSize));
+    result = std::max(result, size_t(DxvkPageAllocator::PageSize));
 
     s_granularity.store(result, std::memory_order_relaxed);
     return result;
