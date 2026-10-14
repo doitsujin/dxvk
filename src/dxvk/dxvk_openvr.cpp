@@ -171,7 +171,7 @@ namespace dxvk {
         extensionList.resize(len);
         len = m_compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
     }
-    return parseExtensionList(std::string(extensionList.data(), len));
+    return parseExtensionList(std::string(extensionList.data()));
   }
   
   
@@ -209,7 +209,7 @@ namespace dxvk {
       len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), extensionList.data(), len);
     }
 
-    return parseExtensionList(std::string(extensionList.data(), len));
+    return parseExtensionList(std::string(extensionList.data()));
   }
   
   

@@ -99,7 +99,7 @@ namespace dxvk {
       return DxvkExtensionList();
     }
 
-    return parseExtensionList(std::string(extensionList.data(), len));
+    return parseExtensionList(std::string(extensionList.data()));
   }
   
   
@@ -120,7 +120,7 @@ namespace dxvk {
       return DxvkExtensionList();
     }
 
-    return parseExtensionList(std::string(extensionList.data(), len));
+    return parseExtensionList(std::string(extensionList.data()));
   }
   
   
