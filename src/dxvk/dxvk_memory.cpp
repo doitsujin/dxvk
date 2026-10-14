@@ -986,7 +986,7 @@ namespace dxvk {
             return allocation;
 
           if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-          && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
+           && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
             DxvkAllocationInfo fallbackInfo = allocationInfo;
             fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
