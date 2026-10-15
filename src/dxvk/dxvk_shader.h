@@ -114,6 +114,8 @@ namespace dxvk {
     SupportsResourceIndexing    = 20u,
     /// Whether descriptor heap is used as the binding model.
     SupportsDescriptorHeap      = 21u,
+    /// Whether scratch memory should be zeroed.
+    ZeroScratchMemory           = 22u,
   };
 
   using DxvkShaderSpirvFlags = Flags<DxvkShaderSpirvFlag>;

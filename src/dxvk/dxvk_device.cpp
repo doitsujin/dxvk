@@ -781,7 +781,6 @@ namespace dxvk {
          && (!m_features.intelDeviceInfo || m_properties.intelDeviceInfo.deviceIpVersionArch < 30u);
     applyTristate(lowerSinCos, m_options.lowerSinCos);
 
-
     if (lowerSinCos)
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::LowerSinCos);
 
@@ -791,6 +790,10 @@ namespace dxvk {
         DxvkShaderCompileFlag::LowerFtoI,
         DxvkShaderCompileFlag::LowerF32toF16);
     }
+
+    // Enable game workarounds
+    if (m_options.zeroShaderScratchMemory)
+      m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::ZeroScratchMemory);
 
     // On AMD, push constant BDA will not be worse than going through a descriptor
     if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
