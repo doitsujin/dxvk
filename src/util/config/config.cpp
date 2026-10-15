@@ -145,6 +145,10 @@ namespace dxvk {
     { R"(\\s2_sp64_ship\.exe$)", {{
       { "dxgi.hideNvidiaGpu",              "False" },
     }} },
+    /* Call of Duty Ghosts */
+    { R"(\\iw6sp64_ship\.exe$)", {{
+      { "dxvk.zeroShaderScratchMemory",     "True" },
+    }} },
     /* Need for Speed 2015                        */
     { R"(\\NFS16\.exe$)", {{
       { "dxgi.hideNvidiaGpu",              "False" },
