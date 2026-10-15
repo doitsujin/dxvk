@@ -6520,6 +6520,13 @@ namespace dxvk {
       bool scale = rs[D3DRS_POINTSCALEENABLE] && !UseProgrammableVS();
       bool sprite = rs[D3DRS_POINTSPRITEENABLE];
 
+      if (scale) {
+        // Only enable scaling with perspective projection since we
+        // otherwise can't compute meaningful eye vectors
+        auto [wNear, wFar] = ComputeWNearFar();
+        scale = wNear != 1.0f || wFar != 1.0f;
+      }
+
       if (scale && m_dirty.test(D3D9DeviceDirtyFlag::PointScale)) {
         m_dirty.clr(D3D9DeviceDirtyFlag::PointScale);
         m_dirty.set(D3D9DeviceDirtyFlag::PushDataFfvs);
