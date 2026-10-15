@@ -92,6 +92,10 @@ namespace dxvk {
     /// Enable descriptor update templates
     bool enableDescriptorUpdateTemplates = env::is32BitHostPlatform();
 
+    /// Whether scratch memory in shaders needs
+    /// zero-initialization to work around game bugs.
+    bool zeroShaderScratchMemory = false;
+
     /// Device name
     std::string deviceFilter;
   };
