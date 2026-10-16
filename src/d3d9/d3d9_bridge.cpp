@@ -29,10 +29,6 @@ namespace dxvk {
     return m_device->QueryInterface(riid, ppvObject);
   }
 
-
-  /**
-   * \brief D3D8 CopyRects implementation
-   */
   HRESULT DxvkLegacyD3DDeviceBridge::CopyRects(
           IDirect3DSurface9*  pSourceSurface,
     const RECT*               pSourceRectsArray,
@@ -60,8 +56,9 @@ namespace dxvk {
     if (unlikely(IsDepthStencilFormat(dstTex->Desc()->Format)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(dstTex->GetFormatMapping().ConversionFormatInfo.FormatType != D3D9ConversionFormat_None && (srcTex->GetImage() != nullptr && dstTex->GetImage() == nullptr))) {
-      Logger::err("CopyRects with formats, that need conversion, is only supported if it's an image to image copy.");
+    if (unlikely(dstTex->GetFormatMapping().ConversionFormatInfo.FormatType != D3D9ConversionFormat_None
+             && (srcTex->GetImage() != nullptr && dstTex->GetImage() == nullptr))) {
+      Logger::err("D3D8Device::CopyRects: Formats that need conversion are only supported on image to image copies");
       return D3DERR_NOTAVAILABLE;
     }
 
@@ -171,9 +168,9 @@ namespace dxvk {
   }
 
   void DxvkLegacyD3DDeviceBridge::CopyRectImageToImage(
-    const D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
-    VkOffset3D SrcOffset, VkOffset3D DstOffset, VkExtent3D Extent
-  ) {
+    const D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex,
+    uint32_t SrcSubresource, uint32_t DstSubresource,
+    VkOffset3D SrcOffset, VkOffset3D DstOffset, VkExtent3D Extent) {
       // The backend will thankfully handle all VkUsage issues.
 
       const Rc<DxvkImage>& srcImage = SrcTex->GetImage();
@@ -239,9 +236,13 @@ namespace dxvk {
         ] (DxvkContext* ctx) {
           std::array<VkOffset3D, 4> offsets = {
             cSrcOffset,
-            VkOffset3D { cSrcOffset.x + int32_t(cExtent.width), cSrcOffset.y + int32_t(cExtent.width), cSrcOffset.z + int32_t(cExtent.depth) },
+            VkOffset3D { cSrcOffset.x + int32_t(cExtent.width),
+                         cSrcOffset.y + int32_t(cExtent.width),
+                         cSrcOffset.z + int32_t(cExtent.depth) },
             cDstOffset,
-            VkOffset3D { cDstOffset.x + int32_t(cExtent.width), cDstOffset.y + int32_t(cExtent.width), cDstOffset.z + int32_t(cExtent.depth) },
+            VkOffset3D { cDstOffset.x + int32_t(cExtent.width),
+                         cDstOffset.y + int32_t(cExtent.width),
+                         cDstOffset.z + int32_t(cExtent.depth) },
           };
           ctx->blitImageView(
             cDstView, &offsets[2],
@@ -252,10 +253,10 @@ namespace dxvk {
   }
 
   void DxvkLegacyD3DDeviceBridge::CopyRectImageToBuffer(
-    const D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
+    const D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex,
+    uint32_t SrcSubresource, uint32_t DstSubresource,
     VkOffset3D SrcOffset, uint32_t DstOffset, uint32_t DstPitch,
-    VkExtent3D Extent, const DxvkFormatInfo* FormatInfo
-  ) {
+    VkExtent3D Extent, const DxvkFormatInfo* FormatInfo) {
       DstTex->EnsureBufferExists(true);
       m_device->EmitCs([
         cDstBuffer = DstTex->GetBuffer(),
@@ -276,28 +277,29 @@ namespace dxvk {
   }
 
   void DxvkLegacyD3DDeviceBridge::CopyRectBufferToBuffer(
-    D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
+    D3D9CommonTexture* SrcTex, D3D9CommonTexture* DstTex,
+    uint32_t SrcSubresource, uint32_t DstSubresource,
     uint32_t SrcOffset, uint32_t DstOffset, uint32_t SrcPitch, uint32_t DstPitch,
-    VkExtent3D BlockCount, const DxvkFormatInfo* FormatInfo
-  ) {
+    VkExtent3D BlockCount, const DxvkFormatInfo* FormatInfo) {
     VkExtent3D alignedExtent = util::computeBlockExtent(BlockCount, FormatInfo->blockSize);
 
     const Rc<DxvkBuffer>& srcBuffer = SrcTex->GetBuffer();
     const Rc<DxvkBuffer>& dstBuffer = DstTex->GetBuffer();
     if (unlikely(SrcTex->NeedsReadback(SrcSubresource)
       && !m_device->WaitForResource(*srcBuffer, SrcTex->GetMappingBufferSequenceNumber(SrcSubresource), D3DLOCK_DONOTWAIT | D3DLOCK_READONLY))) {
-      Logger::warn("Stalling in CopyRects because of src.");
+      Logger::warn("D3D8Device::CopyRects: Stalling because of src buffer");
       m_device->WaitForResource(*srcBuffer, SrcTex->GetMappingBufferSequenceNumber(SrcSubresource), 0);
     }
     if (unlikely(DstTex->NeedsReadback(DstSubresource))
       && !m_device->WaitForResource(*dstBuffer, DstTex->GetMappingBufferSequenceNumber(DstSubresource), D3DLOCK_DONOTWAIT)) {
-      Logger::warn("Stalling in CopyRects because of dst.");
+      Logger::warn("D3D8Device::CopyRects: Stalling because of dst buffer");
       m_device->WaitForResource(*dstBuffer, DstTex->GetMappingBufferSequenceNumber(DstSubresource), 0);
     }
     SrcTex->SetNeedsReadback(SrcSubresource, false);
     DstTex->SetNeedsReadback(DstSubresource, false);
 
-    // We assume that using CopyRects with DEFAULT->SYSTEMMEM and then SYSTEMMEM->SYSTEMMEM doesn't really happen in practice.
+    // We assume that using CopyRects with DEFAULT->SYSTEMMEM and
+    // then SYSTEMMEM->SYSTEMMEM doesn't really happen in practice.
     // So the buffers don't need sync and we can just do the copy on the CPU here.
 
     const void* srcMapPtr = static_cast<const uint8_t*>(SrcTex->GetData(SrcSubresource)) + SrcOffset;
@@ -308,7 +310,6 @@ namespace dxvk {
       dstMapPtr, srcMapPtr, SrcPitch, 0, DstPitch, 0, VK_IMAGE_TYPE_2D, alignedExtent, 1, FormatInfo,
       VK_IMAGE_ASPECT_COLOR_BIT);
   }
-
 
   bool DxvkLegacyD3DDeviceBridge::IsSupportedSurfaceFormat(D3DFORMAT Format) {
     auto mapping = m_device->LookupFormat(EnumerateFormat(Format));
