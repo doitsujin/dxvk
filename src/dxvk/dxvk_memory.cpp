@@ -1074,9 +1074,8 @@ namespace dxvk {
         logMemoryStats();
       }
     } else {
-      allocation = createAllocation(
-        new DxvkSparsePageTable(m_device, createInfo, buffer),
-        allocationInfo);
+      auto pageTable = new DxvkSparsePageTable(m_device, createInfo, buffer);
+      allocation = allocateSparsePageTable(pageTable, allocationInfo);
     }
 
     if (!allocation) {
@@ -1223,7 +1222,7 @@ namespace dxvk {
           allocation->m_sparsePageTable = pageTable.release();
       } else {
         // Just need a page table, but no memory
-        allocation = createAllocation(pageTable.release(), allocationInfo);
+        allocation = allocateSparsePageTable(pageTable.release(), allocationInfo);
       }
     }
 
@@ -1587,7 +1586,7 @@ namespace dxvk {
   }
 
 
-  DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
+  DxvkResourceAllocation* DxvkMemoryAllocator::allocateSparsePageTable(
           DxvkSparsePageTable*  sparsePageTable,
     const DxvkAllocationInfo&   allocationInfo) {
     std::lock_guard lock(m_mutex);

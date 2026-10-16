@@ -1490,7 +1490,7 @@ namespace dxvk {
       const DxvkDeviceMemory&     memory,
       const DxvkAllocationInfo&   allocationInfo);
 
-    DxvkResourceAllocation* createAllocation(
+    DxvkResourceAllocation* allocateSparsePageTable(
             DxvkSparsePageTable*  sparsePageTable,
       const DxvkAllocationInfo&   allocationInfo);
 
