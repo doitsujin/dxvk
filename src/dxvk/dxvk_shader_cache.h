@@ -81,8 +81,10 @@ namespace dxvk {
   private:
 
     struct Instance {
-      dxvk::mutex       mutex;
-      DxvkShaderCache*  instance = nullptr;
+      dxvk::mutex               mutex;
+      dxvk::condition_variable  cond;
+      uint32_t                  version = 0u;
+      DxvkShaderCache*          instance = nullptr;
     };
 
     static Instance s_instance;
