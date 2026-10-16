@@ -879,6 +879,9 @@ namespace dxvk {
         ? (m_timingMode.supportsRelative ? "yes (absolute, relative)" : "yes (absolute)")
         : (m_timingMode.supportsRelative ? "yes (relative)" : "no"))));
 
+    if (m_timingMode.presentStage)
+      Logger::info(str::format("Presenter: Using present stage ", VkPresentStageFlagBitsEXT(m_timingMode.presentStage)));
+
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_swapchain))) {
       Logger::err(str::format("Presenter: Failed to create Vulkan swapchain: ", status));
       return status;
