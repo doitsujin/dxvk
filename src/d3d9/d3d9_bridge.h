@@ -24,11 +24,19 @@ IDxvkLegacyD3DDeviceBridge : public IUnknown {
 
   // D3D8 keeps D3D9 objects contained in a namespace.
   #ifdef DXVK_D3D9_NAMESPACE
-    using IDirect3DTexture9 = d3d9::IDirect3DTexture9;
     using IDirect3DSurface9 = d3d9::IDirect3DSurface9;
     using D3DFORMAT = d3d9::D3DFORMAT;
   #endif
 
+  /**
+   * \brief D3D8 CopyRects implementation
+   *
+   * \param [in] pSourceSurface Source D3D9 surface
+   * \param [in] pSourceRectsArray Source RECTs array (can be NULL)
+   * \param [in] cRects Number of RECTs
+   * \param [in] pDestinationSurface Destination D3D9 surface
+   * \param [in] pDestPointsArray Destination POINTs array (can be NULL)
+   */
   virtual HRESULT CopyRects(
         IDirect3DSurface9*  pSourceSurface,
   const RECT*               pSourceRectsArray,
@@ -109,18 +117,21 @@ namespace dxvk {
   private:
 
     void CopyRectImageToImage(
-      const D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
+      const D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex,
+      uint32_t SrcSubresource, uint32_t DstSubresource,
       VkOffset3D SrcOffset, VkOffset3D DstOffset, VkExtent3D Extent
     );
 
     void CopyRectImageToBuffer(
-      const D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
+      const D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex,
+      uint32_t SrcSubresource, uint32_t DstSubresource,
       VkOffset3D SrcOffset, uint32_t DstOffset, uint32_t DstPitch,
       VkExtent3D Extent, const DxvkFormatInfo* FormatInfo
     );
 
     void CopyRectBufferToBuffer(
-      D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex, uint32_t SrcSubresource, uint32_t DstSubresource,
+      D3D9CommonTexture* srcTex, D3D9CommonTexture* dstTex,
+      uint32_t SrcSubresource, uint32_t DstSubresource,
       uint32_t SrcOffset, uint32_t DstOffset, uint32_t SrcPitch, uint32_t DstPitch,
       VkExtent3D BlockCount, const DxvkFormatInfo* FormatInfo
     );

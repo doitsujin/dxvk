@@ -33,18 +33,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE UnlockRect() final;
 
-    /**
-     * \brief Allocate or reuse an image of the same size
-     * as this texture for performing blit into system mem.
-     */
-    Com<d3d9::IDirect3DSurface9> GetBlitImage();
-
-  private:
-
-    Com<d3d9::IDirect3DSurface9> CreateBlitImage();
-
-    Com<d3d9::IDirect3DSurface9> m_blitImage;
-
   };
 
 }
