@@ -26,3 +26,4 @@ std::ostream& operator << (std::ostream& os, VkOffset2D e);
 std::ostream& operator << (std::ostream& os, VkOffset3D e);
 std::ostream& operator << (std::ostream& os, VkExtent2D e);
 std::ostream& operator << (std::ostream& os, VkExtent3D e);
+std::ostream& operator << (std::ostream& os, VkPresentStageFlagBitsEXT e);
