@@ -683,7 +683,7 @@ namespace dxvk {
     // The ref count can only be incremented from 0 to 1 inside a locked
     // context, so this check is safe. Don't destroy the object if another
     // thread has essentially revived it.
-    if (m_useCount.load() || s_instance.instance != this) {
+    if (!m_useCount.load() || s_instance.instance != this) {
       if (s_instance.instance == this)
         s_instance.instance = nullptr;
 
