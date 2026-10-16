@@ -451,6 +451,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D9DeviceLock lock = LockDevice();
+    D3D9FpuStateGuard fpuGuard(m_behaviorFlags & D3DCREATE_FPU_PRESERVE);
 
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
@@ -4463,6 +4464,7 @@ namespace dxvk {
           D3DPRESENT_PARAMETERS* pPresentationParameters,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3D9DeviceLock lock = LockDevice();
+    D3D9FpuStateGuard fpuGuard(m_behaviorFlags & D3DCREATE_FPU_PRESERVE);
 
     HRESULT hr;
     if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
