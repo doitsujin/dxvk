@@ -4,15 +4,9 @@
 
 namespace dxvk {
 
-  static bool isVersionAtLeast(
-    uint32_t major,
-    uint32_t minor,
-    uint32_t patch,
-    uint32_t build,
-    uint32_t reqMajor,
-    uint32_t reqMinor,
-    uint32_t reqPatch,
-    uint32_t reqBuild) {
+  #ifdef _WIN32
+  static bool isVersionAtLeast(uint32_t major, uint32_t minor, uint32_t patch, uint32_t build,
+          uint32_t reqMajor, uint32_t reqMinor, uint32_t reqPatch, uint32_t reqBuild) {
     if (major != reqMajor)
       return major > reqMajor;
     if (minor != reqMinor)
@@ -21,6 +15,7 @@ namespace dxvk {
       return patch > reqPatch;
     return build >= reqBuild;
   }
+  #endif
 
   static int32_t parsePciId(const std::string& str) {
     if (str.size() != 4)
