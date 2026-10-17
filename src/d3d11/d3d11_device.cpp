@@ -1851,7 +1851,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE D3D11Device::SetExceptionMode(UINT RaiseFlags) {
     Logger::err("D3D11Device::SetExceptionMode: Not implemented");
-    return E_NOTIMPL;
+    return S_OK;
   }
   
   
