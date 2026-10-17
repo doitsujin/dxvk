@@ -62,7 +62,7 @@ namespace dxvk {
     D3DKMT_ACQUIREKEYEDMUTEX acquire = { };
     acquire.hKeyedMutex = m_kmtLocal;
     acquire.Key = key;
-    acquire.pTimeout = &timeout;
+    acquire.pTimeout = milliseconds == INFINITE ? nullptr : &timeout;
 
     NTSTATUS status = D3DKMTAcquireKeyedMutex(&acquire);
 
