@@ -8,7 +8,303 @@
 #include "d3d11_device.h"
 #include "d3d11_shader.h"
 
+#include <cstring>
+
 namespace dxvk {
+
+  // Builds a geometry shader that does not exist in the application's
+  // bytecode. It broadcasts one input primitive to NumViews viewports
+  // using GS instancing (SetGsInstances plus gl_InvocationID), selects
+  // the matching per-view position for each invocation, and routes the
+  // primitive using the viewport mask the vertex shader supplies.
+  // Triangle input only, which covers every NV multi-view vertex shader
+  // observed so far; no point or line multi-view shaders have been seen.
+  //
+  // Deliberately does not touch dxbc-spirv. DxvkIrShaderConverter is
+  // DXVK's own interface, so anything that fills in an ir::Builder is
+  // acceptable, whether hand-built or converted from DXBC.
+  class D3D11NvAmplificationGsConverter : public DxvkIrShaderConverter {
+
+  public:
+
+    D3D11NvAmplificationGsConverter(
+      const DxvkShaderHash&                        VsKey,
+      std::vector<DxvkNvPassthroughIoEntry>        PassthroughIo,
+            uint32_t                                NumViews,
+      const DxvkNvMultiviewInfo&                    NvMultiview)
+    : m_key(VsKey), m_passthroughIo(std::move(PassthroughIo)),
+      m_numViews(NumViews), m_nvMultiview(NvMultiview) { }
+
+void convertShader(dxbc_spv::ir::Builder& builder) override {
+      using namespace dxbc_spv;
+
+      auto mainFunc = builder.add(ir::Op::Function(ir::ScalarType::eVoid));
+      builder.add(ir::Op::FunctionEnd());
+      builder.add(ir::Op::DebugName(mainFunc, "main"));
+
+      auto entryPoint = builder.addAfter(ir::SsaDef(),
+        ir::Op::EntryPoint(mainFunc, ir::ShaderStage::eGeometry));
+
+      auto debugName = m_key.toString() + "_nvAmpGs";
+      builder.add(ir::Op::DebugName(entryPoint, debugName.c_str()));
+      builder.setCursor(mainFunc);
+
+      builder.add(ir::Op::SetGsInstances(entryPoint, m_numViews));
+      builder.add(ir::Op::SetGsInputPrimitive(entryPoint, ir::PrimitiveType::eTriangles));
+      builder.add(ir::Op::SetGsOutputPrimitive(entryPoint, ir::PrimitiveType::eTriangles, 0x1u));
+      builder.add(ir::Op::SetGsOutputVertices(entryPoint, 3u));
+
+      auto instanceIdDecl = builder.add(ir::Op::DclInputBuiltIn(
+        ir::ScalarType::eU32, entryPoint, ir::BuiltIn::eGsInstanceId, ir::InterpolationModes()));
+      auto viewportDecl = builder.add(ir::Op::DclOutputBuiltIn(
+        ir::Type(ir::ScalarType::eU32), entryPoint, ir::BuiltIn::eViewportIndex));
+
+      auto instanceId = builder.add(ir::Op::InputLoad(
+        ir::ScalarType::eU32, instanceIdDecl, ir::SsaDef()));
+
+      // The position output, declared once, up front.
+      auto positionOutDecl = builder.add(ir::Op::DclOutputBuiltIn(
+        ir::Type(ir::BasicType(ir::ScalarType::eF32, 4u)), entryPoint, ir::BuiltIn::ePosition));
+
+      // [view][vertex] -> that view's position for that vertex. Index 0
+      // is view 0, which uses the ordinary SV_POSITION built-in; indices
+      // 1 to 3 come from the NV_POSITION_VIEW_* registers below.
+      std::array<std::array<ir::SsaDef, 3u>, 4u> positionPerViewPerVertex = { };
+
+      // Per-vertex pass-through: 3 input vertices (triangle), every
+      // captured entry carried through unchanged, at its own component
+      // count (the resolver's getVectorType() - never a fixed float4).
+      //
+      // Location assignment: use the source register index and component
+      // offset directly. A geometry shader's input interface has to match
+      // the vertex shader output interface it consumes, and DXVK numbers
+      // vertex shader outputs by register index. Two signature entries can
+      // share a register with different write masks, in which case they
+      // share a location and differ by component; renumbering sequentially
+      // loses that pairing and slides every later location.
+
+      // Collect every passthrough attribute's per-corner value AND its
+      // output declaration here, instead of writing to the output the
+      // moment it's loaded. We need all 3 corners' values in hand before
+      // we can safely write+emit corner-by-corner further down.
+      std::vector<ir::SsaDef> passthroughOutDecls;
+      std::vector<std::array<ir::SsaDef, 3u>> passthroughValuesPerVertex;
+
+      // View 0's position is SV_POSITION, which the vertex shader emits as
+      // the Position built-in rather than at a generic location. It is
+      // excluded from m_passthroughIo for that reason and read here.
+      auto positionInDecl = builder.add(ir::Op::DclInputBuiltIn(
+        ir::Type(ir::BasicType(ir::ScalarType::eF32, 4u)).addArrayDimension(3u),
+        entryPoint, ir::BuiltIn::ePosition, ir::InterpolationModes()));
+
+      for (uint32_t v = 0u; v < 3u; v++) {
+        positionPerViewPerVertex[0][v] = builder.add(ir::Op::InputLoad(
+          ir::Type(ir::BasicType(ir::ScalarType::eF32, 4u)),
+          positionInDecl, builder.makeConstant(v)));
+      }
+
+      for (const auto& io : m_passthroughIo) {
+        auto inputType = ir::Type(io.type).addArrayDimension(3u);
+
+        auto inDecl = builder.add(ir::Op::DclInput(
+          inputType, entryPoint, io.regIndex, io.component));
+        auto outDecl = builder.add(ir::Op::DclOutput(
+          ir::Type(io.type), entryPoint, io.regIndex, io.component));
+
+        builder.add(ir::Op::Semantic(inDecl, io.semanticIndex, io.semanticName.c_str()));
+        builder.add(ir::Op::Semantic(outDecl, io.semanticIndex, io.semanticName.c_str()));
+
+        std::array<ir::SsaDef, 3u> values = { };
+        for (uint32_t v = 0u; v < 3u; v++) {
+          values[v] = builder.add(ir::Op::InputLoad(
+            ir::Type(io.type), inDecl, builder.makeConstant(v)));
+        }
+
+        passthroughOutDecls.push_back(outDecl);
+        passthroughValuesPerVertex.push_back(values);
+      }
+
+      // Per-view position registers. This only loads values into
+      // positionPerViewPerVertex; it never writes to an output.
+      static const std::array<const char*, 3> s_positionViewSemanticNames = {{
+        "NV_POSITION_VIEW_1_SEMANTIC", "NV_POSITION_VIEW_2_SEMANTIC", "NV_POSITION_VIEW_3_SEMANTIC" }};
+
+      for (uint32_t view = 0u; view < 3u; view++) {
+        if (m_nvMultiview.positionViewReg[view] < 0)
+          continue;
+
+        auto viewPosType = m_nvMultiview.positionViewType[view];
+        auto viewPosDecl = builder.add(ir::Op::DclInput(
+          ir::Type(viewPosType).addArrayDimension(3u), entryPoint,
+          uint32_t(m_nvMultiview.positionViewReg[view]), 0u));
+        builder.add(ir::Op::Semantic(viewPosDecl, 0u, s_positionViewSemanticNames[view]));
+
+        for (uint32_t v = 0u; v < 3u; v++) {
+          positionPerViewPerVertex[view + 1][v] = builder.add(ir::Op::InputLoad(
+            ir::Type(viewPosType), viewPosDecl, builder.makeConstant(v)));
+        }
+      }
+
+      // Viewport routing. iRacing packs two 16-bit viewport bitmasks
+      // per register - NV_VIEWPORT_MASK holds views 0 and 1, and
+      // NV_VIEWPORT_MASK_2 holds views 2 and 3, low half first. Only the
+      // .x component carries routing; .yzw are written with the same value
+      // and their purpose is unknown, so they are ignored.
+      static const std::array<const char*, 2> s_viewportMaskSemanticNames = {{
+        "NV_VIEWPORT_MASK", "NV_VIEWPORT_MASK_2_SEMANTIC" }};
+
+      std::array<ir::SsaDef, 2u> maskRegValues = { };
+
+      for (uint32_t m = 0u; m < 2u; m++) {
+        int32_t reg = m ? m_nvMultiview.viewportMask2Reg
+                        : m_nvMultiview.viewportMaskReg;
+
+        if (reg < 0)
+          continue;
+
+        auto maskType = m_nvMultiview.viewportMaskType[m];
+
+        // A register with no recorded type would build an array-of-void
+        // declaration. Skip rather than emit something malformed.
+        if (maskType.isVoidType())
+          continue;
+
+        auto maskDecl = builder.add(ir::Op::DclInput(
+          ir::Type(maskType).addArrayDimension(3u),
+          entryPoint, uint32_t(reg), 0u));
+        builder.add(ir::Op::Semantic(maskDecl, 0u, s_viewportMaskSemanticNames[m]));
+
+        // Viewport routing is per-primitive, so the provoking vertex's
+        // copy decides for the whole triangle.
+        auto maskVector = builder.add(ir::Op::InputLoad(
+          ir::Type(maskType), maskDecl, builder.makeConstant(0u)));
+
+        maskRegValues[m] = builder.add(ir::Op::CompositeExtract(
+          ir::ScalarType::eU32, maskVector, builder.makeConstant(0u)));
+      }
+
+      // This invocation's 16-bit half, chosen with the same IEq/Select
+      // chain shape the positions use. Register = view >> 1, half = view & 1.
+      ir::SsaDef viewportMaskHalf = { };
+
+      for (uint32_t view = 0u; view < 4u; view++) {
+        if (!maskRegValues[view >> 1])
+          continue;
+
+        auto half = builder.add(ir::Op::UBitExtract(
+          ir::ScalarType::eU32, maskRegValues[view >> 1],
+          builder.makeConstant((view & 1u) * 16u),
+          builder.makeConstant(16u)));
+
+        if (!viewportMaskHalf) {
+          viewportMaskHalf = half;
+          continue;
+        }
+
+        auto isThisView = builder.add(ir::Op::IEq(
+          ir::ScalarType::eBool, instanceId, builder.makeConstant(view)));
+        viewportMaskHalf = builder.add(ir::Op::Select(
+          ir::Type(ir::ScalarType::eU32), isThisView, half, viewportMaskHalf));
+      }
+
+      // Cold path, once per synthesised shader. Records whether the
+      // mask read was wired up for this shader; the mask values are
+      // draw-time data and cannot be known here.
+      Logger::info(str::format("NvMultiview: ", debugName,
+        ": maskReg=o", m_nvMultiview.viewportMaskReg,
+        " mask2Reg=o", m_nvMultiview.viewportMask2Reg,
+        " routing=", viewportMaskHalf ? "mask" : "instanceId"));
+
+      // Compute each corner's chosen position and stash it per-corner,
+      // rather than writing to the output immediately. Same reasoning as
+      // the passthrough loop above.
+      std::array<ir::SsaDef, 3u> chosenPositionPerVertex = { };
+
+      for (uint32_t v = 0u; v < 3u; v++) {
+        ir::SsaDef chosen = positionPerViewPerVertex[0][v];
+
+        for (uint32_t view = 1u; view < 4u; view++) {
+          if (!positionPerViewPerVertex[view][v])
+            continue;
+          auto isThisView = builder.add(ir::Op::IEq(
+            ir::ScalarType::eBool, instanceId, builder.makeConstant(view)));
+          chosen = builder.add(ir::Op::Select(
+            ir::Type(ir::BasicType(ir::ScalarType::eF32, 4u)),
+            isThisView, positionPerViewPerVertex[view][v], chosen));
+        }
+
+        chosenPositionPerVertex[v] = chosen;
+      }
+
+      // Only the lowest set bit of the mask is honoured, because
+      // ViewportIndex takes a single index. iRacing names exactly one
+      // viewport per view, so nothing is lost here; landing one primitive
+      // on several viewports at once needs ViewportMaskNV, which is M5.
+      ir::SsaDef viewportIndex = instanceId;
+      ir::SsaDef shouldEmit = builder.makeConstant(true);
+
+      if (viewportMaskHalf) {
+        viewportIndex = builder.add(ir::Op::IFindLsb(
+          ir::Type(ir::ScalarType::eU32), viewportMaskHalf));
+        shouldEmit = builder.add(ir::Op::INe(
+          ir::Type(ir::ScalarType::eBool), viewportMaskHalf, builder.makeConstant(0u)));
+      }
+
+      // iRacing masks a view off entirely when the configuration doesn't
+      // use it - view 3 at three screens. Skip it rather than emitting the
+      // degenerate geometry its -1,-1,-1,-1 position sentinel would give.
+      // The ViewportIndex store lives inside the guard because IFindLsb(0)
+      // is -1, which is out of range for a viewport index.
+      auto emitGuard = builder.add(ir::Op::ScopedIf(ir::SsaDef(), shouldEmit));
+
+      builder.add(ir::Op::OutputStore(viewportDecl, ir::SsaDef(), viewportIndex));
+
+      // One corner at a time - write every output for this corner, THEN
+      // emit, THEN move to the next corner. This is the store -> emit
+      // pattern a geometry shader requires.
+      for (uint32_t v = 0u; v < 3u; v++) {
+        for (size_t i = 0u; i < passthroughOutDecls.size(); i++) {
+          builder.add(ir::Op::OutputStore(
+            passthroughOutDecls[i], ir::SsaDef(), passthroughValuesPerVertex[i][v]));
+        }
+
+        builder.add(ir::Op::OutputStore(positionOutDecl, ir::SsaDef(), chosenPositionPerVertex[v]));
+        builder.add(ir::Op::EmitVertex(0u));
+      }
+
+      auto emitGuardEnd = builder.add(ir::Op::ScopedEndIf(emitGuard));
+      builder.rewriteOp(emitGuard,
+        ir::Op(builder.getOp(emitGuard)).setOperand(0u, emitGuardEnd));
+    }
+
+    uint32_t determineResourceIndex(
+            dxbc_spv::ir::ShaderStage stage,
+            dxbc_spv::ir::ScalarType  type,
+            uint32_t                  regSpace,
+            uint32_t                  regIndex) const override {
+      // This converter states no resource bindings at all (no CBV/
+      // SRV/UAV/sampler - only IO pass-through and one builtin write),
+      // so this should never actually be called. A harmless answer if
+      // it ever is.
+      return regIndex;
+    }
+
+    void dumpSource(const std::string& path) const override {
+      // No DXBC source behind a hand-built converter - nothing to dump.
+    }
+
+    std::string getDebugName() const override {
+      return m_key.toString() + "_nvAmpGs";
+    }
+
+  private:
+
+    DxvkShaderHash                          m_key;
+    std::vector<DxvkNvPassthroughIoEntry>   m_passthroughIo;
+    uint32_t                                m_numViews;
+    DxvkNvMultiviewInfo                     m_nvMultiview;
+
+  };
 
   class D3D11ShaderConverter : public DxvkIrShaderConverter {
 
@@ -41,6 +337,15 @@ namespace dxvk {
       options.classInstanceRegisterSpace = 0u;
       options.classInstanceRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT + 1u;
       options.limitTessFactor = true;
+
+      if (m_info.nvMultiview.enabled()) {
+        Logger::info(str::format("NvMultiview: compiling ", debugName,
+          " (posViews o", m_info.nvMultiview.positionViewReg[0],
+          "/o", m_info.nvMultiview.positionViewReg[1],
+          "/o", m_info.nvMultiview.positionViewReg[2],
+          ", mask o", m_info.nvMultiview.viewportMaskReg,
+          ", vpMask=", m_info.nvMultiview.useViewportMask, ")"));
+      }
 
       dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
 
@@ -221,6 +526,7 @@ namespace dxvk {
     const D3D11ShaderIcbInfo&     Icb,
     const D3D11BindingMask&       BindingMask)
   : m_bindings(BindingMask) {
+    m_shaderKey = ShaderKey;
     if (Logger::logLevel() <= LogLevel::Debug)
       Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
 
@@ -229,6 +535,62 @@ namespace dxvk {
 
     CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, Icb);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
+  }
+
+
+  Rc<DxvkShader> D3D11CommonShader::GetOrCreateNvAmplificationGs(
+          D3D11Device*            pDevice,
+    const DxvkShaderHash&         VsKey,
+          uint32_t                NumViews,
+    const DxvkNvMultiviewInfo&    NvMultiview) const {
+    std::lock_guard lock(*m_nvAmplificationMutex);
+
+    // A cache entry is only trustworthy if it was actually built for
+    // THIS NumViews/NvMultiview. Trusting "non-null" alone let a VS
+    // that was first amplified under one live config silently keep
+    // serving that config forever, even to later draws that need a
+    // genuinely different one.
+    bool cacheMatches = *m_nvAmplificationGs != nullptr
+      && *m_nvAmplificationNumViews == NumViews
+      && std::memcmp(m_nvAmplificationInfo.get(), &NvMultiview, sizeof(DxvkNvMultiviewInfo)) == 0;
+
+    if (cacheMatches) {
+      static std::atomic<int32_t> s_reuseLogBudget = { 8 };
+
+      if (s_reuseLogBudget.fetch_sub(1, std::memory_order_relaxed) > 0) {
+        Logger::info(str::format("NvAmplificationGs: reusing cached companion for ",
+          VsKey.toString(), " (", m_nvPassthroughIo.size(), " passthrough entries)"));
+      }
+      return *m_nvAmplificationGs;
+    }
+
+    if (*m_nvAmplificationGs != nullptr) {
+      static std::atomic<int32_t> s_staleLogBudget = { 8 };
+
+      if (s_staleLogBudget.fetch_sub(1, std::memory_order_relaxed) > 0) {
+        Logger::info(str::format("NvAmplificationGs: cached companion for ",
+          VsKey.toString(), " no longer matches (was ", *m_nvAmplificationNumViews,
+          " views, now ", NumViews, " views) - rebuilding"));
+      }
+    }
+
+    Logger::info(str::format("NvAmplificationGs: building companion for ",
+      VsKey.toString(), " (", m_nvPassthroughIo.size(), " passthrough entries, ",
+      NumViews, " views)"));
+
+    Rc<D3D11NvAmplificationGsConverter> converter =
+      new D3D11NvAmplificationGsConverter(VsKey, m_nvPassthroughIo, NumViews, NvMultiview);
+
+    DxvkIrShaderCreateInfo nvAmpGsInfo = { };
+    nvAmpGsInfo.options.flags.set(DxvkShaderCompileFlag::SemanticIo);
+
+    *m_nvAmplificationGs = pDevice->GetDXVKDevice()->createCachedShader(
+      VsKey.toString() + "_nvAmpGs", nvAmpGsInfo, std::move(converter));
+
+    *m_nvAmplificationNumViews = NumViews;
+    *m_nvAmplificationInfo = NvMultiview;
+
+    return *m_nvAmplificationGs;
   }
 
 
