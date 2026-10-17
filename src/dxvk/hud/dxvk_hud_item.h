@@ -74,13 +74,15 @@ namespace dxvk::hud {
      * \brief Renders the HUD
      *
      * \param [in] renderer HUD renderer
+     * \param [in] position where to place the top left corner of the HUD
      * \returns Base offset for next item
      */
     void render(
       const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
-            HudRenderer&        renderer);
+            HudRenderer&        renderer,
+            HudPos              position);
 
     /**
      * \brief Checks whether the item set is empty
@@ -138,7 +140,14 @@ namespace dxvk::hud {
     std::unordered_map<std::string, std::string>  m_options;
     std::vector<Rc<HudItem>>                      m_items;
 
-    static void parseOption(const std::string& str, float& value);
+    template<typename T>
+    static void parseOption(const std::string& str, T& value) {
+      try {
+        value = static_cast<T>(std::stof(str));
+      } catch (const std::invalid_argument&) {
+        return;
+      }
+    }
 
   };
 

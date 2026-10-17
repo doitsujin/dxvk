@@ -80,20 +80,10 @@ namespace dxvk::hud {
       const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
-            HudRenderer&        renderer) {
-    HudPos position = { 8, 8 };
-
+            HudRenderer&        renderer,
+            HudPos              position) {
     for (const auto& item : m_items)
       position = item->render(ctx, key, options, renderer, position);
-  }
-
-
-  void HudItemSet::parseOption(const std::string& str, float& value) {
-    try {
-      value = std::stof(str);
-    } catch (const std::invalid_argument&) {
-      return;
-    }
   }
 
 

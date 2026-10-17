@@ -14,6 +14,9 @@ namespace dxvk::hud {
     m_options.scale = std::clamp(m_hudItems.getOption<float>("scale", 1.0f), 0.25f, 4.0f);
     m_options.opacity = std::clamp(m_hudItems.getOption<float>("opacity", 1.0f), 0.1f, 1.0f);
 
+    m_position.x = std::clamp(m_hudItems.getOption<int32_t>("pos_x", 8), 0, 61439/*XXX:should rather be screen width minus a bit*/);
+    m_position.y = std::clamp(m_hudItems.getOption<int32_t>("pos_y", 8), 0, 38399/*XXX:should rather be screen height minus a bit*/);
+
     addItem<HudVersionItem>("version", -1);
     addItem<HudDeviceInfoItem>("devinfo", -1, m_device);
     addItem<HudFpsItem>("fps", -1);
@@ -49,7 +52,7 @@ namespace dxvk::hud {
     auto key = m_renderer.getPipelineKey(dstView);
 
     m_renderer.beginFrame(ctx, dstView, m_options);
-    m_hudItems.render(ctx, key, m_options, m_renderer);
+    m_hudItems.render(ctx, key, m_options, m_renderer, m_position);
     m_renderer.flushDraws(ctx, dstView, m_options);
     m_renderer.endFrame(ctx);
   }
