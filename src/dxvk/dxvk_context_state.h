@@ -87,7 +87,6 @@ namespace dxvk {
    */
   enum class DxvkBindingModel : uint32_t {
     Legacy,
-    DescriptorBuffer,
     DescriptorHeap,
   };
 
@@ -100,7 +99,6 @@ namespace dxvk {
     VariableMultisampleRate,
     DebugUtils,
     DirectMultiDraw,
-    DescriptorBuffer,
     DescriptorHeap,
     DescriptorTemplates,
     FeatureCount

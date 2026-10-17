@@ -300,9 +300,6 @@ namespace dxvk {
     if (canUseDescriptorHeap())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
-    if (canUseDescriptorBuffer())
-      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
-
     VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
@@ -468,9 +465,6 @@ namespace dxvk {
 
     if (canUseDescriptorHeap())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
-
-    if (canUseDescriptorBuffer())
-      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &renderingInfo };
     pipelineInfo.stageCount = stageInfos.size();
@@ -904,8 +898,6 @@ namespace dxvk {
 
     if (canUseDescriptorHeap())
       descriptorModel = "Descriptor heap";
-    else if (canUseDescriptorBuffer())
-      descriptorModel = "Descriptor buffer";
 
     Logger::info(str::format("Binding model: ", descriptorModel));
   }
