@@ -886,7 +886,7 @@ namespace dxvk {
           SpirvCodeBuffer&          code,
           SpirvInstruction&         entryPoint,
           uint32_t                  varId) {
-    uint32_t argIdx = 2 + code.strLen(entryPoint.chr(2));
+    uint32_t argIdx = 3 + code.strLen(entryPoint.chr(3));
 
     while (argIdx < entryPoint.length()) {
       if (entryPoint.arg(argIdx) == varId) {
