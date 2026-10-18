@@ -10937,7 +10937,7 @@ namespace dxvk {
     if (unlikely(!m_scratchBuffer || m_scratchBuffer->info().size < size)) {
       // We probably won't need a lot of scratch memory, so keep it small
       DxvkBufferCreateInfo info = { };
-      info.size = DxvkPageAllocator::PageSize;
+      info.size = std::max(DxvkPageAllocator::PageSize, align(size, alignment));
       info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                  | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                  | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -10956,13 +10956,14 @@ namespace dxvk {
     // Suballocate slice from buffer
     VkDeviceSize offset = align(m_scratchOffset, alignment);
 
-    if (offset + size < m_scratchBuffer->info().size) {
+    if (offset + size > m_scratchBuffer->info().size) {
       invalidateBuffer(m_scratchBuffer, m_scratchBuffer->allocateStorage());
       m_scratchOffset = 0u;
+      offset = 0;
     }
 
-    DxvkResourceBufferInfo slice = m_scratchBuffer->getSliceInfo(m_scratchOffset, size);
-    m_scratchOffset += align(size, alignment);
+    DxvkResourceBufferInfo slice = m_scratchBuffer->getSliceInfo(offset, size);
+    m_scratchOffset = offset + align(size, alignment);
 
     // Unconditionally track for writing to not bother the caller with it.
     m_cmd->track(m_scratchBuffer, DxvkAccess::Write);
