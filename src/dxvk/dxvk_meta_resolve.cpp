@@ -405,8 +405,6 @@ namespace dxvk {
       // a time by adjusting the write mask. Add the corresponding dynamic state.
       state.dynamicStateCount = dynState.size();
       state.dynamicStates = dynState.data();
-    } else {
-      state.colorFormats[0] = key.format;
     }
 
     pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
