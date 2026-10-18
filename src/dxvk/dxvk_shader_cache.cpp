@@ -59,6 +59,7 @@ namespace dxvk {
     if (!shader) {
       Logger::warn(str::format("Failed to load cached shader ", name));
 
+      m_lut.clear();
       if (!openWriteOnlyLocked())
         Logger::warn(str::format("Failed to re-initialize shader cache ", name));
 
