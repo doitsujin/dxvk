@@ -1128,7 +1128,7 @@ namespace dxvk {
           accessChainIds.insert({ ins.arg(2), depth });
         } else {
           // Access chains derived from the variable
-          auto entry = accessChainIds.find(ins.arg(2));
+          auto entry = accessChainIds.find(ins.arg(3));
           if (entry != accessChainIds.end()) {
             depth += entry->second;
             ins.setArg(1, privateTypes.at(depth).first);
