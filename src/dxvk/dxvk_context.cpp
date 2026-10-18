@@ -7700,7 +7700,7 @@ namespace dxvk {
       auto& entry = m_deferredClears[srcIndex];
 
       if ((entry.imageView->image() == &image)
-       && ((entry.clearAspects | entry.discardAspects) | subresources.aspectMask)
+       && ((entry.clearAspects | entry.discardAspects) & subresources.aspectMask)
        && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources))) {
         clearBatch.add(batchClear(entry.imageView, -1, entry.discardAspects, entry.clearAspects, entry.clearValue));
         srcIndex += 1u;
