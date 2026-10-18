@@ -5033,7 +5033,7 @@ namespace dxvk {
 
       m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer, pipeline.layout,
         0u, nullptr, sizeof(copyArgs), &copyArgs);
-      m_cmd->cmdDraw(3u, srcSubresource.layerCount, 0u, 1u);
+      m_cmd->cmdDraw(3u, 1u, 0u, 1u);
     }
 
     // Issue by-region barrier after the copy and before subsequent rendering
