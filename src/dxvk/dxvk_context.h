@@ -1190,7 +1190,7 @@ namespace dxvk {
       auto& scState = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.constants : m_state.cp.constants;
 
-      uint32_t dirtyMask = bit::bcndcpy(&scState.data[index], data, count);
+      uint32_t dirtyMask = bit::bcndcpy(&scState.data[index], data, count) << index;
 
       if (scState.mask & dirtyMask) {
         m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
