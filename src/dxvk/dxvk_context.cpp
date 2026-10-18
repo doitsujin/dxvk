@@ -5420,12 +5420,12 @@ namespace dxvk {
 
     uint32_t basePass = 0u;
 
+    DxvkMetaMipGenPushConstants pushData = { };
+    pushData.atomicCounterVa = counterMemory.gpuAddress;
+    pushData.samplerIndex = sampler->getDescriptor().samplerIndex;
+
     while (basePass < mipGenerator.getPassCount()) {
       small_vector<DxvkResourceAccess, MaxDescriptorCount> accessBatch;
-
-      DxvkMetaMipGenPushConstants pushData = { };
-      pushData.atomicCounterVa = counterMemory.gpuAddress;
-      pushData.samplerIndex = sampler->getDescriptor().samplerIndex;
 
       if (requiresPrepass && !basePass) {
         // It is beneficial to run this on the maximum mip count here because
