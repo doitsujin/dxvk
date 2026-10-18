@@ -147,7 +147,7 @@ namespace dxvk {
 
       lock.unlock();
 
-      // Wait for the semaphore to be singaled again and update state.
+      // Wait for the semaphore to be signaled again and update state.
       // The timeout is unfortunate, but we can't always know when a
       // signal operation has been recorded, and the alternative would
       // be to create a teardown semaphore and use WAIT_ANY, which may

@@ -140,7 +140,8 @@ namespace dxvk {
     D3DKMT_HANDLE                   m_kmtLocal = 0;
     D3DKMT_HANDLE                   m_kmtGlobal = 0;
 
-    std::priority_queue<QueueItem>  m_queue;
+    std::priority_queue<QueueItem, std::vector<QueueItem>, std::greater<>> m_queue;
+
     bool                            m_running    = false;
 
     dxvk::mutex                     m_mutex;
