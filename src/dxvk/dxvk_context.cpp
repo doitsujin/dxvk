@@ -5902,7 +5902,7 @@ namespace dxvk {
 
     // Create an image view that we can use to perform the clear
     DxvkImageViewKey key = { };
-    key.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    key.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     key.usage = usageBit;
     key.format = format;
     key.aspects = region.dstSubresource.aspectMask;
