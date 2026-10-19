@@ -230,6 +230,20 @@ namespace dxvk {
       }
     }
 
+    // Requesting a report while all result queue slots are in use fails the
+    // entire present with QUEUE_FULL. This easily happens with MAILBOX or
+    // when the presentation engine is slow to report, so skip the query for
+    // this frame instead. Reserve the slot before presenting since the frame
+    // thread may retrieve the report as soon as the present is queued.
+    if (timingInfo.presentStageQueries && frameId && m_hasPresentId) {
+      std::lock_guard lock(m_timingMutex);
+
+      if (m_timingRequestsPending < m_timingQueueSize)
+        m_timingRequestsPending += 1u;
+      else
+        timingInfo.presentStageQueries = 0u;
+    }
+
     VkPresentTimingsInfoEXT timingsInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT };
     timingsInfo.swapchainCount = 1u;
     timingsInfo.pTimingInfos = &timingInfo;
@@ -247,7 +261,7 @@ namespace dxvk {
       else
         presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
 
-      if (timingInfo.presentStageQueries)
+      if (timingInfo.presentStageQueries || timingInfo.targetTime)
         timingsInfo.pNext = std::exchange(info.pNext, &timingsInfo);
     }
 
@@ -1578,6 +1592,15 @@ namespace dxvk {
     VkResult status = m_vkd->vkGetPastPresentationTimingEXT(m_vkd->device(),
       &timingInfo, &timingProperties);
 
+    // Every complete report returned here frees up a result queue slot,
+    // even if we end up not processing it below.
+    if (status >= 0) {
+      for (uint32_t i = 0u; i < timingProperties.presentationTimingCount; i++) {
+        if (reports[i].reportComplete && m_timingRequestsPending)
+          m_timingRequestsPending -= 1u;
+      }
+    }
+
     if (status) {
       Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
       commitTimingFeedback(feedback);
@@ -2000,6 +2023,7 @@ namespace dxvk {
     m_timingDomains = std::nullopt;
     m_timingDisplayInfo = std::nullopt;
     m_timingMode = PresenterTimingInfo();
+    m_timingRequestsPending = 0u;
 
     m_calibrationFailed = false;
     m_calibrationWarned = false;

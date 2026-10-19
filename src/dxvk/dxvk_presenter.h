@@ -420,6 +420,7 @@ namespace dxvk {
     PresenterTimingInfo                     m_timingMode = { };
     PresenterTimingFeedback                 m_timingFeedback = {};
     uint32_t                                m_timingQueueSize = FrameQueueSize;
+    uint32_t                                m_timingRequestsPending = 0u;
 
     double                      m_frameRateLimit = 0.0;
 
