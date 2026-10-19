@@ -99,7 +99,7 @@ namespace dxvk {
     DxvkPipelineSpecConstantState scState(m_shaders.cs->metadata().specConstantMask, state.sc);
     
     DxvkShaderStageInfo stageInfo(m_device, layout);
-    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
+    stageInfo.addStage(m_shaders.cs->metadata(),
       m_shaders.cs->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), nullptr),
       &scState.scInfo);
 

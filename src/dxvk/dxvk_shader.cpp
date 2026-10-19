@@ -87,7 +87,7 @@ namespace dxvk {
   }
 
   void DxvkShaderStageInfo::addStage(
-          VkShaderStageFlagBits   stage,
+    const DxvkShaderMetadata&     metadata,
           SpirvCodeBuffer&&       code,
     const VkSpecializationInfo*   specInfo) {
     // Take ownership of the SPIR-V code buffer
@@ -101,7 +101,7 @@ namespace dxvk {
 
     auto& stageInfo = m_stageInfos[m_stageCount];
     stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &moduleInfo };
-    stageInfo.stage = stage;
+    stageInfo.stage = metadata.stage;
     stageInfo.pName = "main";
     stageInfo.pSpecializationInfo = specInfo;
 
@@ -110,7 +110,7 @@ namespace dxvk {
   
 
   void DxvkShaderStageInfo::addStage(
-          VkShaderStageFlagBits   stage,
+    const DxvkShaderMetadata&     metadata,
     const VkShaderModuleIdentifierEXT& identifier,
     const VkSpecializationInfo*   specInfo) {
     // Copy relevant bits of the module identifier
@@ -126,7 +126,7 @@ namespace dxvk {
     auto& stageInfo = m_stageInfos[m_stageCount];
     stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
     stageInfo.pNext = &moduleId.createInfo;
-    stageInfo.stage = stage;
+    stageInfo.stage = metadata.stage;
     stageInfo.pName = "main";
     stageInfo.pSpecializationInfo = specInfo;
 
@@ -327,7 +327,7 @@ namespace dxvk {
           if (!identifier->identifierSize)
             return { VK_NULL_HANDLE, 0 };
 
-          stageInfo.addStage(stage, *identifier, nullptr);
+          stageInfo.addStage(getShaderMetadata(stage), *identifier, nullptr);
         } else {
           // Decompress code and generate identifier as needed
           SpirvCodeBuffer spirvCode = this->getShaderCode(stage);
@@ -335,7 +335,7 @@ namespace dxvk {
           if (!identifier->identifierSize)
             this->generateModuleIdentifierLocked(identifier, spirvCode);
 
-          stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+          stageInfo.addStage(getShaderMetadata(stage), std::move(spirvCode), nullptr);
         }
 
         stages &= stages - 1;
@@ -593,6 +593,20 @@ namespace dxvk {
       : DxvkPipelineLayoutType::Independent;
 
     return shader->getCode(m_layout->getBindingMap(layoutType), nullptr);
+  }
+
+
+  DxvkShaderMetadata DxvkShaderPipelineLibrary::getShaderMetadata(
+          VkShaderStageFlagBits         stage) const {
+    DxvkShader* shader = getShader(stage);
+
+    if (!shader) {
+      DxvkShaderMetadata result = {};
+      result.stage = stage;
+      return result;
+    }
+
+    return shader->metadata();
   }
 
 

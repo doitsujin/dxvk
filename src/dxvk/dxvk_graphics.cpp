@@ -1457,16 +1457,16 @@ namespace dxvk {
     auto layout = m_layout.getLayout(DxvkPipelineLayoutType::Merged);
 
     DxvkShaderStageInfo stageInfo(m_device, layout);
-    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(*m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
+    stageInfo.addStage(m_shaders.vs->metadata(), getShaderCode(*m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 
     if (m_shaders.tcs)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(*m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
+      stageInfo.addStage(m_shaders.tcs->metadata(), getShaderCode(*m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
     if (m_shaders.tes)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(*m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
+      stageInfo.addStage(m_shaders.tes->metadata(), getShaderCode(*m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
     if (m_shaders.gs)
-      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(*m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
+      stageInfo.addStage(m_shaders.gs->metadata(), getShaderCode(*m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
     if (m_shaders.fs)
-      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(*m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
+      stageInfo.addStage(m_shaders.fs->metadata(), getShaderCode(*m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
 
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
 
