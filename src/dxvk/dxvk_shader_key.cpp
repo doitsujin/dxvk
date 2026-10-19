@@ -22,7 +22,7 @@ namespace dxvk {
           size_t                hashSize,
     const uint8_t*              metaHash,
           size_t                metaSize)
-  : m_stage(uint16_t(stage)), m_xfb(metaSize ? 1u : 0u), m_size(codeSize) {
+  : m_stage(uint16_t(stage)), m_size(codeSize) {
     size_t index = 0u;
 
     for (size_t i = 0u; i < hashSize; i += 4u) {
@@ -41,18 +41,14 @@ namespace dxvk {
     std::string name;
     name.reserve(48u);
 
-    if (m_xfb) {
-      name = "xfb";
-    } else {
-      switch (m_stage) {
-        case VK_SHADER_STAGE_VERTEX_BIT: name = "vs"; break;
-        case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: name = "tcs"; break;
-        case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: name = "tes"; break;
-        case VK_SHADER_STAGE_GEOMETRY_BIT: name = "gs"; break;
-        case VK_SHADER_STAGE_FRAGMENT_BIT: name = "fs"; break;
-        case VK_SHADER_STAGE_COMPUTE_BIT: name = "cs"; break;
-        default: name = "shdr";
-      }
+    switch (m_stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT: name = "vs"; break;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: name = "tcs"; break;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: name = "tes"; break;
+      case VK_SHADER_STAGE_GEOMETRY_BIT: name = "gs"; break;
+      case VK_SHADER_STAGE_FRAGMENT_BIT: name = "fs"; break;
+      case VK_SHADER_STAGE_COMPUTE_BIT: name = "cs"; break;
+      default: name = "shdr";
     }
 
     name += ".";
@@ -70,7 +66,6 @@ namespace dxvk {
 
   bool DxvkShaderHash::eq(const DxvkShaderHash& other) const {
     bool eq = m_stage == other.m_stage
-           && m_xfb == other.m_xfb
            && m_size == other.m_size;
 
     for (size_t i = 0u; i < m_hash.size(); i++)
@@ -83,7 +78,6 @@ namespace dxvk {
   size_t DxvkShaderHash::hash() const {
     DxvkHashState hash = { };
     hash.add(m_stage);
-    hash.add(m_xfb);
     hash.add(m_size);
 
     for (auto dw : m_hash)

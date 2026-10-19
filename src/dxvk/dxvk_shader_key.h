@@ -58,14 +58,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Whether shader was created using streamout metadata
-     * \returns \c true if the shader has transform feedback metadata
-     */
-    bool hasXfb() const {
-      return m_xfb;
-    }
-
-    /**
      * \brief Generates shader name for the given hash
      * \returns Shader name to use for tooling etc.
      */
@@ -87,8 +79,7 @@ namespace dxvk {
 
   private:
 
-    uint16_t                  m_stage = -1;
-    uint16_t                  m_xfb   = 0u;
+    uint32_t                  m_stage = -1u;
     uint32_t                  m_size  = 0u;
     std::array<uint32_t, 4u>  m_hash  = { };
 

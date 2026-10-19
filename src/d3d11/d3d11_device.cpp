@@ -2085,7 +2085,7 @@ namespace dxvk {
     } (shaderInfo.getType());
 
     if (ShaderKey.stage() != shaderStage) {
-      bool mismatch = !ShaderKey.hasXfb() || (
+      bool mismatch = ModuleInfo.xfbEntries.empty() || (
         shaderStage != VK_SHADER_STAGE_VERTEX_BIT &&
         shaderStage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
 
