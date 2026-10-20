@@ -588,7 +588,7 @@ namespace dxvk {
 
   PresenterTimingFeedback Presenter::queryPresentTiming() {
     std::lock_guard lock(m_timingMutex);
-    return m_timingFeedback;
+    return updatePresentTimingFeedback(0u, 0u);
   }
 
 
@@ -1552,7 +1552,7 @@ namespace dxvk {
   }
 
 
-  bool Presenter::updatePresentTimingFeedback(
+  PresenterTimingFeedback Presenter::updatePresentTimingFeedback(
         uint64_t                  frameId,
         VkPresentStageFlagsEXT    queryStages) {
     // Need to access both timing stuff and the frame queue here
@@ -1562,10 +1562,8 @@ namespace dxvk {
     feedback.frameId = frameId;
     feedback.presentTime = frameId ? dxvk::high_resolution_clock::get_counter() : 0u;
 
-    if (!m_timingMode.presentStage) {
-      commitTimingFeedback(feedback);
-      return false;
-    }
+    if (!m_timingMode.presentStage)
+      return commitTimingFeedback(feedback);
 
     // Still need to drain the queue even if everything is messed up
     small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
@@ -1592,8 +1590,7 @@ namespace dxvk {
 
     if (status) {
       Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
-      commitTimingFeedback(feedback);
-      return false;
+      return commitTimingFeedback(feedback);
     }
 
     // Update display timing and time domains as necessary
@@ -1609,7 +1606,7 @@ namespace dxvk {
       updateTimingDomains();
 
       if (!recalibrateTimeDomains())
-        return false;
+        return commitTimingFeedback(feedback);
     }
 
     if (updateMode)
@@ -1672,23 +1669,24 @@ namespace dxvk {
     // - The current frame was submitted with a timing query.
     // - We successfully mapped the report timestamp back to QPC.
     // TODO figure out the correct time domain for dxvk-native to use.
-    if (m_timingMode.lastFrameTimeQpc && (!frameId || !queryStages)) {
+    if (m_timingMode.lastFrameTimeQpc && (!frameId || queryStages)) {
       feedback.frameId = m_timingMode.lastFrameId;
       feedback.presentTime = m_timingMode.lastFrameTimeQpc;
     }
 
-    commitTimingFeedback(feedback);
-    return true;
+    return commitTimingFeedback(feedback);
   }
 
 
-  void Presenter::commitTimingFeedback(
+  PresenterTimingFeedback Presenter::commitTimingFeedback(
     const PresenterTimingFeedback&  feedback) {
     // Only commit present timing if the new frame ID is larger than the
     // previous frame ID, in order to avoid reverting the counter in case
     // the application spins on present statistics.
     if (feedback.frameId > m_timingFeedback.frameId)
       m_timingFeedback = feedback;
+
+    return m_timingFeedback;
   }
 
 
