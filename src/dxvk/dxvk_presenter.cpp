@@ -1619,12 +1619,15 @@ namespace dxvk {
       const auto& time = stageTimes[i];
       const auto& report = reports[i];
 
-      if (!report.reportComplete || !time.time || time.stage != m_timingMode.presentStage)
+      if (!report.reportComplete)
         continue;
 
       // Write back frame ID regardless of whether we do anything with the
       // report so that we can track which frames are still in the queue
       m_reportQueueTakeId = std::max(m_reportQueueTakeId, report.presentId);
+
+      if (!time.time || time.stage != m_timingMode.presentStage)
+        continue;
 
       // Find queued frame entry so we can properly correlate the report
       // with expected timings
