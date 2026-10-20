@@ -427,6 +427,7 @@ namespace dxvk {
     FpsLimiter                  m_fpsLimiter;
 
     bool                        m_hasGamescopeFenceSignalBug = false;
+    bool                        m_hasNvidiaFenceSignalBug = false;
 
     static const std::array<std::pair<VkColorSpaceKHR, VkColorSpaceKHR>, 2> s_colorSpaceFallbacks;
 
