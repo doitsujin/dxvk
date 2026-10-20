@@ -296,7 +296,8 @@ namespace dxvk {
       m_frameIndex += 1;
       m_frameIndex %= m_semaphores.size();
 
-      m_reportQueueAddId = frameId;
+      if (timingInfo.presentStageQueries)
+        m_reportQueueAddId = frameId;
     }
 
     // Add frame to waiter queue with current properties
