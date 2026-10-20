@@ -440,30 +440,23 @@ namespace dxvk {
     bool push = m_cmd.sparseBind || m_cmd.execCommands;
 
     for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
-      DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer(i);
-
-      if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && !m_cmd.execCommands)
-        continue;
-
-      if (m_cmd.cmdBuffers[i]) {
-        endCommandBuffer(m_cmd.cmdBuffers[i]);
-
-        m_cmd.cmdBuffers[i] = cmdBuffer == DxvkCmdBuffer::ExecBuffer
-          ? allocateCommandBuffer(cmdBuffer)
-          : VK_NULL_HANDLE;
-
-        push = true;
-      }
+      // An execution command buffer always exists, even if unused.
+      if (DxvkCmdBuffer(i) != DxvkCmdBuffer::ExecBuffer)
+        push = push || m_cmd.cmdBuffers[i];
     }
 
     if (!push)
       return;
 
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
+      if (m_cmd.cmdBuffers[i])
+        endCommandBuffer(m_cmd.cmdBuffers[i]);
+    }
+
     m_cmdSubmissions.push_back(m_cmd);
 
-    m_cmd.execCommands = VK_FALSE;
-    m_cmd.syncSdma = VK_FALSE;
-    m_cmd.sparseBind = VK_FALSE;
+    m_cmd = DxvkCommandSubmissionInfo();
+    m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = allocateCommandBuffer(DxvkCmdBuffer::ExecBuffer);
   }
 
   
