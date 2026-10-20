@@ -643,7 +643,12 @@ namespace dxvk {
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
   }
-  
+
+
+  void DxvkDevice::setSubmissionTimeout(uint64_t timeout) {
+    m_submissionQueue.setSubmissionTimeout(timeout);
+  }
+
   
   void DxvkDevice::waitForSubmission(uint64_t submissionId) {
     m_submissionQueue.synchronizeSubmission(submissionId);
