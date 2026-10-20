@@ -13,6 +13,7 @@ namespace dxvk {
     m_desc        (*pDesc),
     m_resource    (this, pDevice),
     m_d3d10       (this),
+    m_interop     (this),
     m_destructionNotifier(this) {
     DxvkBufferCreateInfo info;
     info.flags  = 0;
@@ -156,6 +157,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIResource1)) {
        *ppvObject = ref(&m_resource);
        return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIVkInteropBuffer)) {
+      *ppvObject = ref(&m_interop);
+      return S_OK;
     }
 
     if (riid == __uuidof(ID3DDestructionNotifier)) {

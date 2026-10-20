@@ -35,7 +35,44 @@ namespace dxvk {
     uint32_t byteOffset;
   };
   
-  
+
+  /**
+   * \brief Interop interface for buffers
+   */
+  class D3D11VkInteropBuffer : public IDXGIVkInteropBuffer {
+
+  public:
+
+    D3D11VkInteropBuffer(D3D11Buffer* pBuffer);
+
+    ~D3D11VkInteropBuffer();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            IDXGIVkInteropDevice**  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE GetVulkanBufferInfo(
+            VkDeviceAddress*        pGpuAddress,
+            VkBuffer*               pHandle,
+            VkDeviceSize*           pOffset,
+            VkBufferCreateInfo*     pInfo);
+
+  private:
+
+    D3D11Buffer* m_buffer = nullptr;
+
+    std::atomic<bool> m_locked = { false };
+
+  };
+
+
   class D3D11Buffer : public D3D11DeviceChild<ID3D11Buffer> {
     static constexpr VkDeviceSize BufferSliceAlignment = 64;
   public:
@@ -199,6 +236,7 @@ namespace dxvk {
 
     D3D11DXGIResource             m_resource;
     D3D10Buffer                   m_d3d10;
+    D3D11VkInteropBuffer          m_interop;
 
     D3DDestructionNotifier        m_destructionNotifier;
 
@@ -212,43 +250,6 @@ namespace dxvk {
 
     static D3D11_COMMON_BUFFER_MAP_MODE DetermineMapMode(
             VkMemoryPropertyFlags MemFlags);
-
-  };
-
-
-  /**
-   * \brief Interop i
-   */
-  class D3D11VkInteropBuffer : public IDXGIVkInteropBuffer {
-
-  public:
-
-    D3D11VkInteropBuffer(D3D11Buffer* pBuffer);
-
-    ~D3D11VkInteropBuffer();
-
-    ULONG STDMETHODCALLTYPE AddRef();
-
-    ULONG STDMETHODCALLTYPE Release();
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID                  riid,
-            void**                  ppvObject);
-
-    HRESULT STDMETHODCALLTYPE GetDevice(
-            IDXGIVkInteropDevice**  ppDevice);
-
-    HRESULT STDMETHODCALLTYPE GetVulkanBufferInfo(
-            VkDeviceAddress*        pGpuAddress,
-            VkBuffer*               pHandle,
-            VkDeviceSize*           pOffset,
-            VkBufferCreateInfo*     pInfo);
-
-  private:
-
-    D3D11Buffer* m_buffer = nullptr;
-
-    std::atomic<bool> m_locked = { false };
 
   };
 
