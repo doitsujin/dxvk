@@ -274,13 +274,6 @@ namespace dxvk {
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
 
-    // Treat a QUEUE_FULL error as a hint to recreate the swapchain with
-    // a larger queue size. This could probably be done more robustly,
-    // but since we have latency constraints in the frontend APIs, we
-    // should never run into this scenario in practice anyway.
-    if (status == VK_ERROR_PRESENT_TIMING_QUEUE_FULL_EXT)
-      m_timingQueueSize *= 2u;
-
     // Maintain valid state if presentation succeeded, even if we want to
     // recreate the swapchain. Spec says that 'queue' operations, i.e. the
     // semaphore and fence signals, still happen if present fails with
@@ -796,10 +789,7 @@ namespace dxvk {
     // If present timing is supported, also check if there is a useful present
     // stage we can use. Prioritize the latest available stage for absolute
     // timing since we need to correlate with timing reports.
-    // Also, opt out of timing if we have issues keeping the report queue to
-    // a reasonable size.
-    if (presentTimingCaps.presentTimingSupported && presentId2Caps.presentId2Supported
-     && presentWait2Caps.presentWait2Supported && m_timingQueueSize <= MaxFrameQueueSize) {
+    if (presentTimingCaps.presentTimingSupported && presentId2Caps.presentId2Supported) {
       small_vector<VkPresentStageFlagBitsEXT, 3> stages;
 
       if (presentTimingCaps.presentAtAbsoluteTimeSupported) {
@@ -996,7 +986,7 @@ namespace dxvk {
 
     // Set up initial present timing state
     if (m_timingMode.presentStage) {
-      m_vkd->vkSetSwapchainPresentTimingQueueSizeEXT(m_vkd->device(), m_swapchain, m_timingQueueSize);
+      m_vkd->vkSetSwapchainPresentTimingQueueSizeEXT(m_vkd->device(), m_swapchain, FrameQueueSize);
 
       updateDisplayTiming();
 
@@ -1575,13 +1565,10 @@ namespace dxvk {
 
     // Query reports in-order so that we can somewhat robustly
     // track how many frames are still in the report queue
-    small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
-    small_vector<VkPastPresentationTimingEXT, FrameQueueSize> reports;
+    std::array<VkPresentStageTimeEXT,       FrameQueueSize> stageTimes = {};
+    std::array<VkPastPresentationTimingEXT, FrameQueueSize> reports = {};
 
-    stageTimes.resize(m_timingQueueSize);
-    reports.resize(m_timingQueueSize);
-
-    for (size_t i = 0u; i < m_timingQueueSize; i++) {
+    for (size_t i = 0u; i < reports.size(); i++) {
       reports[i].sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
       reports[i].presentStageCount = 1u;
       reports[i].pPresentStages = &stageTimes[i];
