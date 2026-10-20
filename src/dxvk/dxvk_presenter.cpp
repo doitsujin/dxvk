@@ -50,6 +50,10 @@ namespace dxvk {
     // the present fence if presentation is queued but fails.
     // TODO Remove this hack when this gets fixed in stable SteamOS.
     m_hasGamescopeFenceSignalBug = env::getEnvVar("ENABLE_GAMESCOPE_WSI") == "1";
+
+    // NV reportely does not signal the present fence when the report
+    // queue is full.
+    m_hasNvidiaFenceSignalBug = m_device->adapter()->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY);
   }
 
   
@@ -280,6 +284,9 @@ namespace dxvk {
 
       if (m_hasGamescopeFenceSignalBug)
         currSync.fenceSignaled = status >= 0;
+
+      if (m_hasNvidiaFenceSignalBug)
+        currSync.fenceSignaled &= status != VK_ERROR_PRESENT_TIMING_QUEUE_FULL_EXT;
     }
 
     if (status >= 0) {
