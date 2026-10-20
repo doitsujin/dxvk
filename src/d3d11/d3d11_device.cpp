@@ -53,6 +53,10 @@ namespace dxvk {
     m_shaderOptions     (GetShaderOptions(m_dxvkDevice, m_d3d11Options)),
     m_maxFeatureLevel   (D3D11DeviceFeatures::GetMaxFeatureLevel(*m_dxvkDevice)),
     m_deviceFeatures    (*m_dxvkDevice, m_d3d11Options, m_featureLevel) {
+    // This option might lead to long-running submissions
+    if (m_d3d11Options.reproducibleCommandStream)
+      m_dxvkDevice->setSubmissionTimeout(-1ull);
+
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());

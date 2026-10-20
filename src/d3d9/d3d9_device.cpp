@@ -63,6 +63,9 @@ namespace dxvk {
     , m_d3d9On12           ( this )
     , m_legacyD3DBridge    ( this )
     , m_d3dCompatibility   ( pParent->GetD3DCompatibilityFlags() ) {
+    // This option might lead to long-running submissions
+    if (m_d3d9Options.reproducibleCommandStream)
+      m_dxvkDevice->setSubmissionTimeout(-1ull);
 
     InitShaderOptions();
 
