@@ -148,8 +148,7 @@ namespace dxvk {
    * window system integration.
    */
   class Presenter : public RcObject {
-    static constexpr size_t FrameQueueSize = 32u;
-    static constexpr size_t MaxFrameQueueSize = 256u;
+    static constexpr size_t FrameQueueSize = 64u;
   public:
 
     Presenter(
@@ -421,7 +420,6 @@ namespace dxvk {
     std::optional<PresenterDisplayInfo>     m_timingDisplayInfo;
     PresenterTimingInfo                     m_timingMode = { };
     PresenterTimingFeedback                 m_timingFeedback = {};
-    uint32_t                                m_timingQueueSize = FrameQueueSize;
 
     double                      m_frameRateLimit = 0.0;
 
