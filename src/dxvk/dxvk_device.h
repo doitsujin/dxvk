@@ -679,6 +679,12 @@ namespace dxvk {
             uint64_t                  submissionId);
 
     /**
+     * \brief Sets queue submission timeout
+     * \param [in] timeout Timeout, in nanoseconds
+     */
+    void setSubmissionTimeout(uint64_t timeout);
+
+    /**
      * \brief Locks submission queue
      * 
      * Since Vulkan queues are only meant to be accessed

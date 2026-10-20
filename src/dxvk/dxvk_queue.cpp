@@ -123,6 +123,12 @@ namespace dxvk {
   }
 
 
+  void DxvkSubmissionQueue::setSubmissionTimeout(uint64_t timeout) {
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
+    m_submissionTimeout = timeout;
+  }
+
+
   void DxvkSubmissionQueue::submitCmdLists() {
     env::setThreadName("dxvk-submit");
 
@@ -226,6 +232,7 @@ namespace dxvk {
 
     while (!m_stopped.load()) {
       std::unique_lock<dxvk::mutex> lock(m_mutex);
+      uint64_t submissionTimeout = m_submissionTimeout;
 
       if (m_finishQueue.empty()) {
         auto t0 = dxvk::high_resolution_clock::now();
@@ -261,7 +268,7 @@ namespace dxvk {
 
           // Treat a timeout here as DEVICE_LOST. Sometimes we just don't get
           // DEVICE_LOST from the driver for some reason.
-          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, 5'000'000'000ull);
+          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, submissionTimeout);
 
           if (status == VK_TIMEOUT) {
             Logger::err("DxvkSubmissionQueue: Timeout occured, GPU likely hung.");

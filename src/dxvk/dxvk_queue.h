@@ -181,6 +181,14 @@ namespace dxvk {
      * queue used for command buffer submission.
      */
     void unlockDeviceQueue();
+
+    /**
+     * \brief Sets submission timeout used to detect GPU hangs
+     *
+     * \param [in] timeout Desired timeout, in nanoseconds.
+     *    Pass -1 to disable timeout-based hang detection.
+     */
+    void setSubmissionTimeout(uint64_t timeout);
     
   private:
 
@@ -210,6 +218,8 @@ namespace dxvk {
     dxvk::thread                m_finishThread;
 
     sync::Fence                 m_submitTimeline;
+
+    uint64_t                    m_submissionTimeout = 5'000'000'000ull;
 
     void submitCmdLists();
 
