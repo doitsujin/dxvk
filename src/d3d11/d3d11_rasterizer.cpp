@@ -163,7 +163,7 @@ namespace dxvk {
     dstDesc.ScissorEnable         = pSrcDesc->ScissorEnable;
     dstDesc.MultisampleEnable     = pSrcDesc->MultisampleEnable;
     dstDesc.AntialiasedLineEnable = pSrcDesc->AntialiasedLineEnable;
-    dstDesc.ForcedSampleCount     = 0;
+    dstDesc.ForcedSampleCount     = pSrcDesc->ForcedSampleCount;
     dstDesc.ConservativeRaster    = D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF;
     return dstDesc;
   }
