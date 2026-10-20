@@ -203,18 +203,20 @@ namespace dxvk {
     regionInfo.swapchainCount = 1;
     regionInfo.pRegions = &region;
 
-    // Present timing isn't useful with Immediate or Mailbox
+    // Present timing isn't useful with Immediate or Mailbox. Mailbox can also
+    // lead to the report queue overflowing when running significantly above
+    // display refresh, so don't bother with report timing.
     bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
                    || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
     uint64_t frameTargetTime = 0u;
 
     VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
-    timingInfo.presentStageQueries = m_timingMode.presentStage;
     timingInfo.timeDomainId = m_timingMode.timeDomainId;
 
     if (m_timingMode.presentStage && isFifoMode) {
       std::lock_guard lock(m_timingMutex);
+      timingInfo.presentStageQueries = m_timingMode.presentStage;
 
       if (m_timingMode.referenceFrameId) {
         frameTargetTime = m_timingMode.referenceTime +
@@ -305,6 +307,7 @@ namespace dxvk {
     frame.targetTime = frameTargetTime;
     frame.targetDeadline = frameTargetTime ? frameTargetTime + m_timingMode.frameIntervalNs : 0u;
     frame.timingDomainId = timingInfo.timeDomainId;
+    frame.stageQueries = timingInfo.presentStageQueries;
 
     pushFrame(frame);
 
@@ -1549,13 +1552,15 @@ namespace dxvk {
   }
 
 
-  bool Presenter::updatePresentTiming(uint64_t frameId) {
+  bool Presenter::updatePresentTimingFeedback(
+        uint64_t                  frameId,
+        VkPresentStageFlagsEXT    queryStages) {
     // Need to access both timing stuff and the frame queue here
     std::lock_guard lock(m_timingMutex);
 
     PresenterTimingFeedback feedback = {};
     feedback.frameId = frameId;
-    feedback.presentTime = dxvk::high_resolution_clock::get_counter();
+    feedback.presentTime = frameId ? dxvk::high_resolution_clock::get_counter() : 0u;
 
     if (!m_timingMode.presentStage) {
       commitTimingFeedback(feedback);
@@ -1663,10 +1668,11 @@ namespace dxvk {
       m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
     }
 
-    // We can't give meaningful feedback w/o QPC timing currently.
-    // TODO figure out correct time domain for dxvk-native if we're
-    // really interested, otherwise just ignore the problem.
-    if (m_timingMode.lastFrameTimeQpc) {
+    // Update feedback from timing reports only if two conditions are true:
+    // - The current frame was submitted with a timing query.
+    // - We successfully mapped the report timestamp back to QPC.
+    // TODO figure out the correct time domain for dxvk-native to use.
+    if (m_timingMode.lastFrameTimeQpc && (!frameId || !queryStages)) {
       feedback.frameId = m_timingMode.lastFrameId;
       feedback.presentTime = m_timingMode.lastFrameTimeQpc;
     }
@@ -2084,15 +2090,12 @@ namespace dxvk {
         }
       }
 
-      // If the present operation has succeeded, actually wait for it to complete.
-      // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
-      // restrict us to the display refresh rate on some platforms (XWayland).
-      // Also don't do this if present timing is enabled because we will wait
-      // for the target present time anyway.
-      bool waited = updatePresentTiming(frame.frameId)
-        && frame.targetTime
-        && waitUntilFrameTargetTime(frame);
+      // If the frameis timed, wait for the calculated target time. This intentionally
+      // does not line up with vblank in fixed refresh rate scenarios and is done so
+      // that the application's render thread can see consistent frame pacing.
+      bool waited = frame.targetTime && waitUntilFrameTargetTime(frame);
 
+      // If this doesn't apply,
       bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
                      || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
@@ -2120,6 +2123,10 @@ namespace dxvk {
         frame.tracker->notifyGpuPresentEnd(frame.frameId);
         frame.tracker = nullptr;
       }
+
+      // Update timing feedback. There is no guarantee when data becomes available,
+      // but if timing is disabled then we should base feedback on present_wait.
+      updatePresentTimingFeedback(frame.frameId, frame.stageQueries);
 
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a

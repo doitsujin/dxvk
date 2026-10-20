@@ -63,6 +63,7 @@ namespace dxvk {
     uint64_t                targetTime      = 0u;
     uint64_t                targetDeadline  = 0u;
     uint64_t                timingDomainId  = 0u;
+    VkPresentStageFlagsEXT  stageQueries    = 0u;
   };
 
   /**
@@ -483,7 +484,9 @@ namespace dxvk {
 
     bool recalibrateTimeDomains();
 
-    bool updatePresentTiming(uint64_t frameId);
+    bool updatePresentTimingFeedback(
+            uint64_t                  frameId,
+            VkPresentStageFlagsEXT    queryStages);
 
     void commitTimingFeedback(
       const PresenterTimingFeedback&  feedback);
