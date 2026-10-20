@@ -4,6 +4,8 @@
 
 #include "../thread.h"
 
+#include "sync_spinlock.h"
+
 namespace dxvk::sync {
   
   /**
@@ -21,13 +23,23 @@ namespace dxvk::sync {
     void lock() {
       uint32_t ticket = m_counter.fetch_add(1);
 
-      while (m_serving.load(std::memory_order_acquire) != ticket)
-        continue;
+      spin(200, [this, ticket] {
+        return m_serving.load(std::memory_order_acquire) == ticket;
+      });
     }
 
     void unlock() {
       uint32_t serveNext = m_serving.load() + 1;
       m_serving.store(serveNext, std::memory_order_release);
+    }
+
+    bool try_lock() {
+      // Perhaps not the most useful thing ever, but if serving == counter
+      // and no other thread is trying to lock, we can return immediately.
+      uint32_t serving = m_serving.load(std::memory_order_relaxed);
+
+      return m_counter.compare_exchange_strong(serving, serving + 1u,
+        std::memory_order_acquire, std::memory_order_relaxed);
     }
 
   private:
