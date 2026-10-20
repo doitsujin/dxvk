@@ -425,6 +425,9 @@ namespace dxvk {
 
     double                      m_frameRateLimit = 0.0;
 
+    uint64_t                    m_reportQueueAddId = 0u;
+    uint64_t                    m_reportQueueTakeId = 0u;
+
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
 

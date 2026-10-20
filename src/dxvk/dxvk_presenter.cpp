@@ -218,6 +218,12 @@ namespace dxvk {
       std::lock_guard lock(m_timingMutex);
       timingInfo.presentStageQueries = m_timingMode.presentStage;
 
+      // Try to avoid overflowing the driver-internal report queue
+      if (m_reportQueueAddId >= m_reportQueueTakeId + FrameQueueSize) {
+        Logger::warn("Presenter: Report queue overflow");
+        timingInfo.presentStageQueries = 0u;
+      }
+
       if (m_timingMode.referenceFrameId) {
         frameTargetTime = m_timingMode.referenceTime +
           (frameId - m_timingMode.referenceFrameId) * m_timingMode.frameIntervalNs;
@@ -296,6 +302,8 @@ namespace dxvk {
 
       m_frameIndex += 1;
       m_frameIndex %= m_semaphores.size();
+
+      m_reportQueueAddId = frameId;
     }
 
     // Add frame to waiter queue with current properties
@@ -1565,7 +1573,8 @@ namespace dxvk {
     if (!m_timingMode.presentStage)
       return commitTimingFeedback(feedback);
 
-    // Still need to drain the queue even if everything is messed up
+    // Query reports in-order so that we can somewhat robustly
+    // track how many frames are still in the report queue
     small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
     small_vector<VkPastPresentationTimingEXT, FrameQueueSize> reports;
 
@@ -1624,6 +1633,10 @@ namespace dxvk {
 
       if (!report.reportComplete || !time.time || time.stage != m_timingMode.presentStage)
         continue;
+
+      // Write back frame ID regardless of whether we do anything with the
+      // report so that we can track which frames are still in the queue
+      m_reportQueueTakeId = std::max(m_reportQueueTakeId, report.presentId);
 
       // Find queued frame entry so we can properly correlate the report
       // with expected timings
