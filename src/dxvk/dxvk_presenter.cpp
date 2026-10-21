@@ -589,7 +589,6 @@ namespace dxvk {
 
 
   PresenterTimingFeedback Presenter::queryPresentTiming() {
-    std::lock_guard lock(m_timingMutex);
     return updatePresentTimingFeedback(0u, 0u);
   }
 
