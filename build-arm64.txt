@@ -1,0 +1,17 @@
+# vim:ft=meson
+[binaries]
+c = 'aarch64-w64-mingw32-gcc'
+cpp = 'aarch64-w64-mingw32-g++'
+ar = 'aarch64-w64-mingw32-ar'
+strip = 'aarch64-w64-mingw32-strip'
+windres = 'aarch64-w64-mingw32-windres'
+
+[properties]
+needs_exe_wrapper = true
+# sys_root = '/data/data/com.termux/files/usr/opt/llvm-mingw-w64/generic-w64-mingw32'
+
+[host_machine]
+system = 'windows'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
