@@ -296,9 +296,12 @@ namespace dxvk {
     VkMemoryHeapFlags heapFlagMask = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     VkMemoryHeapFlags heapFlags    = 0;
 
-    if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
+    // Apparently, Unreal Engine decided that not having a non-local heap equates
+    // running on a 15-year old Intel IGP and disables a bunch of effects as a
+    // result. Simply report the VRAM budgets as a workaround.
+    if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL || m_adapter->isUnifiedMemoryArchitecture())
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-    
+
     pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
     pVideoMemoryInfo->AvailableForReservation = 0;
