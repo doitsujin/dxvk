@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <unordered_map>
 
@@ -156,6 +157,48 @@ namespace dxvk {
       return m_shader;
     }
 
+    /**
+     * \brief NV multi-view pass-through IO list
+     *
+     * Empty for shaders with no NV multi-view metadata. Filled once,
+     * at creation time, from the same signature walk that resolves NV
+     * custom semantics - never re-read from bytecode.
+     */
+    const std::vector<DxvkNvPassthroughIoEntry>& GetNvPassthroughIo() const {
+      return m_nvPassthroughIo;
+    }
+
+    void SetNvPassthroughIo(std::vector<DxvkNvPassthroughIoEntry>&& io) {
+      m_nvPassthroughIo = std::move(io);
+    }
+
+    /**
+     * \brief Shader key this object was created with
+     *
+     * Nothing on DxvkShader/DxvkIrShader hands this back once creation
+     * is done - kept here since GetOrCreateNvAmplificationGs needs it.
+     */
+    DxvkShaderHash GetShaderKey() const {
+      return m_shaderKey;
+    }
+
+    /**
+     * \brief Gets or builds (only when needed) this VS's NV multi-view broadcast GS
+     *
+     * Only meaningful when this shader is a vertex shader with
+     * nvMultiview metadata and no application-bound geometry shader.
+     * Built once and shared by every copy of this object. The cache slot
+     * below is a shared_ptr because D3D11ShaderModuleSet::GetShaderModule
+     * returns this object by copy on both a hit and a miss, so the slot
+     * has to be something a copy can still share; same reasoning as the
+     * mutex beside it.
+     */
+    Rc<DxvkShader> GetOrCreateNvAmplificationGs(
+          D3D11Device*            pDevice,
+    const DxvkShaderHash&         VsKey,
+          uint32_t                NumViews,
+    const DxvkNvMultiviewInfo&    NvMultiview) const;
+
     DxvkBufferSlice GetIcb() const {
       return m_buffer != nullptr
         ? DxvkBufferSlice(m_buffer)
@@ -180,6 +223,17 @@ namespace dxvk {
 
     Rc<DxvkShader> m_shader;
     Rc<DxvkBuffer> m_buffer;
+
+    std::vector<DxvkNvPassthroughIoEntry> m_nvPassthroughIo;
+    DxvkShaderHash                        m_shaderKey;
+    std::shared_ptr<Rc<DxvkShader>>       m_nvAmplificationGs    = std::make_shared<Rc<DxvkShader>>();
+    std::shared_ptr<dxvk::mutex>          m_nvAmplificationMutex = std::make_shared<dxvk::mutex>();
+    // What NumViews/NvMultiview the cached GS above was actually built
+    // with. Needed so GetOrCreateNvAmplificationGs can tell a genuinely
+    // stale cache entry apart from a valid one, instead of trusting
+    // "non-null" as the only signal that the cache is still correct.
+    std::shared_ptr<uint32_t>             m_nvAmplificationNumViews = std::make_shared<uint32_t>(0u);
+    std::shared_ptr<DxvkNvMultiviewInfo>  m_nvAmplificationInfo     = std::make_shared<DxvkNvMultiviewInfo>();
 
     D3D11BindingMask    m_bindings = { };
     D3D11InterfaceInfo  m_interfaces = { };
