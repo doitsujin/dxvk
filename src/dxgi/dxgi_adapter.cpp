@@ -296,9 +296,9 @@ namespace dxvk {
     VkMemoryHeapFlags heapFlagMask = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     VkMemoryHeapFlags heapFlags    = 0;
 
-    if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
+    if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL || m_adapter->isUnifiedMemoryArchitecture())
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-    
+
     pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
     pVideoMemoryInfo->AvailableForReservation = 0;
