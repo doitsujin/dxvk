@@ -1374,7 +1374,7 @@ namespace dxvk {
       } else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
         // Regular HVV allocation. Give this a low priority since these are typically
         // useful when when placed in system memory.
-        priorityInfo.priority = 0.0f;
+        priorityInfo.priority = 0.1f;
       } else {
         // Standard priority for resource allocations
         priorityInfo.priority = 0.5f;
