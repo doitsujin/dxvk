@@ -2,7 +2,50 @@
 
 #include "../util/util_win32_compat.h"
 
+#if (defined(__i386__) || (defined(__x86_64__) && !defined(__arm64ec__)) || defined(_M_IX86) || (defined(_M_X64) && !defined(_M_ARM64EC)))
+#define DXVK_D3D9_X86_FPU_STATE
+#include <xmmintrin.h>
+#endif
+
 namespace dxvk {
+
+  D3D9FpuStateGuard::D3D9FpuStateGuard(bool preserveX87)
+  : m_preserveX87(preserveX87) {
+#ifdef DXVK_D3D9_X86_FPU_STATE
+    m_mxcsr = _mm_getcsr();
+#if defined(__GNUC__)
+    if (m_preserveX87)
+      __asm__ __volatile__("fnstcw %0" : "=m" (m_x87Control));
+#endif
+#endif
+  }
+
+
+  D3D9FpuStateGuard::~D3D9FpuStateGuard() {
+#ifdef DXVK_D3D9_X86_FPU_STATE
+    uint32_t mxcsr = _mm_getcsr();
+
+    // Only compare and restore the control bits, keep the sticky exception flags
+    constexpr uint32_t MxcsrControlMask = ~0x3Fu;
+
+    if ((mxcsr ^ m_mxcsr) & MxcsrControlMask) {
+      Logger::warn(str::format("D3D9: Restoring MXCSR changed by the driver: ",
+        std::hex, mxcsr, " -> ", m_mxcsr));
+      _mm_setcsr((m_mxcsr & MxcsrControlMask) | (mxcsr & ~MxcsrControlMask));
+    }
+
+#if defined(__GNUC__)
+    if (m_preserveX87) {
+      uint16_t control;
+      __asm__ __volatile__("fnstcw %0" : "=m" (control));
+
+      if (control != m_x87Control)
+        __asm__ __volatile__("fldcw %0" : : "m" (m_x87Control));
+    }
+#endif
+#endif
+  }
+
 
   typedef HRESULT (STDMETHODCALLTYPE *D3DXDisassembleShader) (
     const void*      pShader, 

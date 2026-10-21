@@ -368,6 +368,8 @@ namespace dxvk {
           D3DPRESENT_PARAMETERS* pPresentationParameters,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
           IDirect3DDevice9Ex**   ppReturnedDeviceInterface) {
+    D3D9FpuStateGuard fpuGuard(BehaviorFlags & D3DCREATE_FPU_PRESERVE);
+
     InitReturnPtr(ppReturnedDeviceInterface);
 
     if (unlikely(ppReturnedDeviceInterface  == nullptr
