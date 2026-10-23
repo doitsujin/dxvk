@@ -1020,10 +1020,6 @@ namespace dxvk {
     { R"(\\(FarCry2|farcry2game)\.exe$)", {{
       { "d3d9.cachedWriteOnlyBuffers",      "True" },
     }} },
-    /* Dark Sector - Crashes in places            */
-    { R"(\\DS\.exe$)", {{
-      { "d3d9.textureMemory",                  "0" },
-    }} },
     /* Arcana Heart 3 Love Max + Xtend version    *
      * Game speed is too fast above 60 fps        */
     { R"(\\(AH3LM|AALib)\.exe$)", {{
