@@ -2103,17 +2103,29 @@ namespace dxvk {
       if (!waited && isFifoMode && frame.result >= 0 && m_hasPresentWait) {
         VkResult vr;
 
+        // Don't wait indefinitely for the present to complete. Some WSI
+        // implementations may never signal completion, e.g. the X11 WSI
+        // implementation in Mesa blocks in xcb_wait_for_special_event when
+        // the timeout is set to UINT64_MAX, and the event is only sent if
+        // the compositor responds to the present request. If that does not
+        // happen, waiting forever would hang the application's render thread.
+        // A timeout of one second is way above the time a present normally
+        // takes, so this should not affect regular operation.
+        const uint64_t timeout = 1000000000ull;
+
         if (m_device->features().khrPresentWait2.presentWait2) {
           VkPresentWait2InfoKHR waitInfo = { VK_STRUCTURE_TYPE_PRESENT_WAIT_2_INFO_KHR };
           waitInfo.presentId = frame.frameId;
-          waitInfo.timeout = std::numeric_limits<uint64_t>::max();
+          waitInfo.timeout = timeout;
 
           vr = m_vkd->vkWaitForPresent2KHR(m_vkd->device(), m_swapchain, &waitInfo);
         } else {
           vr = m_vkd->vkWaitForPresentKHR(m_vkd->device(),
-            m_swapchain, frame.frameId, std::numeric_limits<uint64_t>::max());
+            m_swapchain, frame.frameId, timeout);
         }
 
+        // VK_TIMEOUT is not an error, it just means that the present did not
+        // complete within the timeout, so we can simply carry on.
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
