@@ -626,13 +626,6 @@ namespace dxvk {
     }
 
 
-    void cmdSetDescriptorBufferOffsetsEXT(
-            DxvkCmdBuffer             cmdBuffer,
-      const VkSetDescriptorBufferOffsetsInfoEXT* info) {
-      m_vkd->vkCmdSetDescriptorBufferOffsets2EXT(getCmdBuffer(cmdBuffer), info);
-    }
-
-
     void cmdBindIndexBuffer2(
             VkBuffer                buffer,
             VkDeviceSize            offset,
@@ -1439,25 +1432,13 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
-    void bindResourcesDescriptorBuffer(
-            DxvkCmdBuffer                 cmdBuffer,
-      const DxvkPipelineLayout*           layout,
-            uint32_t                      descriptorCount,
-      const DxvkDescriptorWrite*          descriptorInfos,
-            size_t                        pushDataSize,
-      const void*                         pushData);
-
     void rebindSamplerHeap();
 
     void rebindResourceHeap();
 
-    void rebindDescriptorBuffers();
-
     void bindSamplerHeap(VkCommandBuffer cmdBuffer);
 
     void bindResourceHeap(VkCommandBuffer cmdBuffer);
-
-    void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
 
     void endCommandBuffer(VkCommandBuffer cmdBuffer);
 

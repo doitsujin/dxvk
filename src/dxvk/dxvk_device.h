@@ -313,14 +313,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks whether descriptor buffers can be used
-     * \returns \c true if all required features are supported.
-     */
-    bool canUseDescriptorBuffer() const {
-      return m_features.extDescriptorBuffer.descriptorBuffer && !canUseDescriptorHeap();
-    }
-
-    /**
      * \brief Checks whether CUDA interop is enabled
      *
      * Relevant for descriptor heap usage since CUDA interop still
