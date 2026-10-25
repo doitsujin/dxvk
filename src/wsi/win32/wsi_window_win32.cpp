@@ -117,7 +117,7 @@ namespace dxvk::wsi {
       RECT rectNoMenu = { };
       ::AdjustWindowRectEx(&rectNoMenu, style, FALSE, exStyle);
       // If we have a menu attached to the window, yet no rect adjustments
-      // are made to account for its absence, then the menu is not
+      // are made to account for its presence, then the menu is not
       // currently drawn, but still reserves height in ::GetClientRect
       if (!rectNoMenu.bottom && !rectNoMenu.right &&
           !rectNoMenu.top    && !rectNoMenu.left)
