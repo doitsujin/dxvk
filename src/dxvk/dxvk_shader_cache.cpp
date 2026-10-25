@@ -612,6 +612,10 @@ namespace dxvk {
   DxvkShaderCache::FilePaths DxvkShaderCache::getDefaultFilePaths() {
     std::string cachePath = env::getEnvVar("DXVK_SHADER_CACHE_PATH");
 
+    // Support centralized multi-instance / multi-prefix shared cache
+    if (cachePath.empty())
+      cachePath = env::getEnvVar("DXVK_SHARED_CACHE_PATH");
+
     if (cachePath.empty()) {
       #ifdef _WIN32
       cachePath = env::getEnvVar("LOCALAPPDATA");
@@ -638,27 +642,35 @@ namespace dxvk {
     if (cachePath.empty())
       return FilePaths();
 
-    // Determine file name based on the actual executable,
-    // including the containing directory.
-    std::string exePath = env::getExePath();
+    // Support unified shared cache file naming across independent prefixes
+    std::string sharedName = env::getEnvVar("DXVK_SHARED_CACHE_NAME");
+    std::string baseName;
 
-    if (exePath.empty())
-      return FilePaths();
+    if (!sharedName.empty()) {
+      baseName = sharedName;
+    } else {
+      // Determine file name based on the actual executable,
+      // including the containing directory.
+      std::string exePath = env::getExePath();
 
-    size_t pathStart = exePath.find_last_of(env::PlatformDirSlash);
+      if (exePath.empty())
+        return FilePaths();
 
-    if (pathStart != std::string::npos)
-      pathStart = exePath.find_last_of(env::PlatformDirSlash, pathStart);
+      size_t pathStart = exePath.find_last_of(env::PlatformDirSlash);
 
-    if (pathStart == std::string::npos)
-      pathStart = 0u;
+      if (pathStart != std::string::npos)
+        pathStart = exePath.find_last_of(env::PlatformDirSlash, pathStart);
 
-    uint64_t hash = bit::fnv1a_init();
+      if (pathStart == std::string::npos)
+        pathStart = 0u;
 
-    for (size_t i = pathStart; i < exePath.size(); i++)
-      hash = bit::fnv1a_iter(hash, uint8_t(exePath[i]));
+      uint64_t hash = bit::fnv1a_init();
 
-    std::string baseName = str::format(std::hex, std::setw(16u), std::setfill('0'), hash);
+      for (size_t i = pathStart; i < exePath.size(); i++)
+        hash = bit::fnv1a_iter(hash, uint8_t(exePath[i]));
+
+      baseName = str::format(std::hex, std::setw(16u), std::setfill('0'), hash);
+    }
 
     FilePaths paths;
     paths.directory = cachePath;

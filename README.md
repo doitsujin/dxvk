@@ -96,6 +96,8 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_SHADER_CACHE=0`: Disables the internal shader cache.
 - `DXVK_SHADER_CACHE_PATH=/some/directory`: Path to internal shader cache files. By default, this will use `%LOCALAPPDATA%/dxvk` in a Windows
   or Wine environment, and `$HOME/.cache` or `$XDG_CACHE_HOME` in a native Linux environment.
+- `DXVK_SHARED_CACHE_PATH=/some/directory`: Fallback directory for sharing compiled shader caches across multiple Wine prefixes or containers (e.g. `/dev/shm` or central JIT cache).
+- `DXVK_SHARED_CACHE_NAME=name`: Overrides default executable hash naming to enable portable, shared shader cache files across varying launch paths.
 
 ### Graphics Pipeline Library
 On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will be compiled at the time the game loads its D3D shaders, rather than at draw time. This reduces or eliminates shader compile stutter in many games when compared to the previous system.
