@@ -601,7 +601,7 @@ namespace dxvk {
     // Max Texture Height
     pCaps->MaxTextureHeight         = caps::MaxTextureDimension;
     // Max Volume Extent
-    pCaps->MaxVolumeExtent          = 8192;
+    pCaps->MaxVolumeExtent          = caps::MaxVolumeExtent;
     // Max Texture Repeat
     pCaps->MaxTextureRepeat         = 8192;
     // Max Texture Aspect Ratio
