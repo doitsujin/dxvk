@@ -9114,8 +9114,10 @@ namespace dxvk {
     for (const auto& e : resourceList) {
       auto storage = e.resource->relocateStorage(e.mode);
 
-      if (!storage)
+      if (!storage) {
+        e.resource->revertResidency();
         continue;
+      }
 
       Rc<DxvkImage> image = dynamic_cast<DxvkImage*>(e.resource.ptr());
       Rc<DxvkBuffer> buffer = dynamic_cast<DxvkBuffer*>(e.resource.ptr());
