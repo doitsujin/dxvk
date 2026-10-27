@@ -1350,8 +1350,8 @@ namespace dxvk {
     if (type.bufferUsage && !next)
       size = align(size, GlobalBufferAlignment);
 
-    // Preemptively free some unused allocations to reduce memory waste
-    freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
+    // Preemptively free some unused allocations to reduce memory waste.
+    freeEmptyChunksForType(type, size, high_resolution_clock::now());
 
     // If we're exceeding vram budget on a dedicated GPU, fall back to system memory.
     if (!next && type.heap->enforceBudget && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget))
@@ -1723,6 +1723,38 @@ namespace dxvk {
 
       m_allocationPool.free(std::exchange(allocation, allocation->m_nextCached));
     }
+  }
+
+
+  void DxvkMemoryAllocator::freeEmptyChunksForType(
+          DxvkMemoryType&       type,
+          VkDeviceSize          allocationSize,
+          high_resolution_clock::time_point time) {
+    bool freed = false;
+
+    // Always check the memory type that we actually want to allocate memory from first
+    freed |= freeEmptyChunksInPool(type, type.devicePool, allocationSize, time);
+    freed |= freeEmptyChunksInPool(type, type.mappedPool, allocationSize, time);
+
+    // When allocating HVV, do not mess around with the main device-local memory type
+    // since that is generally going to be far more important for performance. Instead,
+    // simply fall back to system memory.
+    VkMemoryPropertyFlags hvvFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    bool isHvv = (type.properties.propertyFlags & hvvFlags) == hvvFlags && type.heap->enforceBudget;
+
+    if (!isHvv) {
+      for (auto typeIndex : bit::BitMask(type.heap->memoryTypes & ~(1u << type.index))) {
+        auto& type = m_memTypes[typeIndex];
+
+        freed |= freeEmptyChunksInPool(type, type.devicePool, allocationSize, time);
+        freed |= freeEmptyChunksInPool(type, type.mappedPool, allocationSize, time);
+      }
+    }
+
+    if (freed)
+      updateMemoryHeapStats(type.heap->index);
   }
 
 
