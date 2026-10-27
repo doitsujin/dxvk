@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 
 #include "../util/util_bit.h"
@@ -1353,10 +1354,8 @@ namespace dxvk {
     freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
 
     // If we're exceeding vram budget on a dedicated GPU, fall back to system memory.
-    if (!next && type.heap->enforceBudget && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget)) {
-      type.heap->enableEviction = true;
+    if (!next && type.heap->enforceBudget && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget))
       return DxvkDeviceMemory();
-    }
 
     VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, next };
     memoryInfo.allocationSize = size;
@@ -2644,24 +2643,23 @@ namespace dxvk {
     auto& pool = type.devicePool;
 
     // Doing this on integrated graphics would be harmful, so don't'
-    if (pool.chunks.empty() || !type.heap->enableEviction)
+    if (pool.chunks.empty() || !type.heap->enforceBudget)
       return;
 
-    // Work out how much memory we should ideally leave unused
-    VkDeviceSize minUnusedMemory = 2u * pool.maxChunkSize;
+    // If we're within budget with some headroom already, don't evict
+    // anything as we're likely able to service subsequent allocations.
+    DxvkMemoryStats heapStats = getMemoryStats(type.heap->index);
 
-    // Account for mapped memory types on the same heap where we may not be
-    // able to move any resources, and count their total allocated amount.
-    VkDeviceSize heapUsage = type.stats.memoryUsed;
-
-    for (auto i : bit::BitMask(type.heap->memoryTypes & ~(1u << type.index)))
-      heapUsage += m_memTypes[i].stats.memoryAllocated;
-
-    // If we're within budget with some headroom already, don't evict anything.
-    VkDeviceSize heapBudget = getMemoryStats(type.heap->index).memoryBudget;
-
-    if (heapUsage + minUnusedMemory <= heapBudget)
+    if (heapStats.memoryAllocated + pool.maxChunkSize < heapStats.memoryBudget)
       return;
+
+    // If there's an empty chunk of the maximum allowed size, there's
+    // no real point in evicting anything either since new allocations
+    // can just go there.
+    for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
+      if (!pool.pageAllocator.pagesUsed(i) && pool.chunks[i].memory.size == pool.maxChunkSize)
+        return;
+    }
 
     // Check the old previous chunk to evict unused resources right
     // away, and then advance to the next available chunk if possible
@@ -2676,6 +2674,8 @@ namespace dxvk {
     }
 
     chunkIndices[1u] = pool.nextEvictChunk;
+
+    std::optional<uint32_t> evictedChunk;
 
     for (auto chunkIndex : chunkIndices) {
       // Ensure we actually have a valid, live chunk to work with
@@ -2704,31 +2704,29 @@ namespace dxvk {
         if (!resource)
           continue;
 
-        bool evicted = resource->requestEviction();
-
-        if (evicted && (heapUsage + minUnusedMemory > heapBudget + memoryEvicted)) {
+        if (resource->requestEviction()) {
           m_relocations.addResource(std::move(resource), a, DxvkAllocationMode::NoDeviceMemory);
           memoryEvicted += a->getMemoryInfo().size;
         }
-
-        if (!evicted && memoryEvicted) {
-          // Relocate other resources within the chunk to reduce fragmentation
-          m_relocations.addResource(std::move(resource), a, DxvkAllocationModes(
-            DxvkAllocationMode::NoFallback, DxvkAllocationMode::NoAllocation));
-        }
       }
 
-      // Relocate resource in the chunk we evicted from, and override any
-      // chunk that defragmentation may have picked. This greatly reduces
-      // fragmentation caused evicting a subset of resources from the chunk.
-      if (memoryEvicted) {
-        pool.pageAllocator.killChunk(chunkIndex);
+      if (memoryEvicted && !evictedChunk)
+        evictedChunk = std::make_optional(chunkIndex);
+    }
 
-        for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
-          if (i != chunkIndex && pool.pageAllocator.pagesUsed(i))
-            pool.pageAllocator.reviveChunk(i);
-        }
+    // Relocate resource in the chunk we evicted from, and override any
+    // chunk that defragmentation may have picked. This greatly reduces
+    // fragmentation caused evicting a subset of resources from the chunk.
+    if (evictedChunk) {
+      pool.pageAllocator.killChunk(*evictedChunk);
+      pool.nextDefragChunk = *evictedChunk;
+
+      for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
+        if (i != *evictedChunk && pool.pageAllocator.pagesUsed(i))
+          pool.pageAllocator.reviveChunk(i);
       }
+
+      moveDefragChunk(type);
     }
   }
 
