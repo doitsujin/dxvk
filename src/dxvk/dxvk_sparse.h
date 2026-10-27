@@ -432,6 +432,7 @@ namespace dxvk {
     Resident  = 0u, ///< Resource is resident in desired memory type
     Demoted   = 1u, ///< Resource is likely unused and may get evicted
     Evicted   = 2u, ///< Resource got evicted to system memory
+    Promoted  = 3u, ///< Resource is enqueued to be moved to preferred memory
   };
 
 
@@ -653,12 +654,36 @@ namespace dxvk {
       if (likely(status == DxvkResourceResidency::Resident))
         return;
 
-      if (status == DxvkResourceResidency::Demoted
-       && m_residency.compare_exchange_strong(status, DxvkResourceResidency::Resident))
-        return;
+      while (true) {
+        switch (status) {
+          case DxvkResourceResidency::Demoted: {
+            if (m_residency.compare_exchange_strong(status, DxvkResourceResidency::Resident))
+              return;
+          } break;
 
-      if (status == DxvkResourceResidency::Evicted)
-        makeResourceResident();
+          case DxvkResourceResidency::Evicted: {
+            if (m_residency.compare_exchange_strong(status, DxvkResourceResidency::Promoted)) {
+              makeResourceResident();
+              return;
+            }
+          } break;
+
+          default:
+            return;
+        }
+      }
+    }
+
+    /**
+     * \brief Reverts residency status to evicted on relocation failure
+     *
+     * Only has an effect if the current residency status is \c Promoted.
+     */
+    void revertResidency() {
+      DxvkResourceResidency status = m_residency.load();
+
+      if (status == DxvkResourceResidency::Promoted)
+        m_residency.compare_exchange_strong(status, DxvkResourceResidency::Evicted);
     }
 
     /**
