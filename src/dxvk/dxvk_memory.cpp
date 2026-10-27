@@ -1807,7 +1807,7 @@ namespace dxvk {
       // Free the chunk if it is smaller than the current chunk size of
       // the pool, since it is unlikely to be useful for future allocations.
       // Also free if the pending allocation would exceed the heap budget.
-      bool shouldFree = chunk.memory.size < pool.nextChunkSize
+      bool shouldFree = (chunk.memory.size < pool.nextChunkSize && allocationSize)
         || allocationSize + heapAllocated > heapBudget
         || allocationSize > heapBudget;
 
