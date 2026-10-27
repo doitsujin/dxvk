@@ -2705,21 +2705,16 @@ namespace dxvk {
     // away, and then advance to the next available chunk if possible
     std::array<uint32_t, 2u> chunkIndices = { pool.nextEvictChunk, ~0u };
 
-    for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
-      pool.nextEvictChunk += 1u;
-      pool.nextEvictChunk %= pool.chunks.size();
+    pool.nextEvictChunk += 1u;
+    pool.nextEvictChunk %= pool.chunks.size();
 
-      if (pool.pageAllocator.chunkIsAvailable(pool.nextEvictChunk))
-        break;
-    }
-
-    chunkIndices[1u] = pool.nextEvictChunk;
+    if (chunkIndices[0u] != pool.nextEvictChunk)
+      chunkIndices[1u] = pool.nextEvictChunk;
 
     std::optional<uint32_t> evictedChunk;
 
     for (auto chunkIndex : chunkIndices) {
-      // Ensure we actually have a valid, live chunk to work with
-      if (chunkIndex >= pool.chunks.size() || !pool.pageAllocator.chunkIsAvailable(chunkIndex))
+      if (chunkIndex >= pool.chunks.size())
         continue;
 
       auto& chunk = pool.chunks[chunkIndex];
