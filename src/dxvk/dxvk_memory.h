@@ -148,7 +148,6 @@ namespace dxvk {
     VkDeviceSize      memoryBudget  = 0u;
     VkMemoryHeap      properties    = { };
     bool              enforceBudget = false;
-    bool              enableEviction = false;
   };
 
 
