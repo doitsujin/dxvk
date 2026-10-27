@@ -694,7 +694,13 @@ namespace dxvk {
     VkDeviceSize totalSize = 0u;
 
     for (uint32_t i = 0; i < count; i++) {
-      auto iter = m_entries.begin();
+      // Keep traversing keys in ascending order and only reset once we've
+      // reached the end. This helps avoid starving higher-ordered requests.
+      auto iter = m_entries.upper_bound(m_lastKey);
+      iter = iter == m_entries.end() ? m_entries.begin() : iter;
+
+      if (iter == m_entries.end())
+        break;
 
       if (totalSize && totalSize + iter->first.size > size)
         break;
@@ -702,12 +708,14 @@ namespace dxvk {
       // Reduce number of resource evictions performed per request by
       // overestimating the amount of memory moved. May reduce stutter
       // in high-ish frame rate scenarios.
-      totalSize += iter->second.mode == DxvkAllocationMode::NoDeviceMemory
+      totalSize += iter->second.mode.test(DxvkAllocationMode::NoDeviceMemory)
         ? iter->first.size * 16u
         : iter->first.size;
 
       result.push_back(std::move(iter->second));
-      m_entries.erase(iter);
+      m_lastKey = iter->first;
+
+      iter = m_entries.erase(iter);
     }
 
     return result;

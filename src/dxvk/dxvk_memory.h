@@ -1131,6 +1131,8 @@ namespace dxvk {
       DxvkRelocationEntry,
       RelocationOrdering>       m_entries;
 
+    DxvkResourceMemoryInfo      m_lastKey = {};
+
   };
 
 
