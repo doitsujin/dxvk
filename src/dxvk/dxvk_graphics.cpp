@@ -176,7 +176,7 @@ namespace dxvk {
         && a.offset     == b.offset;
     }
 
-    for (uint32_t i = 0; i < viDivisorInfo.vertexBindingDivisorCount; i++) {
+    for (uint32_t i = 0; i < viDivisorInfo.vertexBindingDivisorCount && eq; i++) {
       const auto& a = viDivisors[i];
       const auto& b = other.viDivisors[i];
 
