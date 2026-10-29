@@ -2103,8 +2103,8 @@ namespace dxvk {
       bool waited = frame.targetTime && waitUntilFrameTargetTime(frame);
 
       // If this doesn't apply,
-      bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
-                     || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+      bool isFifoMode = frame.mode == VK_PRESENT_MODE_FIFO_KHR
+                     || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
       if (!waited && isFifoMode && frame.result >= 0 && m_hasPresentWait) {
         VkResult vr;
