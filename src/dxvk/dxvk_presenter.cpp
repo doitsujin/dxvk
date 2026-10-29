@@ -160,8 +160,14 @@ namespace dxvk {
     }
 
     // Set dynamic present mode for the next frame if possible
-    if (!m_dynamicModes.empty())
-      m_presentMode = m_dynamicModes.at(m_preferredSyncInterval ? 1u : 0u); 
+    if (!m_dynamicModes.empty()) {
+      auto mode = m_dynamicModes.at(m_preferredSyncInterval ? 1u : 0u);
+
+      if (m_presentMode != mode) {
+        m_presentMode = mode;
+        Logger::info(str::format("Presenter: Changing present mode: ", m_presentMode));
+      }
+    }
 
     // Return relevant Vulkan objects for the acquired image
     sync = m_semaphores.at(m_frameIndex);
