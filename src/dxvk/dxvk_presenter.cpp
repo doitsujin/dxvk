@@ -2097,12 +2097,13 @@ namespace dxvk {
         }
       }
 
-      // If the frameis timed, wait for the calculated target time. This intentionally
-      // does not line up with vblank in fixed refresh rate scenarios and is done so
-      // that the application's render thread can see consistent frame pacing.
+      // If the frame is timed, wait for the calculated target time. This
+      // intentionally does not line up with vblank in fixed refresh rate
+      // scenarios and is done so that the application's render thread can
+      // see consistent frame pacing.
       bool waited = frame.targetTime && waitUntilFrameTargetTime(frame);
 
-      // If this doesn't apply,
+      // Legacy path, fall back to present_wait if we don't have timing.
       bool isFifoMode = frame.mode == VK_PRESENT_MODE_FIFO_KHR
                      || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
