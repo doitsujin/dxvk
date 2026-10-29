@@ -130,6 +130,7 @@ namespace dxvk {
     uint64_t lastFrameTimeLocal = 0u;
     uint64_t lastFrameTimeQpc = 0u;
     uint64_t lastFrameId = 0u;
+    uint64_t firstValidFrameId = 0u;
   };
 
   /**
