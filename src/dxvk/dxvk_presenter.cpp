@@ -1730,8 +1730,22 @@ namespace dxvk {
     if (!qpcTargetTime)
       return false;
 
+    auto now = dxvk::high_resolution_clock::now();
     auto dxvkTargetTime = dxvk::high_resolution_clock::get_time_from_counter(qpcTargetTime);
-    Sleep::sleepUntil(dxvk::high_resolution_clock::now(), dxvkTargetTime);
+
+    if (now >= dxvkTargetTime)
+      return true;
+
+    // If we are supposed to wait for an extremely long duration,
+    // something is probably off with our timestamps...
+    auto waitDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(dxvkTargetTime - now).count();
+
+    if (waitDurationMs > 500) {
+      Logger::err(str::format("Presenter: Target frame time is, ", waitDurationMs, " into the future, skipping wait."));
+      return false;
+    }
+
+    Sleep::sleepUntil(now, dxvkTargetTime);
     return true;
   }
 
