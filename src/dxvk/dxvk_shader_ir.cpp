@@ -2263,6 +2263,8 @@ namespace dxvk {
     options.cseOptions.relocateDescriptorLoad = true;
     options.cseOptions.resolveOverlappingLoads = true;
 
+    options.bufferIndexing.allowDynamicIndexing = true;
+
     if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsResourceIndexing))
       options.descriptorIndexing.optimizeDescriptorIndexing = true;
 
