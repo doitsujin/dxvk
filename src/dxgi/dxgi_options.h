@@ -9,6 +9,15 @@
 namespace dxvk {
 
   /**
+   * \brief Whether old XeSS versions need the Intel vendor ID hidden
+   */
+  enum class XessVendorWa : uint32_t {
+    Unknown,    ///< No XeSS loaded yet
+    NotNeeded,  ///< Wine builtin XeSS or a fixed XeSS version
+    Needed,     ///< XeSS version that fails on the Intel path
+  };
+
+  /**
    * \brief DXGI options
    * 
    * Per-app options that control the
@@ -72,7 +81,7 @@ namespace dxvk {
 
   private:
 
-    mutable std::atomic<bool> m_xessVendorWaApplied = { false };
+    mutable std::atomic<XessVendorWa> m_xessVendorWa = { XessVendorWa::Unknown };
     std::atomic<uint32_t> m_useCount = { 0u };
 
   };
