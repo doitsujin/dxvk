@@ -81,7 +81,6 @@ namespace dxvk {
    *
    * Used for timestamp calibration. Reference times are given in units
    * of nanoseconds, except for QPC which is given in raw QPC ticks.
-   * QPC will be unavailable in dxvk-native environments.
    */
   struct PresenterTimeDomain {
     VkTimeDomainKHR timeDomain = VK_TIME_DOMAIN_MAX_ENUM_KHR;
@@ -128,7 +127,7 @@ namespace dxvk {
     uint64_t referenceTime = 0u;
     uint64_t referenceFrameId = 0u;
     uint64_t lastFrameTimeLocal = 0u;
-    uint64_t lastFrameTimeQpc = 0u;
+    uint64_t lastFrameTimeHost = 0u;
     uint64_t lastFrameId = 0u;
     uint64_t firstValidFrameId = 0u;
   };
@@ -497,7 +496,8 @@ namespace dxvk {
     bool waitUntilFrameTargetTime(
       const PresenterFrame&           frame);
 
-    bool hasQpcDomain();
+    bool hasTimeDomain(
+            VkTimeDomainKHR           timeDomain) const;
 
     uint64_t translateTimestamp(
             VkTimeDomainKHR           srcTimeDomain,

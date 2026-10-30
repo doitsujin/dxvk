@@ -1407,7 +1407,7 @@ namespace dxvk {
     }
 
     for (size_t i = 0u; i < domains.size(); i++) {
-      if (domains[i] == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+      if (domains[i] == dxvk::high_resolution_clock::get_vk_time_domain()) {
         auto& domain = info.domains.emplace_back();
         domain.timeDomain = domains[i];
       }
@@ -1665,18 +1665,18 @@ namespace dxvk {
         report.timeDomain, report.timeDomainId, time.time,
         VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frameEntry->timingDomainId);
 
-      uint64_t reportTimeQpc = 0u;
+      uint64_t reportTimeHost = 0u;
 
-      if (hasQpcDomain()) {
-        reportTimeQpc = translateTimestamp(
+      if (hasTimeDomain(dxvk::high_resolution_clock::get_vk_time_domain())) {
+        reportTimeHost = translateTimestamp(
           report.timeDomain, report.timeDomainId, time.time,
-          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+          dxvk::high_resolution_clock::get_vk_time_domain(), 0u);
       }
 
       if (reportTimeLocal) {
         m_timingMode.lastFrameId = report.presentId;
         m_timingMode.lastFrameTimeLocal = reportTimeLocal;
-        m_timingMode.lastFrameTimeQpc = reportTimeQpc;
+        m_timingMode.lastFrameTimeHost = reportTimeHost;
 
         hasMissedDeadline = reportTimeLocal > frameEntry->targetDeadline;
       }
@@ -1691,9 +1691,9 @@ namespace dxvk {
     // - The current frame was submitted with a timing query.
     // - We successfully mapped the report timestamp back to QPC.
     // TODO figure out the correct time domain for dxvk-native to use.
-    if (m_timingMode.lastFrameTimeQpc && (!frameId || queryStages)) {
+    if (m_timingMode.lastFrameTimeHost && (!frameId || queryStages)) {
       feedback.frameId = m_timingMode.lastFrameId;
-      feedback.presentTime = m_timingMode.lastFrameTimeQpc;
+      feedback.presentTime = m_timingMode.lastFrameTimeHost;
     }
 
     return commitTimingFeedback(feedback);
@@ -1720,10 +1720,10 @@ namespace dxvk {
     uint64_t qpcTargetTime = 0u;
 
     { std::lock_guard lock(m_timingMutex);
-      if (hasQpcDomain()) {
+      if (hasTimeDomain(dxvk::high_resolution_clock::get_vk_time_domain())) {
         qpcTargetTime = translateTimestamp(
           VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frame.timingDomainId, frame.targetTime,
-          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+          dxvk::high_resolution_clock::get_vk_time_domain(), 0u);
       }
     }
 
@@ -1750,12 +1750,12 @@ namespace dxvk {
   }
 
 
-  bool Presenter::hasQpcDomain() {
+  bool Presenter::hasTimeDomain(VkTimeDomainKHR timeDomain) const {
     if (!m_timingDomains)
       return false;
 
     for (const auto& domain : m_timingDomains->domains) {
-      if (domain.timeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR)
+      if (domain.timeDomain == timeDomain)
         return true;
     }
 
