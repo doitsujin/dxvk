@@ -302,6 +302,35 @@ namespace dxvk {
     return D3D9TextureStageStateTypes(Type - 1);
   }
 
+  /**
+   * \brief Preserves the calling thread's floating point state
+   *
+   * Some Vulkan drivers (seen with Nvidia on Windows) change the SSE
+   * rounding mode in MXCSR during device creation and don't restore it.
+   * Native D3D9 never touches MXCSR, and games that depend on the default
+   * rounding break, e.g. the camera shake in Assassin's Creed 2 (#2249).
+   * The x87 control word is only restored with D3DCREATE_FPU_PRESERVE,
+   * since D3D9 sets it up deliberately otherwise.
+   */
+  class D3D9FpuStateGuard {
+
+  public:
+
+    explicit D3D9FpuStateGuard(bool preserveX87);
+
+    ~D3D9FpuStateGuard();
+
+    D3D9FpuStateGuard             (const D3D9FpuStateGuard&) = delete;
+    D3D9FpuStateGuard& operator = (const D3D9FpuStateGuard&) = delete;
+
+  private:
+
+    bool      m_preserveX87 = false;
+    uint32_t  m_mxcsr       = 0;
+    uint16_t  m_x87Control  = 0;
+
+  };
+
 }
 
 
