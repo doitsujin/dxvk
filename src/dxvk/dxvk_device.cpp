@@ -179,12 +179,7 @@ namespace dxvk {
   
   
   Rc<DxvkCommandList> DxvkDevice::createCommandList() {
-    Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
-    
-    if (cmdList == nullptr)
-      cmdList = new DxvkCommandList(this);
-    
-    return cmdList;
+    return m_recycledCommandLists.retrieveObject(this);
   }
 
 
