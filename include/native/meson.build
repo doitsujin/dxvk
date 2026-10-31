@@ -16,5 +16,7 @@ install_headers(
   'wsi/native_sdl3.h',
   'wsi/native_sdl2.h',
   'wsi/native_glfw.h',
+  'wsi/native_external.h',
+  'wsi/native_external_wsi.h',
   subdir: 'dxvk/wsi',
 )
