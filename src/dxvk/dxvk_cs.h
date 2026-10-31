@@ -511,7 +511,7 @@ namespace dxvk {
    * commands on a DXVK context. 
    */
   class DxvkCsThread {
-
+    static constexpr uint64_t MaxQueuedCsChunks = 256u;
   public:
 
     constexpr static uint64_t SynchronizeAll = ~0ull;
