@@ -28,13 +28,14 @@ namespace dxvk {
      * return \c nullptr and a new object has to be created.
      * \return An object, or \c nullptr
      */
-    Rc<T> retrieveObject() {
+    template<typename... Args>
+    Rc<T> retrieveObject(Args&&... args) {
       std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+      if (!m_index)
+        return new T(std::forward<Args>(args)...);
       
-      if (m_get == m_put)
-        return nullptr;
-      
-      return std::exchange(m_objects[(m_get++) % N], Rc<T>());
+      return std::exchange(m_objects.at(--m_index), Rc<T>());
     }
     
     /**
@@ -48,8 +49,8 @@ namespace dxvk {
     void returnObject(const Rc<T>& object) {
       std::lock_guard<dxvk::mutex> lock(m_mutex);
       
-      if (m_put - m_get < N)
-        m_objects[(m_put++) % N] = object;
+      if (m_index < N)
+        m_objects.at(m_index++) = object;
     }
     
   private:
@@ -57,8 +58,7 @@ namespace dxvk {
     dxvk::mutex           m_mutex;
     std::array<Rc<T>, N>  m_objects;
 
-    uint64_t              m_get = 0;
-    uint64_t              m_put = 0;
+    size_t                m_index = 0;
     
   };
   
