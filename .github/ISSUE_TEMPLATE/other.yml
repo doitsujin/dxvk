@@ -1,0 +1,16 @@
+name: Other
+description: Questions, feature requests etc.
+body:
+  - type: checkboxes
+    attributes:
+      label: "By opening this issue, I confirm that:"
+      options:
+        - label: "I have not copy-pasted an LLM-generated response into the description."
+          required: true
+  - type: textarea
+    attributes:
+      label: Description
+      value: |
+        <!--
+        Not for reporting bugs. Please use the Bug report template instead
+        -->
