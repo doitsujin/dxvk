@@ -45,14 +45,25 @@ namespace dxvk {
   static bool isXessVendorWaNeeded() {
     #ifdef _WIN32
     HMODULE libxess = nullptr;
+    Logger::debug("DXGI: XeSS vendor workaround check started");
 
     // Use Ex variant here to keep the library loaded while we use the handle
-    if (!GetModuleHandleExA(0u, "libxess", &libxess)
-     && !GetModuleHandleExA(0u, "libxess_dx11", &libxess))
-      return false;
+    const bool hasLibxess = GetModuleHandleExA(0u, "libxess", &libxess);
+    const bool hasLibxessDx11 = hasLibxess
+      ? false
+      : GetModuleHandleExA(0u, "libxess_dx11", &libxess);
 
-    if (!libxess)
+    if (!hasLibxess && !hasLibxessDx11) {
+      Logger::debug("DXGI: XeSS vendor workaround skipped, no XeSS module loaded");
       return false;
+    }
+
+    Logger::debug(str::format("DXGI: XeSS module loaded: ", hasLibxess ? "libxess" : "libxess_dx11"));
+
+    if (!libxess) {
+      Logger::warn("DXGI: XeSS module handle was null after successful module lookup");
+      return false;
+    }
 
     // For some reason it seems to be impossible to just query
     // the length, need to pre-allocate for the worst case
@@ -63,9 +74,22 @@ namespace dxvk {
     // on the actual file from now on
     FreeLibrary(libxess);
 
+    Logger::debug(str::format("DXGI: XeSS module path query length: ", nameLen));
+
     if (!nameLen) {
       Logger::warn("DXGI: Failed to get file name for XeSS module");
       return true;
+    }
+
+    Logger::debug(str::format("DXGI: XeSS module path: ", fileName.data()));
+
+    // When XESS_LIB_OVERRIDE is set, the module is a native Linux .so and has
+    // no Windows version info resources, so the query below will always fail.
+    // Assume the user is intentionally using a modern XeSS that doesn't need
+    // the Intel GPU workaround.
+    if (!env::getEnvVar("XESS_LIB_OVERRIDE").empty()) {
+      Logger::info("DXGI: XeSS library override detected, skipping Intel GPU workaround");
+      return false;
     }
 
     // Query version info blob size...
@@ -104,11 +128,21 @@ namespace dxvk {
     const uint32_t patch = fiBlockTyped->dwProductVersionLS >> 16;
     const uint32_t build = fiBlockTyped->dwProductVersionLS & 0xffffu;
 
+    Logger::debug(str::format(
+      "DXGI: XeSS product version parsed as ",
+      major, ".", minor, ".", patch, ".", build));
+
     // Some early 2.0 builds are still affected, keep the workaround enabled
     // until at least 2.0.2.68.
     const bool isKnownGood = isVersionAtLeast(
       major, minor, patch, build,
       2u, 0u, 2u, 68u);
+
+    Logger::debug(str::format(
+      "DXGI: XeSS vendor workaround decision, known-good>=2.0.2.68=",
+      isKnownGood ? "true" : "false",
+      ", workaround-needed=",
+      isKnownGood ? "false" : "true"));
 
     return !isKnownGood;
     #else
@@ -118,6 +152,23 @@ namespace dxvk {
 
   static bool isNvapiEnabled() {
     return env::getEnvVar("DXVK_ENABLE_NVAPI") == "1";
+  }
+
+
+  bool DxgiOptions::shouldHideIntelGpu() const {
+    if (this->hideIntelGpu)
+      return true;
+
+    if (m_xessVendorWaApplied.load())
+      return true;
+
+    if (!isXessVendorWaNeeded())
+      return false;
+
+    if (!m_xessVendorWaApplied.exchange(true))
+      Logger::info(str::format("XeSS: hiding Intel GPU Vendor ID"));
+
+    return true;
   }
 
 
@@ -186,11 +237,6 @@ namespace dxvk {
     // logic to Nvidia later, if necessary.
     this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
     this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
-
-    if (isXessVendorWaNeeded()) {
-      Logger::info(str::format("XeSS: hiding Intel GPU Vendor ID"));
-      this->hideIntelGpu = true;
-    }
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
 

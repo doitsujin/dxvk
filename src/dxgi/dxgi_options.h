@@ -17,6 +17,8 @@ namespace dxvk {
   struct DxgiOptions {
     DxgiOptions(const Config& config);
 
+    bool shouldHideIntelGpu() const;
+
     void incRef() {
       m_useCount.fetch_add(1u);
     }
@@ -70,8 +72,9 @@ namespace dxvk {
 
   private:
 
+    mutable std::atomic<bool> m_xessVendorWaApplied = { false };
     std::atomic<uint32_t> m_useCount = { 0u };
 
   };
-  
+
 }
