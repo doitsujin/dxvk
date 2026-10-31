@@ -15,6 +15,8 @@ namespace dxvk {
     hash.add(bit::fnv1a_hash(reinterpret_cast<const char*>(&options), sizeof(options)));
     hash.add(flatShadingInputs);
     hash.add(rasterizedStream);
+    static_assert(std::is_trivially_copyable_v<DxvkNvMultiviewInfo>);
+    hash.add(bit::fnv1a_hash(reinterpret_cast<const char*>(&nvMultiview), sizeof(nvMultiview)));
 
     for (const auto& xfb : xfbEntries)
       hash.add(std::hash<dxbc_spv::ir::IoXfbInfo>()(xfb));
@@ -33,7 +35,10 @@ namespace dxvk {
      || rasterizedStream != other.rasterizedStream)
       return false;
 
-    if (xfbEntries.size() != other.xfbEntries.size())
+    if (std::memcmp(&nvMultiview, &other.nvMultiview, sizeof(nvMultiview)))
+      return false;
+
+      if (xfbEntries.size() != other.xfbEntries.size())
       return false;
 
     for (size_t i = 0u; i != xfbEntries.size(); i++) {
