@@ -186,15 +186,28 @@ namespace dxvk::hud {
   void HudFpsItem::update(
           Presenter&                              presenter,
           dxvk::high_resolution_clock::time_point time) {
-    m_frameCount += 1;
-
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
     if (elapsed.count() >= UpdateInterval) {
-      int64_t fps = (10'000'000ll * m_frameCount) / elapsed.count();
+      auto feedback = presenter.queryPresentTiming();
 
-      m_frameRate = str::format(fps / 10, ".", fps % 10);
-      m_frameCount = 0;
+      if (feedback.frameId > m_lastFeedback.frameId) {
+        uint64_t frameCount = feedback.frameId - m_lastFeedback.frameId;
+        uint64_t durationUs = std::chrono::duration_cast<std::chrono::microseconds>(
+            dxvk::high_resolution_clock::get_time_from_counter(feedback.presentTimeHost) -
+            dxvk::high_resolution_clock::get_time_from_counter(m_lastFeedback.presentTimeHost)).count();
+
+        uint64_t fps = (double(frameCount) * double(10'000'000.0)) / double(durationUs);
+
+        m_lastFeedback = feedback;
+        m_frameRate = str::format(fps / 10, ".", fps % 10);
+      } else if (feedback.frameId < m_lastFeedback.frameId) {
+        // Reset if there's inconsistencies and re-query as soon as possible.
+        // Might happen if the presenter randomly changes for some reason.
+        m_lastFeedback = feedback;
+        m_frameRate = std::string();
+      }
+
       m_lastUpdate = time;
     }
   }

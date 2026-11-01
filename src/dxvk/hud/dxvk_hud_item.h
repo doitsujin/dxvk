@@ -239,7 +239,8 @@ namespace dxvk::hud {
 
   private:
 
-    uint32_t                                m_frameCount = 0;
+    PresenterTimingFeedback                 m_lastFeedback = {};
+
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
 
