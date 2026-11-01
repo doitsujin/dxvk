@@ -1649,12 +1649,7 @@ namespace dxvk {
 
       // Find queued frame entry so we can properly correlate the report
       // with expected timings
-      const PresenterFrame* frameEntry = nullptr;
-
-      for (const auto& frame : m_frameQueue) {
-        if (frame.frameId == report.presentId)
-          frameEntry = &frame;
-      }
+      const PresenterFrame* frameEntry = findFrameEntry(report.presentId);
 
       if (!frameEntry || frameEntry->timingDomainId != m_timingMode.timeDomainId) {
         Logger::warn(str::format("Presenter: Skipping report for frame ", report.presentId));
@@ -2093,6 +2088,16 @@ namespace dxvk {
     m_frameQueuePushId += 1u;
 
     m_frameCond.notify_one();
+  }
+
+
+  const PresenterFrame* Presenter::findFrameEntry(uint64_t frameId) const {
+    for (const auto& frame : m_frameQueue) {
+      if (frame.frameId == frameId)
+        return &frame;
+    }
+
+    return nullptr;
   }
 
 
