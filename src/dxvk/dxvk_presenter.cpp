@@ -215,49 +215,38 @@ namespace dxvk {
     bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
                    || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
-    uint64_t frameTargetTime = 0u;
+    auto frameTargetTime = PresenterTimingFeedback();
+    auto frameIntervalTicks = uint64_t(0);
 
     VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
-    timingInfo.timeDomainId = m_timingMode.timeDomainId;
 
-    if (m_timingMode.presentStage && isFifoMode) {
-      std::lock_guard lock(m_timingMutex);
-      timingInfo.presentStageQueries = m_timingMode.presentStage;
+    { std::lock_guard lock(m_timingMutex);
+      frameTargetTime = computeFrameTargetTime(frameId);
+      frameIntervalTicks = dxvk::high_resolution_clock::get_ticks(std::chrono::nanoseconds(m_timingMode.frameIntervalNs));
 
-      // If this is the first timed frame in a sequence, ignore older reports
-      if (!m_timingMode.firstValidFrameId)
-        m_timingMode.firstValidFrameId = frameId;
+      if (isFifoMode && m_timingMode.presentStage) {
+        timingInfo.timeDomainId = m_timingMode.timeDomainId;
+        timingInfo.presentStageQueries = m_timingMode.presentStage;
 
-      // Try to avoid overflowing the driver-internal report queue. We can still
-      // work with the existing reports for a short period of time, though.
-      if (m_reportQueueAddId >= m_reportQueueTakeId + FrameQueueSize) {
-        Logger::warn("Presenter: Report queue overflow");
-        timingInfo.presentStageQueries = 0u;
+        // Try to avoid overflowing the driver-internal report queue. We can still
+        // work with the existing reports for a short period of time, though.
+        if (m_reportQueueAddId >= m_reportQueueTakeId + FrameQueueSize) {
+          Logger::warn("Presenter: Report queue overflow");
+          timingInfo.presentStageQueries = 0u;
+        }
+
+        if (m_timingMode.relativeTiming) {
+          timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT;
+          timingInfo.targetTime = m_timingMode.frameIntervalNs;
+          timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+        } else if (m_timingMode.absoluteTiming && frameTargetTime.presentTimeLocal) {
+          timingInfo.targetTime = frameTargetTime.presentTimeLocal;
+          timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+
+          if (m_timingDisplayInfo && !m_timingDisplayInfo->isVariableRefresh)
+            timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT;
+        }
       }
-
-      if (m_timingMode.frameIntervalNs
-       && m_timingMode.reference.frameId >= m_timingMode.firstValidFrameId
-       && m_timingMode.reference.frameId + 2u * FrameQueueSize >= frameId) {
-        frameTargetTime = m_timingMode.reference.presentTimeLocal +
-          (frameId - m_timingMode.reference.frameId) * m_timingMode.frameIntervalNs;
-      }
-
-      if (m_timingMode.relativeTiming) {
-        timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT;
-        timingInfo.targetTime = m_timingMode.frameIntervalNs;
-        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
-      } else if (m_timingMode.absoluteTiming && frameTargetTime) {
-        timingInfo.targetTime = frameTargetTime;
-        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
-
-        if (m_timingDisplayInfo && !m_timingDisplayInfo->isVariableRefresh)
-          timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT;
-      }
-    } else {
-      // When presenting with a non-FIFO mode, ensure that we don't compute
-      // frame target times based on timings from previous FIFO usage.
-      std::lock_guard lock(m_timingMutex);
-      m_timingMode.firstValidFrameId = 0;
     }
 
     VkPresentTimingsInfoEXT timingsInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT };
@@ -277,7 +266,7 @@ namespace dxvk {
       else
         presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
 
-      if (timingInfo.presentStageQueries)
+      if (timingInfo.presentStageQueries || timingInfo.targetTimeDomainPresentStage)
         timingsInfo.pNext = std::exchange(info.pNext, &timingsInfo);
     }
 
@@ -324,8 +313,9 @@ namespace dxvk {
     frame.tracker = tracker;
     frame.mode = m_presentMode;
     frame.result = status;
-    frame.targetTime = frameTargetTime;
-    frame.targetDeadline = frameTargetTime ? frameTargetTime + m_timingMode.frameIntervalNs : 0u;
+    frame.targetTimeHost = frameTargetTime.presentTimeHost;
+    frame.targetStage = timingInfo.targetTimeDomainPresentStage;
+    frame.deadlineHost = frameTargetTime.presentTimeHost ? frameTargetTime.presentTimeHost + frameIntervalTicks : 0u;
     frame.timingDomainId = timingInfo.timeDomainId;
     frame.stageQueries = timingInfo.presentStageQueries;
 
@@ -557,11 +547,16 @@ namespace dxvk {
 
 
   void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
-    m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
-
     std::lock_guard lock(m_timingMutex);
 
     if (m_frameRateLimit != frameRate) {
+      uint64_t frameRateInt = uint64_t(std::abs(frameRate * 10.0));
+
+      Logger::info(frameRate == 0.0f
+        ? str::format("Presenter: Disabling frame rate limiter.")
+        : str::format("Presenter: Enabling frame rate limiter (",
+            frameRateInt / 10u, ".", frameRateInt % 10u, " FPS)"));
+
       m_frameRateLimit = frameRate;
       updateTimingMode();
     }
@@ -1010,10 +1005,9 @@ namespace dxvk {
 
       updateTimingDomains();
       recalibrateTimeDomains();
-
-      updateTimingMode();
     }
 
+    updateTimingMode();
     return VK_SUCCESS;
   }
 
@@ -1466,16 +1460,15 @@ namespace dxvk {
     // Reset reference time and frame ID for absolute timing
     // so that we don't end up submitting bogus timestamps.
     m_timingMode.reference = PresenterTimingFeedback();
-    m_timingMode.firstValidFrameId = 0u;
-
-    // Can't meaningfully do timing if we don't know about display timing
-    if (!m_timingDomains || !m_timingDisplayInfo || m_calibrationFailed)
-      return;
 
     // Compute target frame interval from frame rate limit
     m_timingMode.frameIntervalNs = m_frameRateLimit != 0.0
       ? uint64_t(1000000000.0 / std::abs(m_frameRateLimit))
       : uint64_t(0u);
+
+    // Can't meaningfully do timing if we don't know about display timing
+    if (!m_timingDomains || !m_timingDisplayInfo || m_calibrationFailed)
+      return;
 
     // Don't enable timing if we are trying to limit to less than half a
     // frame per second below maximum refresh. This catches small deltas
@@ -1671,7 +1664,7 @@ namespace dxvk {
         m_timingMode.lastReport.presentTimeLocal = reportTimeLocal;
         m_timingMode.lastReport.presentTimeHost = reportTimeHost;
 
-        hasMissedDeadline = reportTimeLocal > frameEntry->targetDeadline;
+        hasMissedDeadline = reportTimeHost > frameEntry->deadlineHost;
       }
     }
 
@@ -1680,6 +1673,11 @@ namespace dxvk {
     // - We successfully mapped the report timestamp back to the host domain.
     if (m_timingMode.lastReport.presentTimeHost && (!frameId || queryStages))
       feedback = m_timingMode.lastReport;
+
+    if (!hasMissedDeadline) {
+      const PresenterFrame* frameEntry = findFrameEntry(feedback.frameId);
+      hasMissedDeadline = frameEntry && feedback.presentTimeHost > frameEntry->deadlineHost;
+    }
 
     return commitTimingFeedback(feedback, hasMissedDeadline);
   }
@@ -1702,26 +1700,30 @@ namespace dxvk {
   }
 
 
+  PresenterTimingFeedback Presenter::computeFrameTargetTime(
+          uint64_t                  frameId) const {
+    if (!m_timingMode.frameIntervalNs || !m_timingMode.reference.frameId
+     || (m_timingMode.reference.frameId + 2u * FrameQueueSize < frameId))
+      return PresenterTimingFeedback();
+
+    uint64_t deltaNs = (frameId - m_timingMode.reference.frameId) * m_timingMode.frameIntervalNs;
+    uint64_t deltaTicks = dxvk::high_resolution_clock::get_ticks(std::chrono::nanoseconds(deltaNs));
+
+    PresenterTimingFeedback result;
+    result.frameId = frameId;
+    result.presentTimeLocal = m_timingMode.reference.presentTimeLocal + deltaNs;
+    result.presentTimeHost = m_timingMode.reference.presentTimeHost + deltaTicks;
+    return result;
+  }
+
+
   bool Presenter::waitUntilFrameTargetTime(
     const PresenterFrame&           frame) {
-    if (!frame.targetTime)
-      return false;
-
-    uint64_t qpcTargetTime = 0u;
-
-    { std::lock_guard lock(m_timingMutex);
-      if (hasTimeDomain(dxvk::high_resolution_clock::get_vk_time_domain())) {
-        qpcTargetTime = translateTimestamp(
-          VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frame.timingDomainId, frame.targetTime,
-          dxvk::high_resolution_clock::get_vk_time_domain(), 0u);
-      }
-    }
-
-    if (!qpcTargetTime)
+    if (!frame.targetTimeHost)
       return false;
 
     auto now = dxvk::high_resolution_clock::now();
-    auto dxvkTargetTime = dxvk::high_resolution_clock::get_time_from_counter(qpcTargetTime);
+    auto dxvkTargetTime = dxvk::high_resolution_clock::get_time_from_counter(frame.targetTimeHost);
 
     if (now >= dxvkTargetTime)
       return true;
@@ -2128,13 +2130,13 @@ namespace dxvk {
       // intentionally does not line up with vblank in fixed refresh rate
       // scenarios and is done so that the application's render thread can
       // see consistent frame pacing.
-      bool waited = frame.targetTime && waitUntilFrameTargetTime(frame);
+      bool waited = frame.targetStage && waitUntilFrameTargetTime(frame);
 
-      // Legacy path, fall back to present_wait if we don't have timing.
+      // If we haven't waited yet, use present_wait to
       bool isFifoMode = frame.mode == VK_PRESENT_MODE_FIFO_KHR
                      || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
-      if (!waited && isFifoMode && frame.result >= 0 && m_hasPresentWait) {
+      if (isFifoMode && frame.result >= 0 && m_hasPresentWait) {
         VkResult vr;
 
         if (m_device->features().khrPresentWait2.presentWait2) {
@@ -2163,11 +2165,11 @@ namespace dxvk {
       // but if timing is disabled then we should base feedback on present_wait.
       updatePresentTimingFeedback(frame.frameId, frame.stageQueries);
 
-      // Apply FPS limiter here to align it as closely with scanout as we can,
-      // and delay signaling the frame latency event to emulate behaviour of a
-      // low refresh rate display as closely as we can.
+      // If we hit the present_wait path, issue another wait to deal with lower
+      // than native frame rate limits. We should do so *after* committing present
+      // timings so that reported timings are reasonably close to actual vblank.
       if (!waited)
-        m_fpsLimiter.delay();
+        waitUntilFrameTargetTime(frame);
 
       // Wake up any thread that may be waiting for the queue to become empty
       bool canSignal = false;
