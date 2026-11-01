@@ -50,6 +50,18 @@ namespace dxvk {
       return count.QuadPart;
     }
 
+    template<typename T>
+    static int64_t get_ticks(T dur) {
+      static const int64_t freq = get_frequency();
+
+      const int64_t ns = std::chrono::duration_cast<duration>(dur).count();
+
+      const int64_t whole = (ns / period::den) * freq;
+      const int64_t part  = (ns % period::den) * freq / period::den;
+
+      return whole + part;
+    }
+
     static VkTimeDomainKHR get_vk_time_domain() {
       return VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_EXT;
     }
@@ -81,6 +93,11 @@ namespace dxvk {
       return int64_t(tp.tv_sec) * 1'000'000'000 + int64_t(tp.tv_nsec);
     }
 
+    template<typename T>
+    static int64_t get_ticks(T dur) {
+      return std::chrono::duration_cast<duration>(dur).count();
+    }
+
     static VkTimeDomainKHR get_vk_time_domain() {
       return VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT;
     }
@@ -97,6 +114,11 @@ namespace dxvk {
 
     static int64_t get_counter() {
       return now().time_since_epoch().count();
+    }
+
+    template<typename T>
+    static int64_t get_ticks(T dur) {
+      return std::chrono::duration_cast<duration>(dur).count();
     }
 
     static VkTimeDomainKHR get_vk_time_domain() {
