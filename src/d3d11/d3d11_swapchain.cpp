@@ -354,7 +354,7 @@ namespace dxvk {
       feedback = m_presenter->queryPresentTiming();
 
     pFrameStatistics->PresentCount = std::max<uint64_t>(feedback.frameId, DXGI_MAX_SWAP_CHAIN_BUFFERS) - DXGI_MAX_SWAP_CHAIN_BUFFERS;
-    pFrameStatistics->PresentQPCTime = feedback.presentTime;
+    pFrameStatistics->PresentQPCTime = feedback.presentTimeHost;
   }
 
 
