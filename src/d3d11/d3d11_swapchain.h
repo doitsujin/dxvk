@@ -122,6 +122,8 @@ namespace dxvk {
     Rc<DxvkDevice>            m_device;
     Rc<Presenter>             m_presenter;
 
+    Rc<hud::Hud>              m_hud;
+
     Rc<DxvkSwapchainBlitter>  m_blitter;
     Rc<DxvkLatencyTracker>    m_latency;
 
@@ -144,7 +146,6 @@ namespace dxvk {
 
     double                    m_targetFrameRate = 0.0;
 
-    bool                      m_hasHud = false;
     Rc<hud::HudLatencyItem>   m_latencyHud;
 
     Rc<DxvkImageView> GetBackBufferView();

@@ -464,7 +464,7 @@ namespace dxvk {
       // Redraw everything if the HUD is active since we don't
       // keep track of the exact screen areas there. Likewise,
       // nope out if there is any scaling going on.
-      if (!m_hasHud && dstRect.extent != srcRect.extent) {
+      if ((!m_hud || m_hud->empty()) && dstRect.extent != srcRect.extent) {
         VkRect2D bounds = dstRect;
         bounds.offset.x -= srcRect.offset.x;
         bounds.offset.y -= srcRect.offset.y;
@@ -495,6 +495,7 @@ namespace dxvk {
     immediateContext->EmitCs([
       cDevice         = m_device,
       cBlitter        = m_blitter,
+      cHud            = m_hud,
       cBackBuffer     = backBuffer->createView(viewInfo),
       cSwapImage      = GetBackBufferView(),
       cSync           = sync,
@@ -507,6 +508,9 @@ namespace dxvk {
       cSrcRect        = srcRect,
       cDstRect        = dstRect
     ] (DxvkContext* ctx) {
+      if (cHud)
+        cHud->update();
+
       // Update back buffer color space as necessary
       if (cSwapImage->image()->info().colorSpace != cColorSpace) {
         DxvkImageUsageInfo usage = { };
@@ -519,7 +523,7 @@ namespace dxvk {
       // swap chain and render the HUD if we have one.
       auto contextObjects = ctx->beginExternalRendering();
 
-      cBlitter->present(contextObjects, cClearColor,
+      cBlitter->present(contextObjects, cHud, cClearColor,
         cBackBuffer, cDstRect, cSwapImage, cSrcRect);
 
       // Submit current command list and present
@@ -677,17 +681,16 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateBlitter() {
-    Rc<hud::Hud> hud = hud::Hud::createHud(m_device);
+    m_hud = hud::Hud::createHud(m_device);
 
-    if (hud) {
-      hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+    if (m_hud) {
+      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
       if (m_latency)
-        m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+        m_latencyHud = m_hud->addItem<hud::HudLatencyItem>("latency", 4);
     }
 
-    m_hasHud = hud && !hud->empty();
-    m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
+    m_blitter = new DxvkSwapchainBlitter(m_device);
   }
 
 
