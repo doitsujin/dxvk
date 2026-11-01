@@ -35,8 +35,8 @@ namespace dxvk::hud {
   }
 
 
-  void Hud::update() {
-    m_hudItems.update();
+  void Hud::update(Presenter& presenter) {
+    m_hudItems.update(presenter);
   }
 
 

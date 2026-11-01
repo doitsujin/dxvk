@@ -904,7 +904,7 @@ namespace dxvk {
         cLatency        = m_latencyTracker
       ] (DxvkContext* ctx) {
         if (cHud)
-          cHud->update();
+          cHud->update(*cPresenter);
 
         // Update back buffer color space as necessary
         if (cSrcView->image()->info().colorSpace != cColorSpace) {
