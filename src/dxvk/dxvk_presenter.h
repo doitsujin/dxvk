@@ -525,6 +525,9 @@ namespace dxvk {
 
     void pushFrame(const PresenterFrame& frame);
 
+    const PresenterFrame* findFrameEntry(
+            uint64_t                  frameId) const;
+
     void runFrameThread();
 
     static VkResult softError(
