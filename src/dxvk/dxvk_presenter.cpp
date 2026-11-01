@@ -236,10 +236,10 @@ namespace dxvk {
       }
 
       if (m_timingMode.frameIntervalNs
-       && m_timingMode.referenceFrameId >= m_timingMode.firstValidFrameId
-       && m_timingMode.referenceFrameId + 2u * FrameQueueSize >= frameId) {
-        frameTargetTime = m_timingMode.referenceTime +
-          (frameId - m_timingMode.referenceFrameId) * m_timingMode.frameIntervalNs;
+       && m_timingMode.reference.frameId >= m_timingMode.firstValidFrameId
+       && m_timingMode.reference.frameId + 2u * FrameQueueSize >= frameId) {
+        frameTargetTime = m_timingMode.reference.presentTimeLocal +
+          (frameId - m_timingMode.reference.frameId) * m_timingMode.frameIntervalNs;
       }
 
       if (m_timingMode.relativeTiming) {
@@ -1465,8 +1465,7 @@ namespace dxvk {
 
     // Reset reference time and frame ID for absolute timing
     // so that we don't end up submitting bogus timestamps.
-    m_timingMode.referenceTime = 0u;
-    m_timingMode.referenceFrameId = 0u;
+    m_timingMode.reference = PresenterTimingFeedback();
     m_timingMode.firstValidFrameId = 0u;
 
     // Can't meaningfully do timing if we don't know about display timing
@@ -1577,10 +1576,11 @@ namespace dxvk {
 
     PresenterTimingFeedback feedback = {};
     feedback.frameId = frameId;
-    feedback.presentTime = frameId ? dxvk::high_resolution_clock::get_counter() : 0u;
+    feedback.presentTimeLocal = 0u;
+    feedback.presentTimeHost = frameId ? dxvk::high_resolution_clock::get_counter() : 0u;
 
     if (!m_timingMode.presentStage)
-      return commitTimingFeedback(feedback);
+      return commitTimingFeedback(feedback, true);
 
     // Query reports in-order so that we can somewhat robustly
     // track how many frames are still in the report queue
@@ -1605,7 +1605,7 @@ namespace dxvk {
 
     if (status) {
       Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
-      return commitTimingFeedback(feedback);
+      return commitTimingFeedback(feedback, true);
     }
 
     // Update display timing and time domains as necessary
@@ -1621,7 +1621,7 @@ namespace dxvk {
       updateTimingDomains();
 
       if (!recalibrateTimeDomains())
-        return commitTimingFeedback(feedback);
+        return commitTimingFeedback(feedback, true);
     }
 
     if (updateMode)
@@ -1661,52 +1661,47 @@ namespace dxvk {
         continue;
       }
 
-      uint64_t reportTimeLocal = translateTimestamp(
-        report.timeDomain, report.timeDomainId, time.time,
-        VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frameEntry->timingDomainId);
+      uint64_t reportTimeLocal = translateTimestamp(report.timeDomain, report.timeDomainId,
+        time.time, VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, frameEntry->timingDomainId);
 
       uint64_t reportTimeHost = 0u;
 
       if (hasTimeDomain(dxvk::high_resolution_clock::get_vk_time_domain())) {
-        reportTimeHost = translateTimestamp(
-          report.timeDomain, report.timeDomainId, time.time,
-          dxvk::high_resolution_clock::get_vk_time_domain(), 0u);
+        reportTimeHost = translateTimestamp(report.timeDomain, report.timeDomainId,
+          time.time, dxvk::high_resolution_clock::get_vk_time_domain(), 0u);
       }
 
       if (reportTimeLocal) {
-        m_timingMode.lastFrameId = report.presentId;
-        m_timingMode.lastFrameTimeLocal = reportTimeLocal;
-        m_timingMode.lastFrameTimeHost = reportTimeHost;
+        m_timingMode.lastReport.frameId = report.presentId;
+        m_timingMode.lastReport.presentTimeLocal = reportTimeLocal;
+        m_timingMode.lastReport.presentTimeHost = reportTimeHost;
 
         hasMissedDeadline = reportTimeLocal > frameEntry->targetDeadline;
       }
     }
 
-    if (!m_timingMode.referenceFrameId || hasMissedDeadline) {
-      m_timingMode.referenceFrameId = m_timingMode.lastFrameId;
-      m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
-    }
-
     // Update feedback from timing reports only if two conditions are true:
     // - The current frame was submitted with a timing query.
-    // - We successfully mapped the report timestamp back to QPC.
-    // TODO figure out the correct time domain for dxvk-native to use.
-    if (m_timingMode.lastFrameTimeHost && (!frameId || queryStages)) {
-      feedback.frameId = m_timingMode.lastFrameId;
-      feedback.presentTime = m_timingMode.lastFrameTimeHost;
-    }
+    // - We successfully mapped the report timestamp back to the host domain.
+    if (m_timingMode.lastReport.presentTimeHost && (!frameId || queryStages))
+      feedback = m_timingMode.lastReport;
 
-    return commitTimingFeedback(feedback);
+    return commitTimingFeedback(feedback, hasMissedDeadline);
   }
 
 
   PresenterTimingFeedback Presenter::commitTimingFeedback(
-    const PresenterTimingFeedback&  feedback) {
+    const PresenterTimingFeedback&  feedback,
+          bool                      updateReference) {
     // Only commit present timing if the new frame ID is larger than the
     // previous frame ID, in order to avoid reverting the counter in case
     // the application spins on present statistics.
-    if (feedback.frameId > m_timingFeedback.frameId)
+    if (feedback.frameId > m_timingFeedback.frameId) {
       m_timingFeedback = feedback;
+
+      if (!m_timingMode.reference.frameId || updateReference)
+        m_timingMode.reference = feedback;
+    }
 
     return m_timingFeedback;
   }

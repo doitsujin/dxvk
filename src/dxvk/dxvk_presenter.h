@@ -54,6 +54,15 @@ namespace dxvk {
   };
 
   /**
+   * \brief Timing info for the last presented frame
+   */
+  struct PresenterTimingFeedback {
+    uint64_t frameId = 0u;
+    uint64_t presentTimeLocal = 0u;
+    uint64_t presentTimeHost = 0u;
+  };
+
+  /**
    * \brief Queued frame
    */
   struct PresenterFrame {
@@ -124,20 +133,9 @@ namespace dxvk {
     bool absoluteTiming = false;
     uint64_t timeDomainId = 0u;
     uint64_t frameIntervalNs = 0u;
-    uint64_t referenceTime = 0u;
-    uint64_t referenceFrameId = 0u;
-    uint64_t lastFrameTimeLocal = 0u;
-    uint64_t lastFrameTimeHost = 0u;
-    uint64_t lastFrameId = 0u;
+    PresenterTimingFeedback reference = {};
+    PresenterTimingFeedback lastReport = {};
     uint64_t firstValidFrameId = 0u;
-  };
-
-  /**
-   * \brief Timing info for the last presented frame
-   */
-  struct PresenterTimingFeedback {
-    uint64_t frameId = 0u;
-    uint64_t presentTime = 0u;
   };
 
   /**
@@ -491,7 +489,8 @@ namespace dxvk {
             VkPresentStageFlagsEXT    queryStages);
 
     PresenterTimingFeedback commitTimingFeedback(
-      const PresenterTimingFeedback&  feedback);
+      const PresenterTimingFeedback&  feedback,
+            bool                      updateReference);
 
     bool waitUntilFrameTargetTime(
       const PresenterFrame&           frame);
