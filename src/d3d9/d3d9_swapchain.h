@@ -149,6 +149,8 @@ namespace dxvk {
     Rc<DxvkDevice>            m_device;
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
+    Rc<hud::Hud>              m_hud;
+
     std::unordered_map<
       HWND,
       D3D9WindowContext>      m_presenters;

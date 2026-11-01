@@ -113,8 +113,7 @@ namespace dxvk {
   public:
 
     DxvkSwapchainBlitter(
-      const Rc<DxvkDevice>& device,
-      const Rc<hud::Hud>&   hud);
+      const Rc<DxvkDevice>& device);
     ~DxvkSwapchainBlitter();
 
     /**
@@ -132,6 +131,7 @@ namespace dxvk {
      */
     void present(
       const Rc<DxvkCommandList>&ctx,
+      const Rc<hud::Hud>&       hud,
             VkClearColorValue   clearColor,
       const Rc<DxvkImageView>&  dstView,
             VkRect2D            dstRect,
@@ -211,7 +211,6 @@ namespace dxvk {
     };
 
     Rc<DxvkDevice>      m_device;
-    Rc<hud::Hud>        m_hud;
 
     dxvk::mutex         m_mutex;
     Rc<DxvkBuffer>      m_gammaBuffer;
@@ -251,6 +250,7 @@ namespace dxvk {
 
     void renderHudImage(
       const Rc<DxvkCommandList>&        ctx,
+      const Rc<hud::Hud>&               hud,
             VkExtent3D                  extent);
 
     void createHudImage(

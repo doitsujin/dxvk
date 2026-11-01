@@ -893,6 +893,7 @@ namespace dxvk {
         cDevice         = m_device,
         cPresenter      = m_wctx->presenter,
         cBlitter        = m_blitter,
+        cHud            = m_hud,
         cColorSpace     = m_colorspace,
         cSrcView        = swapImageView,
         cSrcRect        = srcRect,
@@ -902,6 +903,9 @@ namespace dxvk {
         cFrameId        = m_wctx->frameId,
         cLatency        = m_latencyTracker
       ] (DxvkContext* ctx) {
+        if (cHud)
+          cHud->update();
+
         // Update back buffer color space as necessary
         if (cSrcView->image()->info().colorSpace != cColorSpace) {
           DxvkImageUsageInfo usage = { };
@@ -913,7 +917,7 @@ namespace dxvk {
         // Blit back buffer onto Vulkan swap chain
         auto contextObjects = ctx->beginExternalRendering();
 
-        cBlitter->present(contextObjects, VkClearColorValue(),
+        cBlitter->present(contextObjects, cHud, VkClearColorValue(),
           cDstView, cDstRect, cSrcView, cSrcRect);
 
         // Submit command list and present
@@ -1090,22 +1094,22 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::CreateBlitter() {
-    Rc<hud::Hud> hud = hud::Hud::createHud(m_device);
+    m_hud = hud::Hud::createHud(m_device);
 
-    if (hud) {
-      m_apiHud = hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+    if (m_hud) {
+      m_apiHud = m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
       if (m_latencyTracking)
-        m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+        m_latencyHud = m_hud->addItem<hud::HudLatencyItem>("latency", 4);
 
-      hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
+      m_hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 
 #ifdef DXVK_USE_UNMAPPABLE_MEMORY
-      hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
+      m_hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
 #endif
     }
 
-    m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
+    m_blitter = new DxvkSwapchainBlitter(m_device);
   }
 
 
