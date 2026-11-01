@@ -8,6 +8,7 @@
 #include "../../util/util_time.h"
 
 #include "../dxvk_gpu_query.h"
+#include "../dxvk_presenter.h"
 
 #include "dxvk_hud_renderer.h"
 
@@ -30,6 +31,7 @@ namespace dxvk::hud {
      * \param [in] time Current time
      */
     virtual void update(
+            Presenter&                              presenter,
             dxvk::high_resolution_clock::time_point time);
 
     /**
@@ -68,7 +70,7 @@ namespace dxvk::hud {
      * \brief Updates the HUD
      * Updates all enabled HUD items.
      */
-    void update();
+    void update(Presenter&     presenter);
 
     /**
      * \brief Renders the HUD
@@ -224,7 +226,9 @@ namespace dxvk::hud {
 
     ~HudFpsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -360,7 +364,9 @@ namespace dxvk::hud {
 
     ~HudSubmissionStatsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -401,7 +407,9 @@ namespace dxvk::hud {
 
     ~HudDrawCallStatsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -439,7 +447,9 @@ namespace dxvk::hud {
 
     ~HudPipelineStatsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -470,7 +480,9 @@ namespace dxvk::hud {
 
     ~HudDescriptorStatsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -513,7 +525,9 @@ namespace dxvk::hud {
 
     ~HudMemoryStatsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -544,7 +558,9 @@ namespace dxvk::hud {
 
     ~HudMemoryDetailsItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -627,7 +643,9 @@ namespace dxvk::hud {
 
     ~HudCsThreadItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -673,7 +691,9 @@ namespace dxvk::hud {
 
     ~HudGpuLoadItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -708,7 +728,9 @@ namespace dxvk::hud {
 
     ~HudCompilerActivityItem();
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,
@@ -751,7 +773,9 @@ namespace dxvk::hud {
 
     void accumulateStats(const DxvkLatencyStats& stats);
 
-    void update(dxvk::high_resolution_clock::time_point time);
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
       const Rc<DxvkCommandList>&ctx,

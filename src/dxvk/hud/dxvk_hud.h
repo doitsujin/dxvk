@@ -27,7 +27,7 @@ namespace dxvk::hud {
      * Updates the data to display.
      * Should be called once per frame.
      */
-    void update();
+    void update(Presenter& presenter);
 
     /**
      * \brief Render HUD
