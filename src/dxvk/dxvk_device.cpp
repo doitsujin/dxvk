@@ -581,18 +581,8 @@ namespace dxvk {
 
   Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
     const Rc<Presenter>&            presenter) {
-    if (m_options.latencySleep == Tristate::False)
-      return nullptr;
-
-    if (m_options.latencySleep == Tristate::Auto) {
-      if (m_features.nvLowLatency2)
-        return new DxvkReflexLatencyTrackerNv(this, presenter, m_options.latencySleep);
-      else
-        return nullptr;
-    }
-
-    return new DxvkBuiltInLatencyTracker(presenter,
-      m_options.latencyTolerance, m_features.nvLowLatency2);
+    return new DxvkReflexLatencyTrackerNv(this,
+      presenter, m_options.latencySleep);
   }
 
 
