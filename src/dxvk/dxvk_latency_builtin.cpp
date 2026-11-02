@@ -4,7 +4,6 @@
 
 #include "../util/log/log.h"
 
-#include "../util/util_fps_limiter.h"
 #include "../util/util_string.h"
 
 namespace dxvk {
