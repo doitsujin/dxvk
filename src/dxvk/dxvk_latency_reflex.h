@@ -181,6 +181,9 @@ namespace dxvk {
 
     Tristate                  m_setting = Tristate::Auto;
 
+    DxvkReflexLatencyFrameData& lookupFrameData(
+            uint64_t                  dxvkFrameId);
+
     DxvkReflexLatencyFrameData& getFrameData(
             uint64_t                  dxvkFrameId);
 
@@ -200,11 +203,15 @@ namespace dxvk {
             uint64_t                  dxvkFrameId,
             VkLatencyMarkerNV         marker);
 
-    void performSleep(
+    duration performSleep(
             std::unique_lock<dxvk::mutex>& lock,
             uint64_t                  dxvkFrameId);
 
     static uint64_t timeToUs(time_point timestamp);
+
+    static duration estimateTime(
+      const duration*                 frames,
+            size_t                    frameCount);
 
   };
 

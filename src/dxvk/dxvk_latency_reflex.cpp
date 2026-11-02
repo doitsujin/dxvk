@@ -221,19 +221,20 @@ namespace dxvk {
 
     // Only sleep if the app doesn't explicitly do Reflex and if
     // latency sleep is explicitly enabled via the configuration
-    if (!m_lowLatencyMode.lowLatencyMode && m_setting == Tristate::True) {
-      auto sleepDuration = performSleep(lock, frameId);
+    duration sleepDuration = {};
 
-      m_lastSleepAppFrameId = m_lastBeginAppFrameId;
-      m_lastSleepDuration = sleepDuration;
-    }
+    if (!m_lowLatencyMode.lowLatencyMode && m_setting == Tristate::True)
+      sleepDuration = performSleep(lock, frameId - 1u);
 
     m_lastNoMarkerFrameId = frameId;
 
-    if (m_lowLatencyMode.lowLatencyMode) {
-      auto& frame = getFrameData(frameId);
+    auto& frame = getFrameData(frameId);
+
+    if (frame.frameStart == time_point())
       frame.frameStart = dxvk::high_resolution_clock::now();
-    }
+
+    if (frame.sleepDuration == duration())
+      frame.sleepDuration = sleepDuration;
   }
 
 
@@ -250,9 +251,10 @@ namespace dxvk {
     if (!m_lastCompletedFrameId)
       return DxvkLatencyStats();
 
-    auto& frame = getFrameData(m_lastCompletedFrameId);
+    auto& frame = lookupFrameData(m_lastCompletedFrameId);
 
-    if (frame.frameEnd == time_point())
+    if (frame.frameId != m_lastCompletedFrameId
+     || frame.frameEnd == time_point())
       return DxvkLatencyStats();
 
     time_point frameStart = frame.cpuSimBegin;
@@ -349,6 +351,9 @@ namespace dxvk {
     if (isStartMarker && m_lastSleepDuration != duration(0u))
       frame.sleepDuration = std::exchange(m_lastSleepDuration, duration(0u));
 
+    if (isStartMarker && frame.frameStart == time_point())
+      frame.frameStart = cpuTime;
+
     switch (marker) {
       case VK_LATENCY_MARKER_INPUT_SAMPLE_NV:
         frame.cpuInputSample = cpuTime;
@@ -397,14 +402,14 @@ namespace dxvk {
     // If the app doesn't use markers, wait for the previous present
     // call to complete so that we don't confuse the algorithm by
     // sleeping at random times relative to actual graphics work.
-    uint64_t frameId = lookupFrameId(m_lastBeginAppFrameId) + 1u;
+    uint64_t frameId = lookupFrameId(m_lastBeginAppFrameId);
 
     if (m_lowLatencyNoMarkers) {
       m_cond.wait(lock, [this] {
         return m_lastPresentComplete >= m_lastPresentQueued;
       });
 
-      frameId = m_lastPresentComplete + 1u;
+      frameId = m_lastPresentComplete;
     }
 
     // Actually sleep and write back sleep duration for the next frame
@@ -478,6 +483,12 @@ namespace dxvk {
           uint64_t                  appFrameId) {
     std::lock_guard lock(m_mutex);
     return lookupFrameId(appFrameId);
+  }
+
+
+  DxvkReflexLatencyFrameData& DxvkReflexLatencyTrackerNv::lookupFrameData(
+          uint64_t                  dxvkFrameId) {
+    return m_frames[dxvkFrameId % FrameCount];
   }
 
 
@@ -560,19 +571,104 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::performSleep(
+  DxvkReflexLatencyTrackerNv::duration DxvkReflexLatencyTrackerNv::performSleep(
           std::unique_lock<dxvk::mutex>& lock,
           uint64_t                  dxvkFrameId) {
     if (m_device->features().nvLowLatency2) {
       lock.unlock();
-      m_presenter->latencySleepNv();
+      duration sleepDuration = m_presenter->latencySleepNv();
       lock.lock();
+      return sleepDuration;
+    } else {
+      // Look at the past couple of presents to estimate frame times
+      static constexpr uint64_t MaxFrames = 16u;
+      static constexpr duration Tolerance = std::chrono::duration_cast<duration>(std::chrono::microseconds(1000));
+      static constexpr duration MaxDuration = std::chrono::duration_cast<duration>(std::chrono::microseconds(100000));
+
+      uint64_t nextFrameId = dxvkFrameId + 1u;
+      uint64_t lastFrameId = m_lastCompletedFrameId;
+
+      const auto& lastFrame = lookupFrameData(lastFrameId);
+
+      if (lastFrame.frameId != m_lastCompletedFrameId
+       || lastFrame.frameEnd == time_point())
+        return duration();
+
+      std::array<duration, MaxFrames> cpuTimes;
+      std::array<duration, MaxFrames> gpuTimes;
+
+      for (uint64_t i = 0u; i < MaxFrames; i++) {
+        const auto& curr = lookupFrameData(lastFrameId - i);
+        const auto& prev = lookupFrameData(lastFrameId - i - 1u);
+
+        if ((curr.frameId != lastFrameId - i)
+         || (prev.frameId != lastFrameId - i - 1u))
+          return duration();
+
+        cpuTimes[i] = (curr.queueSubmit - curr.frameStart) + curr.gpuIdleTime;
+        gpuTimes[i] = (curr.gpuExecEnd - curr.gpuExecStart) - curr.gpuIdleTime;
+      }
+
+      duration nextCpuTime = estimateTime(cpuTimes.data(), cpuTimes.size());
+      duration nextGpuTime = estimateTime(gpuTimes.data(), gpuTimes.size());
+      duration nextInterval = std::max(m_presenter->queryFrameInterval(), nextCpuTime + nextGpuTime);
+
+      if (m_lowLatencyMode.lowLatencyMode) {
+        auto minInterval = std::chrono::duration_cast<duration>(
+          std::chrono::microseconds(m_lowLatencyMode.minimumIntervalUs));
+        nextInterval = std::max(nextInterval, minInterval);
+      }
+
+      // Compute time when we want presentation for the next frame to complete
+      time_point frameDeadline = lastFrame.frameEnd + (nextFrameId - lastFrameId) * (nextInterval - Tolerance);
+
+      // Line up the next frame in such a way that the first GPU submission
+      // happens just before the current frame's final submission completes
+      time_point frameStartTime = frameDeadline - nextGpuTime - nextCpuTime;
+      time_point now = dxvk::high_resolution_clock::now();
+
+      if (frameStartTime <= now)
+        return duration();
+
+      // Actually perform the sleep
+      auto sleepDuration = std::min(frameStartTime - now, MaxDuration);
+
+      lock.unlock();
+      Sleep::sleepUntil(now, now + sleepDuration);
+      lock.lock();
+
+      return sleepDuration;
     }
   }
 
 
   uint64_t DxvkReflexLatencyTrackerNv::timeToUs(time_point timestamp) {
     return std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count();
+  }
+
+
+  DxvkReflexLatencyTrackerNv::duration DxvkReflexLatencyTrackerNv::estimateTime(
+    const duration*                 frames,
+          size_t                    frameCount) {
+    // For each frame, find the median of its neighbours, then
+    // use the minimum of those medians as our estimate.
+    duration result = duration(0u);
+
+    for (size_t i = 0u; i < frameCount - 2u; i++) {
+      duration a = frames[i];
+      duration b = frames[i + 1];
+      duration c = frames[i + 2];
+
+      duration min = std::min(std::min(a, b), c);
+      duration max = std::max(std::max(a, b), c);
+
+      duration median = a + b + c - min - max;
+
+      if (!i || median < result)
+        result = median;
+    }
+
+    return std::max(result, duration(0u));
   }
 
 }
