@@ -833,6 +833,7 @@ namespace dxvk {
     bool              m_enableLowLatency  = false;
     bool              m_enableBoost       = false;
     uint64_t          m_minIntervalUs     = 0u;
+
   };
 
 

@@ -286,7 +286,7 @@ namespace dxvk {
      * Any changes will be applied on the next acquire operation.
      * \param [in] sleepMode Latency mode info
      */
-    void setLatencySleepModeNv(
+    void setLatencySleepMode(
       const VkLatencySleepModeInfoNV& sleepMode);
 
     /**
@@ -296,9 +296,8 @@ namespace dxvk {
      * created with low latency support.
      * \param [in] frameId Frame ID
      * \param [in] marker Marker
-     * \returns CPU timestamp of the marker
      */
-    dxvk::high_resolution_clock::time_point setLatencyMarkerNv(
+    void setLatencyMarker(
             uint64_t                frameId,
             VkLatencyMarkerNV       marker);
 
@@ -307,9 +306,8 @@ namespace dxvk {
      *
      * Ignored if the current swapchain has not been
      * created with low latency support.
-     * \returns Sleep duration
      */
-    dxvk::high_resolution_clock::duration latencySleepNv();
+    void latencySleep();
 
     /**
      * \brief Queries latency timings
@@ -318,7 +316,7 @@ namespace dxvk {
      * \param [out] timings Latency timings
      * \returns Number of frame reports returned
      */
-    uint32_t getLatencyTimingsNv(
+    uint32_t getLatencyTimings(
             uint32_t                timingCount,
             VkLatencyTimingsFrameReportNV* timings);
 

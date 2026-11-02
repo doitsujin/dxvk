@@ -412,8 +412,11 @@ namespace dxvk {
   }
 
 
-  void Presenter::setLatencySleepModeNv(
+  void Presenter::setLatencySleepMode(
     const VkLatencySleepModeInfoNV& sleepMode) {
+    if (!m_device->features().nvLowLatency2)
+      return;
+
     std::unique_lock lock(m_surfaceMutex);
 
     if (sleepMode.sType != VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV)
@@ -445,9 +448,12 @@ namespace dxvk {
   }
 
 
-  dxvk::high_resolution_clock::time_point Presenter::setLatencyMarkerNv(
+  void Presenter::setLatencyMarker(
           uint64_t                frameId,
           VkLatencyMarkerNV       marker) {
+    if (!m_device->features().nvLowLatency2)
+      return;
+
     std::unique_lock lock(m_surfaceMutex);
 
     if (!m_latencySleepMode) {
@@ -455,13 +461,8 @@ namespace dxvk {
       // low-latency mode, make sure we have a compatible swapchain
       m_latencySleepMode = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV };
       m_dirtySwapchain = true;
-
-      return dxvk::high_resolution_clock::now();
+      return;
     }
-
-    // Return a CPU timestamp to correlate timestamps from
-    // latency frame reports with actual CPU timestamps
-    auto t0 = dxvk::high_resolution_clock::now();
 
     if (m_latencySleepSupported) {
       VkSetLatencyMarkerInfoNV info = { VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV };
@@ -470,22 +471,17 @@ namespace dxvk {
 
       m_vkd->vkSetLatencyMarkerNV(m_vkd->device(), m_swapchain, &info);
     }
-
-    auto t1 = dxvk::high_resolution_clock::now();
-    return t0 + (t1 - t0) / 2u;
   }
 
 
-  dxvk::high_resolution_clock::duration Presenter::latencySleepNv() {
+  void Presenter::latencySleep() {
     std::unique_lock lock(m_surfaceMutex);
 
     if (!m_latencySleepSupported)
-      return dxvk::high_resolution_clock::duration(0u);
+      return;
 
-    if (!m_latencySemaphore) {
-      if (createLatencySemaphore() != VK_SUCCESS)
-        return dxvk::high_resolution_clock::duration(0u);
-    }
+    if (!m_latencySemaphore && createLatencySemaphore() != VK_SUCCESS)
+      return;
 
     VkLatencySleepInfoNV info = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV };
     info.signalSemaphore = m_latencySemaphore;
@@ -495,21 +491,16 @@ namespace dxvk {
 
     lock.unlock();
 
-    auto t0 = dxvk::high_resolution_clock::now();
-
     VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
     waitInfo.semaphoreCount = 1;
     waitInfo.pSemaphores = &info.signalSemaphore;
     waitInfo.pValues = &info.value;
 
     m_vkd->vkWaitSemaphores(m_vkd->device(), &waitInfo, ~0ull);
-
-    auto t1 = dxvk::high_resolution_clock::now();
-    return t1 - t0;
   }
 
 
-  uint32_t Presenter::getLatencyTimingsNv(
+  uint32_t Presenter::getLatencyTimings(
           uint32_t                timingCount,
           VkLatencyTimingsFrameReportNV* timings) {
     std::unique_lock lock(m_surfaceMutex);
