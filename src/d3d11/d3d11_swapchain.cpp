@@ -2,7 +2,6 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
-#include "../dxvk/dxvk_latency_builtin.h"
 #include "../dxvk/dxvk_shader_spirv.h"
 
 #include "../util/util_win32_compat.h"
@@ -86,7 +85,6 @@ namespace dxvk {
     m_presenter->destroyResources();
     
     DestroyFrameLatencyEvent();
-    DestroyLatencyTracker();
   }
 
 
@@ -287,18 +285,6 @@ namespace dxvk {
     // applications using the semaphore may deadlock. This works because
     // we do not increment the frame ID in those situations.
     SyncFrameLatency();
-
-    // Ignore latency stuff if presentation failed
-    DxvkLatencyStats latencyStats = { };
-
-    if (hr == S_OK && m_latency) {
-      latencyStats = m_latency->getStatistics(m_frameId);
-      m_latency->sleepAndBeginFrame(m_frameId + 1, std::abs(m_targetFrameRate));
-    }
-
-    if (m_latencyHud)
-      m_latencyHud->accumulateStats(latencyStats);
-
     return hr;
   }
 
@@ -415,23 +401,17 @@ namespace dxvk {
     auto immediateContext = m_parent->GetContext();
     auto immediateContextLock = immediateContext->LockContext();
 
-    immediateContext->EndFrame(m_latency);
+    immediateContext->EndFrame();
     immediateContext->ExecuteFlush(GpuFlushType::ExplicitFlush,
       nullptr, m_parent->Is11on12Device());
 
     m_presenter->setSyncInterval(SyncInterval);
 
     // Presentation semaphores and WSI swap chain image
-    if (m_latency)
-      m_latency->notifyCpuPresentBegin(m_frameId + 1u);
-
     PresenterSync sync;
     Rc<DxvkImage> backBuffer;
 
     VkResult status = m_presenter->acquireNextImage(sync, backBuffer);
-
-    if (status != VK_SUCCESS && m_latency)
-      m_latency->discardTimings();
 
     if (status < 0)
       return E_FAIL;
@@ -500,7 +480,6 @@ namespace dxvk {
       cSwapImage      = GetBackBufferView(),
       cSync           = sync,
       cPresenter      = m_presenter,
-      cLatency        = m_latency,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId,
       cDirtyRects     = std::move(dirtyRects),
@@ -530,7 +509,7 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr, 0u);
 
-      cDevice->presentImage(cPresenter, cLatency, cFrameId,
+      cDevice->presentImage(cPresenter, cFrameId,
         cDirtyRects.size(), cDirtyRects.data(), 0u);
     });
 
@@ -538,20 +517,6 @@ namespace dxvk {
       RotateBackBuffers(immediateContext);
 
     immediateContext->FlushCsChunk();
-
-    if (m_latency) {
-      m_latency->notifyCpuPresentEnd(m_frameId);
-
-      if (m_latency->needsAutoMarkers()) {
-        immediateContext->EmitCs([
-          cLatency = m_latency,
-          cFrameId = m_frameId
-        ] (DxvkContext* ctx) {
-          ctx->beginLatencyTracking(cLatency, cFrameId + 1u);
-        });
-      }
-    }
-
     return S_OK;
   }
 
@@ -603,10 +568,7 @@ namespace dxvk {
     m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
 
-    m_latency = m_device->createLatencyTracker(m_presenter);
-
-    Com<D3D11ReflexDevice> reflex = GetReflexDevice();
-    reflex->RegisterLatencyTracker(m_latency);
+    // TODO add Reflex device.
   }
 
 
@@ -683,12 +645,8 @@ namespace dxvk {
   void D3D11SwapChain::CreateBlitter() {
     m_hud = hud::Hud::createHud(m_device);
 
-    if (m_hud) {
+    if (m_hud)
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
-
-      if (m_latency)
-        m_latencyHud = m_hud->addItem<hud::HudLatencyItem>("latency", 4);
-    }
 
     m_blitter = new DxvkSwapchainBlitter(m_device);
   }
@@ -696,20 +654,6 @@ namespace dxvk {
 
   void D3D11SwapChain::DestroyFrameLatencyEvent() {
     CloseHandle(m_frameLatencyEvent);
-  }
-
-
-  void D3D11SwapChain::DestroyLatencyTracker() {
-    // Need to make sure the context stops using
-    // the tracker for submissions
-    m_parent->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
-      cLatency = m_latency
-    ] (DxvkContext* ctx) {
-      ctx->endLatencyTracking(cLatency);
-    });
-
-    Com<D3D11ReflexDevice> reflex = GetReflexDevice();
-    reflex->UnregisterLatencyTracker(m_latency);
   }
 
 

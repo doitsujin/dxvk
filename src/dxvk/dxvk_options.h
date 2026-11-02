@@ -46,12 +46,6 @@ namespace dxvk {
     /// or FIFO_RELAXED (if false) present mode
     Tristate tearFree = Tristate::Auto;
 
-    /// Enables latency sleep
-    Tristate latencySleep = Tristate::Auto;
-
-    /// Latency tolerance, in microseconds
-    int32_t latencyTolerance = 0u;
-
     /// Disable VK_NV_low_latency2. This extension
     /// appears to be all sorts of broken on 32-bit.
     Tristate disableNvLowLatency2 = Tristate::Auto;

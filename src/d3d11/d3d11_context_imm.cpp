@@ -866,8 +866,7 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::EndFrame(
-          Rc<DxvkLatencyTracker>      LatencyTracker) {
+  void D3D11ImmediateContext::EndFrame() {
     D3D10DeviceLock lock = LockContext();
 
     // Don't keep draw buffers alive indefinitely. This cannot be
@@ -875,13 +874,8 @@ namespace dxvk {
     // flush, so no state changes are allowed to happen there.
     SetDrawBuffers(nullptr, nullptr);
 
-    EmitCs<false>([
-      cTracker = std::move(LatencyTracker)
-    ] (DxvkContext* ctx) {
+    EmitCs<false>([] (DxvkContext* ctx) {
       ctx->endFrame();
-
-      if (cTracker && cTracker->needsAutoMarkers())
-        ctx->endLatencyTracking(cTracker);
     });
   }
 

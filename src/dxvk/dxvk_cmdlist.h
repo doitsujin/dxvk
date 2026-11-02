@@ -127,13 +127,11 @@ namespace dxvk {
      *
      * \param [in] device DXVK device
      * \param [in] queue Queue to submit to
-     * \param [in] frameId Latency frame ID
      * \returns Submission return value
      */
     VkResult submit(
             DxvkDevice*           device,
-            VkQueue               queue,
-            uint64_t              frameId);
+            VkQueue               queue);
 
     /**
      * \brief Resets object
@@ -254,13 +252,11 @@ namespace dxvk {
      *
      * \param [in] semaphores Timeline semaphore pair
      * \param [in] timelines Timeline semaphore values
-     * \param [in] frameId Latency frame ID
      * \returns Submission status
      */
     VkResult submit(
       const DxvkTimelineSemaphores&       semaphores,
-            DxvkTimelineSemaphoreValues&  timelines,
-            uint64_t                      frameId);
+            DxvkTimelineSemaphoreValues&  timelines);
     
     /**
      * \brief Stat counters

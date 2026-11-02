@@ -4519,7 +4519,7 @@ namespace dxvk {
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
-      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, false);
+      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       *ppSwapChain = ref(swapchain);
       m_losableResourceCounter++;
     }
@@ -6128,29 +6128,11 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::BeginFrame(Rc<DxvkLatencyTracker> LatencyTracker, uint64_t FrameId) {
+  void D3D9DeviceEx::EndFrame() {
     D3D9DeviceLock lock = LockDevice();
 
-    EmitCs<false>([
-      cTracker = std::move(LatencyTracker),
-      cFrameId = FrameId
-    ] (DxvkContext* ctx) {
-      if (cTracker && cTracker->needsAutoMarkers())
-        ctx->beginLatencyTracking(cTracker, cFrameId);
-    });
-  }
-
-
-  void D3D9DeviceEx::EndFrame(Rc<DxvkLatencyTracker> LatencyTracker) {
-    D3D9DeviceLock lock = LockDevice();
-
-    EmitCs<false>([
-      cTracker = std::move(LatencyTracker)
-    ] (DxvkContext* ctx) {
+    EmitCs<false>([] (DxvkContext* ctx) {
       ctx->endFrame();
-
-      if (cTracker && cTracker->needsAutoMarkers())
-        ctx->endLatencyTracking(cTracker);
     });
   }
 
@@ -8887,7 +8869,7 @@ namespace dxvk {
         return hr;
     }
     else {
-      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, true);
+      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
     }
 
