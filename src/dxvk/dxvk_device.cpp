@@ -1,7 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
-#include "dxvk_latency_builtin.h"
-#include "dxvk_latency_reflex.h"
+#include "dxvk_latency.h"
 #include "dxvk_shader_cache.h"
 #include "dxvk_shader_ir.h"
 
@@ -581,7 +580,7 @@ namespace dxvk {
 
   Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
     const Rc<Presenter>&            presenter) {
-    return new DxvkReflexLatencyTrackerNv(this,
+    return new DxvkLatencyTracker(this,
       presenter, m_options.latencySleep);
   }
 

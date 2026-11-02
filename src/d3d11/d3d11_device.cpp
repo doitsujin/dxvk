@@ -3533,7 +3533,7 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
 
     // Don't keep object locked while sleeping
-    Rc<DxvkReflexLatencyTrackerNv> tracker;
+    Rc<DxvkLatencyTracker> tracker;
 
     { std::lock_guard lock(m_mutex);
       tracker = m_tracker;
@@ -3666,8 +3666,8 @@ namespace dxvk {
     if (m_tracker)
       return;
 
-    if ((m_tracker = dynamic_cast<DxvkReflexLatencyTrackerNv*>(Tracker.ptr())))
-      m_tracker->setLatencySleepMode(m_enableLowLatency, m_enableBoost, m_minIntervalUs);
+    m_tracker = std::move(Tracker);
+    m_tracker->setLatencySleepMode(m_enableLowLatency, m_enableBoost, m_minIntervalUs);
   }
 
 

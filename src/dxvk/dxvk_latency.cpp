@@ -1,9 +1,10 @@
 #include "dxvk_device.h"
-#include "dxvk_latency_reflex.h"
+#include "dxvk_presenter.h"
+#include "dxvk_latency.h"
 
 namespace dxvk {
 
-  DxvkReflexLatencyTrackerNv::DxvkReflexLatencyTrackerNv(
+  DxvkLatencyTracker::DxvkLatencyTracker(
     const Rc<DxvkDevice>&           device,
     const Rc<Presenter>&            presenter,
           Tristate                  lowLatencyMode)
@@ -11,12 +12,12 @@ namespace dxvk {
 
   }
 
-  DxvkReflexLatencyTrackerNv::~DxvkReflexLatencyTrackerNv() {
+  DxvkLatencyTracker::~DxvkLatencyTracker() {
 
   }
 
 
-  bool DxvkReflexLatencyTrackerNv::needsAutoMarkers() {
+  bool DxvkLatencyTracker::needsAutoMarkers() {
     // Submit auto-markers if explicit low-latency mode is disabled.
     // In markerless mode we want to avoid submitting any markers at
     // all and ignore the context
@@ -25,7 +26,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyCpuPresentBegin(
+  void DxvkLatencyTracker::notifyCpuPresentBegin(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
 
@@ -78,14 +79,14 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyCpuPresentEnd(
+  void DxvkLatencyTracker::notifyCpuPresentEnd(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
     m_lastPresentQueued = frameId;
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyCsRenderBegin(
+  void DxvkLatencyTracker::notifyCsRenderBegin(
           uint64_t                  frameId) {
     bool setMarker = false;
 
@@ -103,7 +104,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyCsRenderEnd(
+  void DxvkLatencyTracker::notifyCsRenderEnd(
           uint64_t                  frameId) {
     bool setMarker = false;
 
@@ -121,7 +122,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyQueueSubmit(
+  void DxvkLatencyTracker::notifyQueueSubmit(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
     auto& frame = getFrameData(frameId);
@@ -131,7 +132,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyQueuePresentBegin(
+  void DxvkLatencyTracker::notifyQueuePresentBegin(
           uint64_t                  frameId) {
     bool setMarker = false;
 
@@ -146,7 +147,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyQueuePresentEnd(
+  void DxvkLatencyTracker::notifyQueuePresentEnd(
           uint64_t                  frameId,
           VkResult                  status) {
     bool setMarker = false;
@@ -176,7 +177,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyGpuExecutionBegin(
+  void DxvkLatencyTracker::notifyGpuExecutionBegin(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
     auto now = dxvk::high_resolution_clock::now();
@@ -192,7 +193,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyGpuExecutionEnd(
+  void DxvkLatencyTracker::notifyGpuExecutionEnd(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
     auto now = dxvk::high_resolution_clock::now();
@@ -203,7 +204,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::notifyGpuPresentEnd(
+  void DxvkLatencyTracker::notifyGpuPresentEnd(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
 
@@ -214,7 +215,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::sleepAndBeginFrame(
+  void DxvkLatencyTracker::sleepAndBeginFrame(
           uint64_t                  frameId,
           double                    maxFrameRate) {
     std::unique_lock lock(m_mutex);
@@ -238,13 +239,13 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::discardTimings() {
+  void DxvkLatencyTracker::discardTimings() {
     std::lock_guard lock(m_mutex);
     reset();
   }
 
 
-  DxvkLatencyStats DxvkReflexLatencyTrackerNv::getStatistics(
+  DxvkLatencyStats DxvkLatencyTracker::getStatistics(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
 
@@ -275,7 +276,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::setLatencySleepMode(
+  void DxvkLatencyTracker::setLatencySleepMode(
           bool                      enableLowLatency,
           bool                      enableBoost,
           uint64_t                  minIntervalUs) {
@@ -301,7 +302,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::setLatencyMarker(
+  void DxvkLatencyTracker::setLatencyMarker(
           uint64_t                  appFrameId,
           VkLatencyMarkerNV         marker) {
     if (m_setting == Tristate::False)
@@ -398,7 +399,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::latencySleep() {
+  void DxvkLatencyTracker::latencySleep() {
     if (m_setting == Tristate::False)
       return;
 
@@ -433,7 +434,7 @@ namespace dxvk {
   }
 
 
-  uint32_t DxvkReflexLatencyTrackerNv::getFrameReports(
+  uint32_t DxvkLatencyTracker::getFrameReports(
           uint32_t                  maxCount,
           DxvkReflexFrameReport*    reports) {
     // Only lock after calling into the presenter to avoid deadlocks
@@ -484,27 +485,27 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkReflexLatencyTrackerNv::frameIdFromAppFrameId(
+  uint64_t DxvkLatencyTracker::frameIdFromAppFrameId(
           uint64_t                  appFrameId) {
     std::lock_guard lock(m_mutex);
     return lookupFrameId(appFrameId);
   }
 
 
-  DxvkReflexLatencyFrameData& DxvkReflexLatencyTrackerNv::lookupFrameData(
+  DxvkLatencyFrameData& DxvkLatencyTracker::lookupFrameData(
           uint64_t                  dxvkFrameId) {
     return m_frames[dxvkFrameId % FrameCount];
   }
 
 
-  DxvkReflexLatencyFrameData& DxvkReflexLatencyTrackerNv::getFrameData(
+  DxvkLatencyFrameData& DxvkLatencyTracker::getFrameData(
           uint64_t                  dxvkFrameId) {
     auto& frameData = m_frames[dxvkFrameId % FrameCount];
 
     if (frameData.frameId != dxvkFrameId) {
       m_appToDxvkFrameIds.erase(frameData.appFrameId);
 
-      frameData = DxvkReflexLatencyFrameData();
+      frameData = DxvkLatencyFrameData();
       frameData.frameId = dxvkFrameId;
     }
 
@@ -512,7 +513,7 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkReflexLatencyTrackerNv::lookupFrameId(
+  uint64_t DxvkLatencyTracker::lookupFrameId(
           uint64_t                  appFrameId) {
     auto entry = m_appToDxvkFrameIds.find(appFrameId);
 
@@ -523,7 +524,7 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkReflexLatencyTrackerNv::allocateFrameId(
+  uint64_t DxvkLatencyTracker::allocateFrameId(
           uint64_t                  appFrameId) {
     if (appFrameId <= m_lastBeginAppFrameId) {
       Logger::warn(str::format("Reflex: Frame ID ", appFrameId, " not monotonic, last was ", m_lastBeginAppFrameId));
@@ -538,7 +539,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::mapFrameId(
+  void DxvkLatencyTracker::mapFrameId(
           uint64_t                  appFrameId,
           uint64_t                  dxvkFrameId) {
     while (m_appToDxvkFrameIds.size() > FrameCount)
@@ -549,7 +550,7 @@ namespace dxvk {
   }
 
 
-  void DxvkReflexLatencyTrackerNv::reset() {
+  void DxvkLatencyTracker::reset() {
     m_nextValidFrameId = uint64_t(-1);
 
     m_lastSleepDuration = duration(0u);
@@ -564,7 +565,7 @@ namespace dxvk {
   }
 
 
-  DxvkReflexLatencyTrackerNv::time_point DxvkReflexLatencyTrackerNv::forwardLatencyMarker(
+  DxvkLatencyTracker::time_point DxvkLatencyTracker::forwardLatencyMarker(
           uint64_t                  dxvkFrameId,
           VkLatencyMarkerNV         marker) {
     if (m_device->features().nvLowLatency2) {
@@ -576,10 +577,10 @@ namespace dxvk {
   }
 
 
-  DxvkReflexLatencyTrackerNv::duration DxvkReflexLatencyTrackerNv::performSleep(
+  DxvkLatencyTracker::duration DxvkLatencyTracker::performSleep(
           std::unique_lock<dxvk::mutex>& lock,
           uint64_t                  dxvkFrameId) {
-    if (m_device->features().nvLowLatency2) {
+    if (m_device->features().nvLowLatency2 && false) {
       uint32_t intervalUs = std::chrono::duration_cast<std::chrono::microseconds>(
         m_presenter->queryFrameInterval()).count();
 
@@ -631,7 +632,7 @@ namespace dxvk {
 
       duration nextCpuTime = estimateTime(cpuTimes.data(), cpuTimes.size());
       duration nextGpuTime = estimateTime(gpuTimes.data(), gpuTimes.size());
-      duration nextInterval = std::max(m_presenter->queryFrameInterval(), nextCpuTime + nextGpuTime);
+      duration nextInterval = std::max(m_presenter->queryFrameInterval(), nextGpuTime);
 
       if (m_lowLatencyMode.lowLatencyMode) {
         auto minInterval = std::chrono::duration_cast<duration>(
@@ -662,12 +663,12 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkReflexLatencyTrackerNv::timeToUs(time_point timestamp) {
+  uint64_t DxvkLatencyTracker::timeToUs(time_point timestamp) {
     return std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count();
   }
 
 
-  DxvkReflexLatencyTrackerNv::duration DxvkReflexLatencyTrackerNv::estimateTime(
+  DxvkLatencyTracker::duration DxvkLatencyTracker::estimateTime(
     const duration*                 frames,
           size_t                    frameCount) {
     // For each frame, find the median of its neighbours, then

@@ -7,7 +7,7 @@
 #include "../dxgi/dxgi_interfaces.h"
 
 #include "../dxvk/dxvk_cs.h"
-#include "../dxvk/dxvk_latency_reflex.h"
+#include "../dxvk/dxvk_latency.h"
 
 #include "../d3d10/d3d10_device.h"
 
@@ -841,7 +841,7 @@ namespace dxvk {
     bool              m_enableBoost       = false;
     uint64_t          m_minIntervalUs     = 0u;
 
-    Rc<DxvkReflexLatencyTrackerNv>  m_tracker;
+    Rc<DxvkLatencyTracker>  m_tracker;
   };
 
 
