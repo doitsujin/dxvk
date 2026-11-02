@@ -294,9 +294,11 @@ namespace dxvk {
     // try to map it to a new internal frame ID.
     uint64_t frameId = lookupFrameId(appFrameId);
 
-    if (!frameId && (marker == VK_LATENCY_MARKER_SIMULATION_START_NV
-                  || marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV
-                  || marker == VK_LATENCY_MARKER_INPUT_SAMPLE_NV))
+    bool isStartMarker = marker == VK_LATENCY_MARKER_SIMULATION_START_NV
+                      || marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV
+                      || marker == VK_LATENCY_MARKER_INPUT_SAMPLE_NV;
+
+    if (!frameId && isStartMarker)
       frameId = allocateFrameId(appFrameId);
 
     // This can hapen if we reset tracking state and receive
@@ -332,6 +334,9 @@ namespace dxvk {
     // Store CPU timestamp to correlate times
     auto& frame = getFrameData(frameId);
 
+    if (isStartMarker && m_lastSleepDuration != duration(0u))
+      frame.sleepDuration = std::exchange(m_lastSleepDuration, duration(0u));
+
     switch (marker) {
       case VK_LATENCY_MARKER_INPUT_SAMPLE_NV:
         frame.cpuInputSample = cpuTime;
@@ -339,9 +344,6 @@ namespace dxvk {
 
       case VK_LATENCY_MARKER_SIMULATION_START_NV:
         frame.cpuSimBegin = cpuTime;
-
-        if (m_lastSleepDuration != duration(0u))
-          frame.sleepDuration = std::exchange(m_lastSleepDuration, duration(0u));
         break;
 
       case VK_LATENCY_MARKER_SIMULATION_END_NV:
