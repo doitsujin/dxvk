@@ -200,10 +200,7 @@ namespace dxvk {
             uint64_t                  dxvkFrameId,
             VkLatencyMarkerNV         marker);
 
-    static uint64_t mapFrameTimestampToReportUs(
-      const DxvkReflexLatencyFrameData&     frame,
-      const VkLatencyTimingsFrameReportNV&  report,
-            time_point                      timestamp);
+    static uint64_t timeToUs(time_point timestamp);
 
   };
 

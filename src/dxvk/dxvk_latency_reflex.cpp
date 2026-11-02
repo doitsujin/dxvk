@@ -425,54 +425,51 @@ namespace dxvk {
   uint32_t DxvkReflexLatencyTrackerNv::getFrameReports(
           uint32_t                  maxCount,
           DxvkReflexFrameReport*    reports) {
-    small_vector<VkLatencyTimingsFrameReportNV, 64> nvReports(maxCount);
-
-    for (uint32_t i = 0; i < maxCount; i++)
-      nvReports[i] = { VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV };
-
-    // Adjust some statistics so that we actually return the
-    // correct timestamps for the application-defined markers
-    uint32_t count = m_presenter->getLatencyTimingsNv(maxCount, nvReports.data());
-
     // Only lock after calling into the presenter to avoid deadlocks
     std::lock_guard lock(m_mutex);
 
-    for (uint32_t i = 0; i < count; i++) {
-      auto& report = nvReports[i];
-      const auto& currFrame = m_frames[report.presentID % FrameCount];
+    for (uint32_t i = 0; i < maxCount; i++) {
+      uint64_t frameId = m_lastCompletedFrameId - i;
 
-      if (report.presentID != currFrame.frameId || report.presentID < m_nextValidFrameId)
-        return 0;
+      const auto& currFrame = m_frames[frameId % FrameCount];
 
+      if (frameId != currFrame.frameId || frameId < m_nextValidFrameId)
+        return i;
+
+      auto& report = reports[i].report;
       report.presentID = currFrame.appFrameId;
-
-      // These represent when the CS thread starts processing the frame
-      report.driverStartTimeUs = report.renderSubmitStartTimeUs;
-      report.driverEndTimeUs = report.renderSubmitEndTimeUs;
 
       // Return when the app set these markers rather than the time when
       // we forward them to the driver
-      report.renderSubmitStartTimeUs = mapFrameTimestampToReportUs(currFrame, report, currFrame.cpuRenderBegin);
-      report.renderSubmitEndTimeUs = mapFrameTimestampToReportUs(currFrame, report, currFrame.cpuRenderEnd);
-      report.presentStartTimeUs = mapFrameTimestampToReportUs(currFrame, report, currFrame.cpuPresentBegin);
-      report.presentEndTimeUs = mapFrameTimestampToReportUs(currFrame, report, currFrame.cpuPresentEnd);
+      report.inputSampleTimeUs = timeToUs(currFrame.cpuInputSample);
+      report.simStartTimeUs = timeToUs(currFrame.cpuSimBegin);
+      report.simEndTimeUs = timeToUs(currFrame.cpuSimEnd);
+      report.renderSubmitStartTimeUs = timeToUs(currFrame.cpuRenderBegin);
+      report.renderSubmitEndTimeUs = timeToUs(currFrame.cpuRenderEnd);
+      report.presentStartTimeUs = timeToUs(currFrame.cpuPresentBegin);
+      report.presentEndTimeUs = timeToUs(currFrame.cpuPresentEnd);
+
+      // These represent when the CS thread starts processing the frame
+      report.driverStartTimeUs = timeToUs(currFrame.csRenderBegin);
+      report.driverEndTimeUs = timeToUs(currFrame.csRenderEnd);
 
       // Documentation for the OS timers seems nonsensical, but it seems to
       // be the time from the the first submission to the end of the frame
-      report.osRenderQueueStartTimeUs = mapFrameTimestampToReportUs(currFrame, report, currFrame.queueSubmit);
-      report.osRenderQueueEndTimeUs = report.gpuRenderEndTimeUs;
+      report.osRenderQueueStartTimeUs = timeToUs(currFrame.queueSubmit);
+      report.osRenderQueueEndTimeUs = timeToUs(currFrame.gpuExecEnd);
 
       // Apparently gpuRenderEndTime is when presentation completes rather
-      // than rendering, so we need to compute the active render time using
-      // our own timestamps
+      // than rendering somehow....
+      report.gpuRenderStartTimeUs = timeToUs(currFrame.gpuExecStart);
+      report.gpuRenderEndTimeUs = timeToUs(currFrame.frameEnd);
+
       auto gpuActiveTime = currFrame.gpuExecEnd - currFrame.gpuExecStart - currFrame.gpuIdleTime;
 
-      reports[i].report = report;
       reports[i].gpuActiveTimeUs = std::max<uint64_t>(0u,
         std::chrono::duration_cast<std::chrono::microseconds>(gpuActiveTime).count());
     }
 
-    return count;
+    return maxCount;
   }
 
 
@@ -562,15 +559,8 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkReflexLatencyTrackerNv::mapFrameTimestampToReportUs(
-    const DxvkReflexLatencyFrameData&     frame,
-    const VkLatencyTimingsFrameReportNV&  report,
-          time_point                      timestamp) {
-    if (frame.cpuSimBegin == time_point() || !report.simStartTimeUs)
-      return 0u;
-
-    int64_t diffUs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp - frame.cpuSimBegin).count();
-    return report.simStartTimeUs + diffUs;
+  uint64_t DxvkReflexLatencyTrackerNv::timeToUs(time_point timestamp) {
+    return std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count();
   }
 
 }
