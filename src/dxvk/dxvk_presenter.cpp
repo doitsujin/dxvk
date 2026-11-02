@@ -1702,8 +1702,7 @@ namespace dxvk {
 
   PresenterTimingFeedback Presenter::computeFrameTargetTime(
           uint64_t                  frameId) const {
-    if (!m_timingMode.frameIntervalNs || !m_timingMode.reference.frameId
-     || (m_timingMode.reference.frameId + 2u * FrameQueueSize < frameId))
+    if (!m_timingMode.frameIntervalNs || !m_timingMode.reference.frameId)
       return PresenterTimingFeedback();
 
     uint64_t deltaNs = (frameId - m_timingMode.reference.frameId) * m_timingMode.frameIntervalNs;
