@@ -1,10 +1,13 @@
+#include "dxvk_device.h"
 #include "dxvk_latency_reflex.h"
 
 namespace dxvk {
 
   DxvkReflexLatencyTrackerNv::DxvkReflexLatencyTrackerNv(
-    const Rc<Presenter>&            presenter)
-  : m_presenter(presenter) {
+    const Rc<DxvkDevice>&           device,
+    const Rc<Presenter>&            presenter,
+          Tristate                  lowLatencyMode)
+  : m_device(device), m_presenter(presenter), m_setting(lowLatencyMode) {
 
   }
 
@@ -256,6 +259,9 @@ namespace dxvk {
           bool                      enableLowLatency,
           bool                      enableBoost,
           uint64_t                  minIntervalUs) {
+    if (m_setting == Tristate::False)
+      return;
+
     if (m_lowLatencyMode != enableLowLatency)
       Logger::info(str::format("Reflex: Low latency mode ", enableLowLatency ? "enabled" : "disabled"));
 
@@ -273,6 +279,9 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::setLatencyMarker(
           uint64_t                  appFrameId,
           VkLatencyMarkerNV         marker) {
+    if (m_setting == Tristate::False)
+      return;
+
     std::unique_lock lock(m_mutex);
 
     // Find frame ID. If this is the first marker in a new frame,
@@ -360,6 +369,9 @@ namespace dxvk {
 
 
   void DxvkReflexLatencyTrackerNv::latencySleep() {
+    if (m_setting == Tristate::False)
+      return;
+
     { std::unique_lock lock(m_mutex);
       // If the app doesn't use markers, wait for the previous present
       // call to complete so that we don't confuse the algorithm by

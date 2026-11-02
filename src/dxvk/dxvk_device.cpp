@@ -586,7 +586,7 @@ namespace dxvk {
 
     if (m_options.latencySleep == Tristate::Auto) {
       if (m_features.nvLowLatency2)
-        return new DxvkReflexLatencyTrackerNv(presenter);
+        return new DxvkReflexLatencyTrackerNv(this, presenter, m_options.latencySleep);
       else
         return nullptr;
     }

@@ -17,6 +17,8 @@
 
 namespace dxvk {
 
+  class DxvkDevice;
+
   /**
    * \brief Reflex frame info
    *
@@ -51,7 +53,9 @@ namespace dxvk {
   public:
 
     DxvkReflexLatencyTrackerNv(
-      const Rc<Presenter>&            presenter);
+      const Rc<DxvkDevice>&           device,
+      const Rc<Presenter>&            presenter,
+            Tristate                  lowLatencyMode);
 
     ~DxvkReflexLatencyTrackerNv();
 
@@ -146,6 +150,7 @@ namespace dxvk {
 
   private:
 
+    Rc<DxvkDevice>            m_device;
     Rc<Presenter>             m_presenter;
 
     dxvk::mutex               m_mutex;
@@ -173,6 +178,8 @@ namespace dxvk {
     std::array<DxvkReflexLatencyFrameData, FrameCount> m_frames = { };
 
     std::map<uint64_t, uint64_t> m_appToDxvkFrameIds;
+
+    Tristate                  m_setting = Tristate::Auto;
 
     DxvkReflexLatencyFrameData& getFrameData(
             uint64_t                  dxvkFrameId);
