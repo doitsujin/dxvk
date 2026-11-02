@@ -287,11 +287,16 @@ namespace dxvk {
     if (m_lowLatencyMode.lowLatencyMode != enableLowLatency)
       Logger::info(str::format("Reflex: Low latency mode ", enableLowLatency ? "enabled" : "disabled"));
 
+    bool lowLatencyDisable = m_lowLatencyMode.lowLatencyMode && !enableLowLatency;
+
     m_lowLatencyMode.lowLatencyMode = enableLowLatency;
     m_lowLatencyMode.lowLatencyBoost = enableBoost;
     m_lowLatencyMode.minimumIntervalUs = minIntervalUs;
 
-    if (m_device->features().nvLowLatency2)
+    // We'll enable low-latency mode when latency sleep is called. When
+    // disabling, we should forward the call immediately because we can
+    // not assume that latency sleep will ever be called again.
+    if (m_device->features().nvLowLatency2 && lowLatencyDisable)
       m_presenter->setLatencySleepModeNv(m_lowLatencyMode);
   }
 
@@ -575,7 +580,22 @@ namespace dxvk {
           std::unique_lock<dxvk::mutex>& lock,
           uint64_t                  dxvkFrameId) {
     if (m_device->features().nvLowLatency2) {
+      uint32_t intervalUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        m_presenter->queryFrameInterval()).count();
+
+      // Update low-latency mode as necessary. When running with v-sync enabled,
+      // we also want to override the minimum frame interval to the presenter's,
+      // or otherwise Reflex will not kick in at all.
+      VkLatencySleepModeInfoNV sleepMode = m_lowLatencyMode;
+
+      if (m_setting == Tristate::True)
+        sleepMode.lowLatencyMode = VK_TRUE;
+
+      if (!sleepMode.minimumIntervalUs)
+        sleepMode.minimumIntervalUs = intervalUs;
+
       lock.unlock();
+      m_presenter->setLatencySleepModeNv(sleepMode);
       duration sleepDuration = m_presenter->latencySleepNv();
       lock.lock();
       return sleepDuration;
