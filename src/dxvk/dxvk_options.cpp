@@ -14,14 +14,13 @@ namespace dxvk {
     enableImplicitResolves = config.getOption<bool>   ("dxvk.enableImplicitResolves", true);
     enableNvRawAccessChains = config.getOption<bool>  ("dxvk.enableNvRawAccessChains", true);
     enableNvCudaInterop   = config.getOption<bool>    ("dxvk.enableNvCudaInterop",    true);
+    enableNvLowLatency2   = config.getOption<bool>    ("dxvk.enableNvLowLatency2",    true);
     enablePresentTiming   = config.getOption<bool>    ("dxvk.enablePresentTiming",    true);
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
     tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::Auto);
     latencySleep          = config.getOption<Tristate>("dxvk.latencySleep",           Tristate::Auto);
-    latencyTolerance      = config.getOption<int32_t> ("dxvk.latencyTolerance",       1000);
-    disableNvLowLatency2  = config.getOption<Tristate>("dxvk.disableNvLowLatency2",   Tristate::Auto);
     hideIntegratedGraphics = config.getOption<bool>   ("dxvk.hideIntegratedGraphics", false);
     zeroMappedMemory      = config.getOption<bool>    ("dxvk.zeroMappedMemory",       false);
     zeroShaderScratchMemory = config.getOption<bool>  ("dxvk.zeroShaderScratchMemory", false);
