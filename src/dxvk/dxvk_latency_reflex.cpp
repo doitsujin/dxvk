@@ -21,7 +21,7 @@ namespace dxvk {
     // In markerless mode we want to avoid submitting any markers at
     // all and ignore the context
     std::lock_guard lock(m_mutex);
-    return !m_lowLatencyMode;
+    return !m_lowLatencyMode.lowLatencyMode;
   }
 
 
@@ -59,7 +59,7 @@ namespace dxvk {
       }
 
       m_lowLatencyNoMarkers = false;
-    } else if (m_lowLatencyMode) {
+    } else if (m_lowLatencyMode.lowLatencyMode) {
       // Game seemingly doesn't use markers?
       if (!m_lowLatencyNoMarkers) {
         Logger::warn("Reflex: No latency markers provided");
@@ -221,7 +221,7 @@ namespace dxvk {
 
     // Only sleep if the app doesn't explicitly do Reflex and if
     // latency sleep is explicitly enabled via the configuration
-    if (!m_lowLatencyMode && m_setting == Tristate::True) {
+    if (!m_lowLatencyMode.lowLatencyMode && m_setting == Tristate::True) {
       lock.unlock();
       auto sleepDuration = m_presenter->latencySleepNv();
       lock.lock();
@@ -232,7 +232,7 @@ namespace dxvk {
 
     m_lastNoMarkerFrameId = frameId;
 
-    if (m_lowLatencyMode) {
+    if (m_lowLatencyMode.lowLatencyMode) {
       auto& frame = getFrameData(frameId);
       frame.frameStart = dxvk::high_resolution_clock::now();
     }
@@ -284,17 +284,15 @@ namespace dxvk {
 
     std::unique_lock lock(m_mutex);
 
-    if (m_lowLatencyMode != enableLowLatency)
+    if (m_lowLatencyMode.lowLatencyMode != enableLowLatency)
       Logger::info(str::format("Reflex: Low latency mode ", enableLowLatency ? "enabled" : "disabled"));
 
-    VkLatencySleepModeInfoNV modeInfo = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV };
-    modeInfo.lowLatencyMode = enableLowLatency;
-    modeInfo.lowLatencyBoost = enableBoost;
-    modeInfo.minimumIntervalUs = minIntervalUs;
+    m_lowLatencyMode.lowLatencyMode = enableLowLatency;
+    m_lowLatencyMode.lowLatencyBoost = enableBoost;
+    m_lowLatencyMode.minimumIntervalUs = minIntervalUs;
 
-    m_presenter->setLatencySleepModeNv(modeInfo);
-
-    m_lowLatencyMode = enableLowLatency;
+    if (m_device->features().nvLowLatency2)
+      m_presenter->setLatencySleepModeNv(m_lowLatencyMode);
   }
 
 
@@ -556,7 +554,7 @@ namespace dxvk {
           uint64_t                  dxvkFrameId,
           VkLatencyMarkerNV         marker) {
     if (m_device->features().nvLowLatency2) {
-      if (m_setting == Tristate::True || m_lowLatencyMode)
+      if (m_setting == Tristate::True || m_lowLatencyMode.lowLatencyMode)
         return m_presenter->setLatencyMarkerNv(dxvkFrameId, marker);
     }
 

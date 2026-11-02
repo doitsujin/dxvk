@@ -172,7 +172,7 @@ namespace dxvk {
 
     duration                  m_lastSleepDuration = duration(0u);
 
-    bool                      m_lowLatencyMode      = false;
+    VkLatencySleepModeInfoNV  m_lowLatencyMode = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV };
     bool                      m_lowLatencyNoMarkers = false;
 
     std::array<DxvkReflexLatencyFrameData, FrameCount> m_frames = { };
