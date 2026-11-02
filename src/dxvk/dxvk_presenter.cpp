@@ -180,7 +180,6 @@ namespace dxvk {
 
   VkResult Presenter::presentImage(
           uint64_t                frameId,
-    const Rc<DxvkLatencyTracker>& tracker,
           uint32_t                rectCount,
     const VkRectLayerKHR*         rects) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
@@ -310,7 +309,6 @@ namespace dxvk {
     // Add frame to waiter queue with current properties
     PresenterFrame frame;
     frame.frameId = frameId;
-    frame.tracker = tracker;
     frame.mode = m_presentMode;
     frame.result = status;
     frame.targetTimeHost = frameTargetTime.presentTimeHost;
@@ -350,9 +348,7 @@ namespace dxvk {
   }
 
 
-  void Presenter::signalFrame(
-          uint64_t                frameId,
-    const Rc<DxvkLatencyTracker>& tracker) {
+  void Presenter::signalFrame(uint64_t frameId) {
     if (m_signal == nullptr || !frameId)
       return;
 
@@ -2153,13 +2149,6 @@ namespace dxvk {
 
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
-      }
-
-      // Signal latency tracker right away to get more accurate
-      // measurements if the frame rate limiter is enabled.
-      if (frame.tracker) {
-        frame.tracker->notifyGpuPresentEnd(frame.frameId);
-        frame.tracker = nullptr;
       }
 
       // Update timing feedback. There is no guarantee when data becomes available,

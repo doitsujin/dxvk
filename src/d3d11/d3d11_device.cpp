@@ -3495,9 +3495,7 @@ namespace dxvk {
           D3D11Device*            pDevice)
   : m_container(pContainer), m_device(pDevice) {
     auto dxvkDevice = pDevice->GetDXVKDevice();
-
-    m_reflexEnabled = dxvkDevice->features().nvLowLatency2
-                   && dxvkDevice->config().latencySleep == Tristate::Auto;
+    m_reflexEnabled = dxvkDevice->features().nvLowLatency2;
   }
 
 
@@ -3532,16 +3530,7 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    // Don't keep object locked while sleeping
-    Rc<DxvkReflexLatencyTrackerNv> tracker;
-
-    { std::lock_guard lock(m_mutex);
-      tracker = m_tracker;
-    }
-
-    if (tracker)
-      tracker->latencySleep();
-
+    // TODO reimplement.
     return S_OK;
   }
 
@@ -3555,15 +3544,12 @@ namespace dxvk {
 
     std::lock_guard lock(m_mutex);
 
-    if (m_tracker) {
-      m_tracker->setLatencySleepMode(
-        LowLatencyEnable, LowLatencyBoost, MinIntervalUs);
-    }
-
     // Write back in case we have no swapchain yet
     m_enableLowLatency = LowLatencyEnable;
     m_enableBoost      = LowLatencyBoost;
     m_minIntervalUs    = MinIntervalUs;
+
+    // TODO reimplement.
     return S_OK;
   }
 
@@ -3574,31 +3560,7 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    std::lock_guard lock(m_mutex);
-
-    if (m_tracker) {
-      auto marker = VkLatencyMarkerNV(MarkerType);
-      m_tracker->setLatencyMarker(FrameId, marker);
-
-      if (marker == VK_LATENCY_MARKER_RENDERSUBMIT_START_NV) {
-        m_device->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
-          cTracker  = m_tracker,
-          cFrameId  = FrameId
-        ] (DxvkContext* ctx) {
-          uint64_t frameId = cTracker->frameIdFromAppFrameId(cFrameId);
-
-          if (frameId)
-            ctx->beginLatencyTracking(cTracker, frameId);
-        });
-      } else if (marker == VK_LATENCY_MARKER_RENDERSUBMIT_END_NV) {
-        m_device->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
-          cTracker  = m_tracker
-        ] (DxvkContext* ctx) {
-          ctx->endLatencyTracking(cTracker);
-        });
-      }
-    }
-
+    // TODO reimplement.
     return S_OK;
   }
 
@@ -3616,70 +3578,9 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    std::lock_guard lock(m_mutex);
-
-    if (!m_tracker)
-      return S_OK;
-
-    // Apparently we have to report all 64 frames, or nothing
-    std::array<DxvkReflexFrameReport, FrameCount> reports = { };
-    uint32_t reportCount = m_tracker->getFrameReports(FrameCount, reports.data());
-
-    if (reportCount < FrameCount)
-      return S_OK;
-
-    for (uint32_t i = 0; i < FrameCount; i++) {
-      auto& src = reports[i];
-      auto& dst = pLowLatencyResults->frameReports[i];
-
-      dst.frameID = src.report.presentID;
-      dst.inputSampleTime = src.report.inputSampleTimeUs;
-      dst.simStartTime = src.report.simStartTimeUs;
-      dst.simEndTime = src.report.simEndTimeUs;
-      dst.renderSubmitStartTime = src.report.renderSubmitStartTimeUs;
-      dst.renderSubmitEndTime = src.report.renderSubmitEndTimeUs;
-      dst.presentStartTime = src.report.presentStartTimeUs;
-      dst.presentEndTime = src.report.presentEndTimeUs;
-      dst.driverStartTime = src.report.driverStartTimeUs;
-      dst.driverEndTime = src.report.driverEndTimeUs;
-      dst.osRenderQueueStartTime = src.report.osRenderQueueStartTimeUs;
-      dst.osRenderQueueEndTime = src.report.osRenderQueueEndTimeUs;
-      dst.gpuRenderStartTime = src.report.gpuRenderStartTimeUs;
-      dst.gpuRenderEndTime = src.report.gpuRenderEndTimeUs;
-      dst.gpuActiveRenderTimeUs = src.gpuActiveTimeUs;
-      dst.gpuFrameTimeUs = 0;
-
-      if (i) {
-        dst.gpuFrameTimeUs = reports[i - 0].report.gpuRenderEndTimeUs
-                           - reports[i - 1].report.gpuRenderEndTimeUs;
-      }
-    }
-
+    // TODO reimplement.
     return S_OK;
   }
-
-
-  void D3D11ReflexDevice::RegisterLatencyTracker(
-          Rc<DxvkLatencyTracker>          Tracker) {
-    std::lock_guard lock(m_mutex);
-
-    if (m_tracker)
-      return;
-
-    if ((m_tracker = dynamic_cast<DxvkReflexLatencyTrackerNv*>(Tracker.ptr())))
-      m_tracker->setLatencySleepMode(m_enableLowLatency, m_enableBoost, m_minIntervalUs);
-  }
-
-
-  void D3D11ReflexDevice::UnregisterLatencyTracker(
-          Rc<DxvkLatencyTracker>          Tracker) {
-    std::lock_guard lock(m_mutex);
-
-    if (m_tracker == Tracker)
-      m_tracker = nullptr;
-  }
-
-
 
 
   DXGIVkSwapChainFactory::DXGIVkSwapChainFactory(

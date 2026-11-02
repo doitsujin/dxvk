@@ -139,27 +139,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginLatencyTracking(
-    const Rc<DxvkLatencyTracker>&     tracker,
-          uint64_t                    frameId) {
-    if (tracker && (!m_latencyTracker || m_latencyTracker == tracker)) {
-      tracker->notifyCsRenderBegin(frameId);
-
-      m_latencyTracker = tracker;
-      m_latencyFrameId = frameId;
-
-      m_endLatencyTracking = false;
-    }
-  }
-
-
-  void DxvkContext::endLatencyTracking(
-    const Rc<DxvkLatencyTracker>&     tracker) {
-    if (tracker && tracker == m_latencyTracker)
-      m_endLatencyTracking = true;
-  }
-
-
   void DxvkContext::flushCommandList(
     const VkDebugUtilsLabelEXT*       reason,
           uint64_t                    submissionId) {
@@ -177,23 +156,7 @@ namespace dxvk {
                        DxvkContextFeature::DescriptorBuffer))
       m_cmd->setDescriptorSyncHandle(m_descriptorWorker.getSyncHandle());
 
-    // Need to call this before submitting so that the last GPU
-    // submission does not happen before the render end signal.
-    if (m_endLatencyTracking && m_latencyTracker)
-      m_latencyTracker->notifyCsRenderEnd(m_latencyFrameId);
-
-    m_device->submitCommandList(this->endRecording(reason),
-      m_latencyTracker, m_latencyFrameId, submissionId);
-
-    // Ensure that subsequent submissions do not see the tracker.
-    // It is important to hide certain internal submissions in
-    // case the application is CPU-bound.
-    if (m_endLatencyTracking) {
-      m_latencyTracker = nullptr;
-      m_latencyFrameId = 0u;
-
-      m_endLatencyTracking = false;
-    }
+    m_device->submitCommandList(this->endRecording(reason), submissionId);
 
     // If we have a zero buffer, see if we can get rid of it
     freeZeroBuffer();

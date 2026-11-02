@@ -1,7 +1,5 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
-#include "dxvk_latency_builtin.h"
-#include "dxvk_latency_reflex.h"
 #include "dxvk_shader_cache.h"
 #include "dxvk_shader_ir.h"
 
@@ -579,26 +577,8 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
-    const Rc<Presenter>&            presenter) {
-    if (m_options.latencySleep == Tristate::False)
-      return nullptr;
-
-    if (m_options.latencySleep == Tristate::Auto) {
-      if (m_features.nvLowLatency2)
-        return new DxvkReflexLatencyTrackerNv(presenter);
-      else
-        return nullptr;
-    }
-
-    return new DxvkBuiltInLatencyTracker(presenter,
-      m_options.latencyTolerance, m_features.nvLowLatency2);
-  }
-
-
   void DxvkDevice::presentImage(
     const Rc<Presenter>&            presenter,
-    const Rc<DxvkLatencyTracker>&   tracker,
           uint64_t                  frameId,
           uint32_t                  rectCount,
     const VkRectLayerKHR*           rects,
@@ -610,11 +590,7 @@ namespace dxvk {
     for (uint32_t i = 0u; i < rectCount; i++)
       presentInfo.rects.push_back(rects[i]);
 
-    DxvkLatencyInfo latencyInfo;
-    latencyInfo.tracker = tracker;
-    latencyInfo.frameId = frameId;
-
-    m_submissionQueue.present(presentInfo, latencyInfo, submissionId);
+    m_submissionQueue.present(presentInfo, submissionId);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
@@ -623,17 +599,11 @@ namespace dxvk {
 
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
-    const Rc<DxvkLatencyTracker>&   tracker,
-          uint64_t                  frameId,
           uint64_t                  submissionId) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
 
-    DxvkLatencyInfo latencyInfo;
-    latencyInfo.tracker = tracker;
-    latencyInfo.frameId = frameId;
-
-    m_submissionQueue.submit(submitInfo, latencyInfo, submissionId);
+    m_submissionQueue.submit(submitInfo, submissionId);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());

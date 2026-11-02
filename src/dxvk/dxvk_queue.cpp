@@ -46,7 +46,6 @@ namespace dxvk {
   
   void DxvkSubmissionQueue::submit(
           DxvkSubmitInfo            submitInfo,
-          DxvkLatencyInfo           latencyInfo,
           uint64_t                  submissionId) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
@@ -57,7 +56,6 @@ namespace dxvk {
     DxvkSubmitEntry entry = { };
     entry.timeline = submissionId;
     entry.submit = std::move(submitInfo);
-    entry.latency = std::move(latencyInfo);
 
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
@@ -66,14 +64,12 @@ namespace dxvk {
 
   void DxvkSubmissionQueue::present(
           DxvkPresentInfo           presentInfo,
-          DxvkLatencyInfo           latencyInfo,
           uint64_t                  submissionId) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     DxvkSubmitEntry entry = { };
     entry.timeline = submissionId;
     entry.present = std::move(presentInfo);
-    entry.latency = std::move(latencyInfo);
 
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
@@ -132,9 +128,6 @@ namespace dxvk {
   void DxvkSubmissionQueue::submitCmdLists() {
     env::setThreadName("dxvk-submit");
 
-    uint64_t trackedSubmitId = 0u;
-    uint64_t trackedPresentId = 0u;
-
     while (!m_stopped.load()) {
       DxvkSubmitEntry entry;
 
@@ -161,31 +154,12 @@ namespace dxvk {
           m_callback(true);
 
         if (entry.submit.cmdList != nullptr) {
-          if (entry.latency.tracker) {
-            entry.latency.tracker->notifyQueueSubmit(entry.latency.frameId);
-
-            if (!trackedSubmitId && entry.latency.frameId > trackedPresentId)
-              trackedSubmitId = entry.latency.frameId;
-          }
-
           status = entry.submit.cmdList->submit(
-            m_semaphores, m_timelines, trackedSubmitId);
+            m_semaphores, m_timelines);
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
-          if (entry.latency.tracker)
-            entry.latency.tracker->notifyQueuePresentBegin(entry.latency.frameId);
-
-          status = entry.present.presenter->presentImage(
-            entry.present.frameId, entry.latency.tracker,
+          status = entry.present.presenter->presentImage(entry.present.frameId,
             entry.present.rects.size(), entry.present.rects.data());
-
-          if (entry.latency.tracker) {
-            entry.latency.tracker->notifyQueuePresentEnd(
-              entry.latency.frameId, status);
-
-            trackedPresentId = entry.latency.frameId;
-            trackedSubmitId = 0u;
-          }
         }
 
         if (m_callback)
@@ -258,9 +232,6 @@ namespace dxvk {
           std::array<VkSemaphore, 2> semaphores = { m_semaphores.graphics, m_semaphores.transfer };
           std::array<uint64_t, 2> timelines = { entry.timelines.graphics, entry.timelines.transfer };
 
-          if (entry.latency.tracker)
-            entry.latency.tracker->notifyGpuExecutionBegin(entry.latency.frameId);
-
           VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
           waitInfo.semaphoreCount = semaphores.size();
           waitInfo.pSemaphores = semaphores.data();
@@ -274,9 +245,6 @@ namespace dxvk {
             Logger::err("DxvkSubmissionQueue: Timeout occured, GPU likely hung.");
             status = VK_ERROR_DEVICE_LOST;
           }
-
-          if (entry.latency.tracker && status == VK_SUCCESS)
-            entry.latency.tracker->notifyGpuExecutionEnd(entry.latency.frameId);
         }
 
         if (status == VK_ERROR_DEVICE_LOST && m_checkpoints)
@@ -292,7 +260,7 @@ namespace dxvk {
         // Signal the frame and then immediately destroy the reference.
         // This is necessary since the front-end may want to explicitly
         // destroy the presenter object. 
-        entry.present.presenter->signalFrame(entry.present.frameId, entry.latency.tracker);
+        entry.present.presenter->signalFrame(entry.present.frameId);
         entry.present.presenter = nullptr;
       }
 

@@ -59,12 +59,8 @@ namespace dxvk {
 
   VkResult DxvkCommandSubmission::submit(
           DxvkDevice*           device,
-          VkQueue               queue,
-          uint64_t              frameId) {
+          VkQueue               queue) {
     auto vk = device->vkd();
-
-    VkLatencySubmissionPresentIdNV latencyInfo = { VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV };
-    latencyInfo.presentID = frameId;
 
     VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
 
@@ -82,9 +78,6 @@ namespace dxvk {
       submitInfo.signalSemaphoreInfoCount = m_semaphoreSignals.size();
       submitInfo.pSignalSemaphoreInfos = m_semaphoreSignals.data();
     }
-
-    if (frameId && device->features().nvLowLatency2)
-      latencyInfo.pNext = std::exchange(submitInfo.pNext, &latencyInfo);
 
     VkResult vr = VK_SUCCESS;
 
@@ -254,8 +247,7 @@ namespace dxvk {
   
   VkResult DxvkCommandList::submit(
     const DxvkTimelineSemaphores&       semaphores,
-          DxvkTimelineSemaphoreValues&  timelines,
-          uint64_t                      trackedId) {
+          DxvkTimelineSemaphoreValues&  timelines) {
     // Wait for pending descriptor copies to finish
     m_descriptorSync.synchronize();
 
@@ -317,7 +309,7 @@ namespace dxvk {
         m_commandSubmission.signalSemaphore(semaphores.transfer,
           ++timelines.transfer, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
-        if ((status = m_commandSubmission.submit(m_device, transfer.queueHandle, trackedId)))
+        if ((status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
           return status;
 
         m_commandSubmission.waitSemaphore(semaphores.transfer,
@@ -359,7 +351,7 @@ namespace dxvk {
         ++timelines.graphics, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
       // Finally, submit all graphics commands of the current submission
-      if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle, trackedId)))
+      if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
         return status;
 
       // If there are WSI semaphores involved, do another submit only
@@ -369,7 +361,7 @@ namespace dxvk {
         m_commandSubmission.signalSemaphore(semaphores.graphics,
           ++timelines.graphics, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
-        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle, trackedId)))
+        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
           return status;
       }
 
@@ -379,7 +371,7 @@ namespace dxvk {
         m_commandSubmission.waitSemaphore(semaphores.graphics,
           timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
 
-        if (isLast && (status = m_commandSubmission.submit(m_device, transfer.queueHandle, trackedId)))
+        if (isLast && (status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
           return status;
       }
     }

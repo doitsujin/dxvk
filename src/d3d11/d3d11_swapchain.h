@@ -4,7 +4,6 @@
 
 #include "../dxvk/hud/dxvk_hud.h"
 
-#include "../dxvk/dxvk_latency.h"
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
 #include "../util/sync/sync_signal.h"
@@ -125,7 +124,6 @@ namespace dxvk {
     Rc<hud::Hud>              m_hud;
 
     Rc<DxvkSwapchainBlitter>  m_blitter;
-    Rc<DxvkLatencyTracker>    m_latency;
 
     small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
 
@@ -146,8 +144,6 @@ namespace dxvk {
 
     double                    m_targetFrameRate = 0.0;
 
-    Rc<hud::HudLatencyItem>   m_latencyHud;
-
     Rc<DxvkImageView> GetBackBufferView();
 
     HRESULT PresentImage(
@@ -165,8 +161,6 @@ namespace dxvk {
     void CreateBlitter();
 
     void DestroyFrameLatencyEvent();
-
-    void DestroyLatencyTracker();
 
     void SyncFrameLatency();
 

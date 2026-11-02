@@ -18,7 +18,6 @@
 
 #include "dxvk_format.h"
 #include "dxvk_image.h"
-#include "dxvk_latency.h"
 
 namespace dxvk {
 
@@ -66,7 +65,6 @@ namespace dxvk {
    */
   struct PresenterFrame {
     uint64_t                frameId         = 0u;
-    Rc<DxvkLatencyTracker>  tracker         = nullptr;
     VkPresentModeKHR        mode            = VK_PRESENT_MODE_FIFO_KHR;
     VkResult                result          = VK_NOT_READY;
     uint64_t                targetTimeHost  = 0u;
@@ -190,14 +188,12 @@ namespace dxvk {
      * 
      * Presents the last successfuly acquired image.
      * \param [in] frameId Frame number.
-     * \param [in] tracker Latency tracker
      * \param [in] rectCount Number of dirty rects
      * \param [in] rects Dirty rectangles
      * \returns Status of the operation
      */
     VkResult presentImage(
             uint64_t                frameId,
-      const Rc<DxvkLatencyTracker>& tracker,
             uint32_t                rectCount,
       const VkRectLayerKHR*         rects);
 
@@ -209,11 +205,8 @@ namespace dxvk {
      * called before GPU work prior to the present submission has
      * completed in order to maintain consistency.
      * \param [in] frameId Frame ID
-     * \param [in] tracker Latency tracker
      */
-    void signalFrame(
-            uint64_t                frameId,
-      const Rc<DxvkLatencyTracker>& tracker);
+    void signalFrame(uint64_t frameId);
 
     /**
      * \brief Changes sync interval
