@@ -91,6 +91,9 @@ namespace dxvk {
 
       auto& frame = getFrameData(frameId);
       setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+
+      if (frame.csRenderBegin == time_point())
+        frame.csRenderBegin = dxvk::high_resolution_clock::now();
     }
 
     if (setMarker)
@@ -106,6 +109,9 @@ namespace dxvk {
 
       auto& frame = getFrameData(frameId);
       setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+
+      if (frame.csRenderEnd == time_point())
+        frame.csRenderEnd = dxvk::high_resolution_clock::now();
     }
 
     if (setMarker)
@@ -149,7 +155,7 @@ namespace dxvk {
       setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
     }
 
-    time_point cpuTime = time_point();
+    time_point cpuTime = dxvk::high_resolution_clock::now();
 
     if (setMarker)
       cpuTime = m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);

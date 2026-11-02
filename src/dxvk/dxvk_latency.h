@@ -40,6 +40,8 @@ namespace dxvk {
     time_point  cpuRenderEnd    = time_point();
     time_point  cpuPresentBegin = time_point();
     time_point  cpuPresentEnd   = time_point();
+    time_point  csRenderBegin   = time_point();
+    time_point  csRenderEnd     = time_point();
     time_point  queueSubmit     = time_point();
     time_point  queuePresent    = time_point();
     time_point  gpuExecStart    = time_point();
