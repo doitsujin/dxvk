@@ -196,6 +196,10 @@ namespace dxvk {
 
     void reset();
 
+    time_point forwardLatencyMarker(
+            uint64_t                  dxvkFrameId,
+            VkLatencyMarkerNV         marker);
+
     static uint64_t mapFrameTimestampToReportUs(
       const DxvkReflexLatencyFrameData&     frame,
       const VkLatencyTimingsFrameReportNV&  report,

@@ -99,7 +99,7 @@ namespace dxvk {
     }
 
     if (setMarker)
-      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+      forwardLatencyMarker(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
   }
 
 
@@ -117,7 +117,7 @@ namespace dxvk {
     }
 
     if (setMarker)
-      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
+      forwardLatencyMarker(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
   }
 
 
@@ -142,7 +142,7 @@ namespace dxvk {
     }
 
     if (setMarker)
-      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_START_NV);
+      forwardLatencyMarker(frameId, VK_LATENCY_MARKER_PRESENT_START_NV);
   }
 
 
@@ -160,7 +160,7 @@ namespace dxvk {
     time_point cpuTime = dxvk::high_resolution_clock::now();
 
     if (setMarker)
-      cpuTime = m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);
+      cpuTime = forwardLatencyMarker(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);
 
     std::lock_guard lock(m_mutex);
 
@@ -342,7 +342,7 @@ namespace dxvk {
      || marker == VK_LATENCY_MARKER_TRIGGER_FLASH_NV) {
       lock.unlock();
 
-      cpuTime = m_presenter->setLatencyMarkerNv(frameId, marker);
+      cpuTime = forwardLatencyMarker(frameId, marker);
 
       lock.lock();
     }
@@ -549,6 +549,18 @@ namespace dxvk {
       m_frames[i].appFrameId = 0u;
 
     m_appToDxvkFrameIds.clear();
+  }
+
+
+  DxvkReflexLatencyTrackerNv::time_point DxvkReflexLatencyTrackerNv::forwardLatencyMarker(
+          uint64_t                  dxvkFrameId,
+          VkLatencyMarkerNV         marker) {
+    if (m_device->features().nvLowLatency2) {
+      if (m_setting == Tristate::True || m_lowLatencyMode)
+        return m_presenter->setLatencyMarkerNv(dxvkFrameId, marker);
+    }
+
+    return dxvk::high_resolution_clock::now();
   }
 
 
