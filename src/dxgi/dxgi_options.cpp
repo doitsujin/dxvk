@@ -40,6 +40,15 @@ namespace dxvk {
     return id;
   }
 
+  /**
+   * \brief Whether old XeSS versions need the Intel vendor ID hidden
+   */
+  enum class XessVendorWa : uint32_t {
+    Unknown,    ///< No XeSS loaded yet
+    NotNeeded,  ///< Wine builtin XeSS or a fixed XeSS version
+    Needed,     ///< XeSS version that fails on the Intel path
+  };
+
   /* Some XeSS versions crash on Proton for Intel due to missing Intel
    * interfaces. Avoid the crash by pretending to be non-Intel once such
    * a libxess.dll module is loaded by the application. Applications may
@@ -135,17 +144,19 @@ namespace dxvk {
     if (this->hideIntelGpu)
       return true;
 
-    XessVendorWa wa = m_xessVendorWa.load();
+    // XeSS is loaded once per process, so the decision is shared by all
+    // DXGI factories. Keep checking until XeSS is loaded, then stick with
+    // the decision so the reported vendor doesn't change again.
+    static std::atomic<XessVendorWa> s_xessVendorWa = { XessVendorWa::Unknown };
 
-    // Keep checking until XeSS is loaded, then stick with the decision
-    // so the reported vendor doesn't change again.
+    XessVendorWa wa = s_xessVendorWa.load();
     if (wa == XessVendorWa::Unknown) {
       wa = getXessVendorWa();
 
       if (wa != XessVendorWa::Unknown) {
         XessVendorWa expected = XessVendorWa::Unknown;
 
-        if (m_xessVendorWa.compare_exchange_strong(expected, wa)) {
+        if (s_xessVendorWa.compare_exchange_strong(expected, wa)) {
           if (wa == XessVendorWa::Needed)
             Logger::info("DXGI: Detected XeSS usage, hiding Intel GPU Vendor");
         } else {
