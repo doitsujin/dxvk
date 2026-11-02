@@ -17,9 +17,11 @@ namespace dxvk {
 
 
   bool DxvkReflexLatencyTrackerNv::needsAutoMarkers() {
-    // In markerless mode we want to avoid submitting
-    // any markers at all and ignore the context
-    return false;
+    // Submit auto-markers if explicit low-latency mode is disabled.
+    // In markerless mode we want to avoid submitting any markers at
+    // all and ignore the context
+    std::lock_guard lock(m_mutex);
+    return !m_lowLatencyMode;
   }
 
 
@@ -215,7 +217,19 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::sleepAndBeginFrame(
           uint64_t                  frameId,
           double                    maxFrameRate) {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
+
+    // Only sleep if the app doesn't explicitly do Reflex and if
+    // latency sleep is explicitly enabled via the configuration
+    if (!m_lowLatencyMode && m_setting == Tristate::True) {
+      lock.unlock();
+      auto sleepDuration = m_presenter->latencySleepNv();
+      lock.lock();
+
+      m_lastSleepAppFrameId = m_lastBeginAppFrameId;
+      m_lastSleepDuration = sleepDuration;
+    }
+
     m_lastNoMarkerFrameId = frameId;
 
     if (m_lowLatencyMode) {
@@ -267,6 +281,8 @@ namespace dxvk {
           uint64_t                  minIntervalUs) {
     if (m_setting == Tristate::False)
       return;
+
+    std::unique_lock lock(m_mutex);
 
     if (m_lowLatencyMode != enableLowLatency)
       Logger::info(str::format("Reflex: Low latency mode ", enableLowLatency ? "enabled" : "disabled"));
