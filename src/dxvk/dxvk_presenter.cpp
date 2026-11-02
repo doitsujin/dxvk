@@ -1572,8 +1572,10 @@ namespace dxvk {
     feedback.presentTimeLocal = 0u;
     feedback.presentTimeHost = frameId ? dxvk::high_resolution_clock::get_counter() : 0u;
 
-    if (!m_timingMode.presentStage)
-      return commitTimingFeedback(feedback, true);
+    if (!m_timingMode.presentStage) {
+      const PresenterFrame* frameEntry = findFrameEntry(frameId);
+      return commitTimingFeedback(feedback, !frameEntry || feedback.presentTimeHost > frameEntry->deadlineHost);
+    }
 
     // Query reports in-order so that we can somewhat robustly
     // track how many frames are still in the report queue
