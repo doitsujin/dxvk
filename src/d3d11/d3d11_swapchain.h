@@ -95,6 +95,19 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetRotation(
             DXGI_MODE_ROTATION        Rotation);
 
+    HRESULT LatencySleep();
+
+    HRESULT SetLatencySleepMode(
+      const VkLatencySleepModeInfoNV& pSleepMode);
+
+    HRESULT SetLatencyMarker(
+            uint64_t                  FrameId,
+            VkLatencyMarkerNV         Marker);
+
+    size_t GetLatencyInfo(
+            uint32_t                  ReportCount,
+            VkLatencyTimingsFrameReportNV* pFrameReports);
+
   private:
 
     using DirtyRectList = small_vector<VkRectLayerKHR, 4>;
@@ -138,6 +151,8 @@ namespace dxvk {
     uint32_t                  m_frameLatencyCap = 0;
     HANDLE                    m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence>   m_frameLatencySignal;
+
+    std::atomic<uint64_t>     m_nextLatencyFrameId = 0;
 
     VkColorSpaceKHR           m_colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     VkClearColorValue         m_clearColor = {};

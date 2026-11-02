@@ -3530,8 +3530,17 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    // TODO reimplement.
-    return S_OK;
+    Com<D3D11SwapChain> swapChain;
+
+    { std::unique_lock lock(m_mutex);
+
+      if (!m_swapChain || !m_swapChain->HasLiveReferences())
+        return S_OK;
+
+      swapChain = m_swapChain;
+    }
+
+    return swapChain->LatencySleep();
   }
 
 
@@ -3545,12 +3554,14 @@ namespace dxvk {
     std::lock_guard lock(m_mutex);
 
     // Write back in case we have no swapchain yet
-    m_enableLowLatency = LowLatencyEnable;
-    m_enableBoost      = LowLatencyBoost;
-    m_minIntervalUs    = MinIntervalUs;
+    m_sleepMode.lowLatencyMode = LowLatencyEnable;
+    m_sleepMode.lowLatencyBoost = LowLatencyBoost;
+    m_sleepMode.minimumIntervalUs = MinIntervalUs;
 
-    // TODO reimplement.
-    return S_OK;
+    if (!m_swapChain)
+      return S_OK;
+
+    return m_swapChain->SetLatencySleepMode(m_sleepMode);
   }
 
 
@@ -3560,8 +3571,12 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    // TODO reimplement.
-    return S_OK;
+    std::lock_guard lock(m_mutex);
+
+    if (!m_swapChain)
+      return S_OK;
+
+    return m_swapChain->SetLatencyMarker(FrameId, VkLatencyMarkerNV(MarkerType));
   }
 
 
@@ -3578,8 +3593,67 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
-    // TODO reimplement.
+    std::lock_guard lock(m_mutex);
+
+    if (!m_swapChain)
+      return S_OK;
+
+    std::array<VkLatencyTimingsFrameReportNV, FrameCount> reports = {};
+
+    for (size_t i = 0u; i < reports.size(); i++)
+      reports[i] = { VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV };
+
+    size_t count = m_swapChain->GetLatencyInfo(reports.size(), reports.data());
+
+    // Apparently we have to report all 64 entries, or nothing.
+    if (count < reports.size())
+      return S_OK;
+
+    for (size_t i = 0u; i < reports.size(); i++) {
+      const auto& src = reports[i];
+      auto& dst = pLowLatencyResults->frameReports[i];
+
+      dst.frameID = src.presentID;
+      dst.inputSampleTime = src.inputSampleTimeUs;
+      dst.simStartTime = src.simStartTimeUs;
+      dst.simEndTime = src.simEndTimeUs;
+      dst.renderSubmitStartTime = src.renderSubmitStartTimeUs;
+      dst.renderSubmitEndTime = src.renderSubmitEndTimeUs;
+      dst.presentStartTime = src.presentStartTimeUs;
+      dst.presentEndTime = src.presentEndTimeUs;
+      dst.driverStartTime = src.driverStartTimeUs;
+      dst.driverEndTime = src.driverEndTimeUs;
+      dst.osRenderQueueStartTime = src.osRenderQueueStartTimeUs;
+      dst.osRenderQueueEndTime = src.osRenderQueueEndTimeUs;
+      dst.gpuRenderStartTime = src.gpuRenderStartTimeUs;
+      dst.gpuRenderEndTime = src.gpuRenderEndTimeUs;
+      // No great way to estimate GPU idle for any given frame
+      dst.gpuActiveRenderTimeUs = src.gpuRenderEndTimeUs - src.gpuRenderStartTimeUs;
+      dst.gpuFrameTimeUs = src.gpuRenderEndTimeUs - src.gpuRenderStartTimeUs;
+    }
+
     return S_OK;
+  }
+
+
+  void D3D11ReflexDevice::RegisterSwapChain(D3D11SwapChain* pSwapChain) {
+    if (!m_reflexEnabled)
+      return;
+
+    std::lock_guard lock(m_mutex);
+
+    if (!m_swapChain) {
+      m_swapChain = pSwapChain;
+      m_swapChain->SetLatencySleepMode(m_sleepMode);
+    }
+  }
+
+
+  void D3D11ReflexDevice::UnregisterSwapChain(D3D11SwapChain* pSwapChain) {
+    std::lock_guard lock(m_mutex);
+
+    if (m_swapChain == pSwapChain)
+      m_swapChain = nullptr;
   }
 
 
