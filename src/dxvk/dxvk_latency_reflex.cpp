@@ -222,9 +222,7 @@ namespace dxvk {
     // Only sleep if the app doesn't explicitly do Reflex and if
     // latency sleep is explicitly enabled via the configuration
     if (!m_lowLatencyMode.lowLatencyMode && m_setting == Tristate::True) {
-      lock.unlock();
-      auto sleepDuration = m_presenter->latencySleepNv();
-      lock.lock();
+      auto sleepDuration = performSleep(lock, frameId);
 
       m_lastSleepAppFrameId = m_lastBeginAppFrameId;
       m_lastSleepDuration = sleepDuration;
@@ -394,21 +392,24 @@ namespace dxvk {
     if (m_setting == Tristate::False)
       return;
 
-    { std::unique_lock lock(m_mutex);
-      // If the app doesn't use markers, wait for the previous present
-      // call to complete so that we don't confuse the algorithm by
-      // sleeping at random times relative to actual graphics work.
-      if (m_lowLatencyNoMarkers) {
-        m_cond.wait(lock, [this] {
-          return m_lastPresentComplete >= m_lastPresentQueued;
-        });
-      }
+    std::unique_lock lock(m_mutex);
+
+    // If the app doesn't use markers, wait for the previous present
+    // call to complete so that we don't confuse the algorithm by
+    // sleeping at random times relative to actual graphics work.
+    uint64_t frameId = lookupFrameId(m_lastBeginAppFrameId) + 1u;
+
+    if (m_lowLatencyNoMarkers) {
+      m_cond.wait(lock, [this] {
+        return m_lastPresentComplete >= m_lastPresentQueued;
+      });
+
+      frameId = m_lastPresentComplete + 1u;
     }
 
     // Actually sleep and write back sleep duration for the next frame
-    auto sleepDuration = m_presenter->latencySleepNv();
+    auto sleepDuration = performSleep(lock, frameId);
 
-    std::lock_guard lock(m_mutex);
     m_lastSleepAppFrameId = m_lastBeginAppFrameId;
     m_lastSleepDuration = sleepDuration;
 
@@ -556,6 +557,17 @@ namespace dxvk {
     }
 
     return dxvk::high_resolution_clock::now();
+  }
+
+
+  void DxvkReflexLatencyTrackerNv::performSleep(
+          std::unique_lock<dxvk::mutex>& lock,
+          uint64_t                  dxvkFrameId) {
+    if (m_device->features().nvLowLatency2) {
+      lock.unlock();
+      m_presenter->latencySleepNv();
+      lock.lock();
+    }
   }
 
 

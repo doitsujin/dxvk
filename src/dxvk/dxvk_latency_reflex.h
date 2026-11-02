@@ -200,6 +200,10 @@ namespace dxvk {
             uint64_t                  dxvkFrameId,
             VkLatencyMarkerNV         marker);
 
+    void performSleep(
+            std::unique_lock<dxvk::mutex>& lock,
+            uint64_t                  dxvkFrameId);
+
     static uint64_t timeToUs(time_point timestamp);
 
   };
