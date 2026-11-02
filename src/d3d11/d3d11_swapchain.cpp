@@ -294,7 +294,7 @@ namespace dxvk {
 
     if (hr == S_OK && m_latency) {
       latencyStats = m_latency->getStatistics(m_frameId);
-      m_latency->sleepAndBeginFrame(m_frameId + 1, std::abs(m_targetFrameRate));
+      m_latency->sleepAndBeginFrame(m_frameId + 1);
     }
 
     if (m_latencyHud)

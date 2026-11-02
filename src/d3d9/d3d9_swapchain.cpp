@@ -943,7 +943,7 @@ namespace dxvk {
 
     if (m_latencyTracker && status == VK_SUCCESS) {
       latencyStats = m_latencyTracker->getStatistics(m_wctx->frameId);
-      m_latencyTracker->sleepAndBeginFrame(m_wctx->frameId + 1, std::abs(m_targetFrameRate));
+      m_latencyTracker->sleepAndBeginFrame(m_wctx->frameId + 1);
 
       m_parent->BeginFrame(m_latencyTracker, m_wctx->frameId + 1u);
     }

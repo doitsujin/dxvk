@@ -216,8 +216,7 @@ namespace dxvk {
 
 
   void DxvkLatencyTracker::sleepAndBeginFrame(
-          uint64_t                  frameId,
-          double                    maxFrameRate) {
+          uint64_t                  frameId) {
     std::unique_lock lock(m_mutex);
 
     // Only sleep if the app doesn't explicitly do Reflex and if

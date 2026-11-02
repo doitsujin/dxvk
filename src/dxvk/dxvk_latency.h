@@ -219,11 +219,9 @@ namespace dxvk {
      * Uses latency data from previous frames to estimate when to wake
      * up the application thread in order to minimize input latency.
      * \param [in] frameId Frame ID of the upcoming frame
-     * \param [in] maxFrameRate Maximum frame rate or refresh rate
      */
     void sleepAndBeginFrame(
-            uint64_t                  frameId,
-            double                    maxFrameRate);
+            uint64_t                  frameId);
 
     /**
      * \brief Discards all current timing data
