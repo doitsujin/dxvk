@@ -180,6 +180,7 @@ namespace dxvk {
 
   VkResult Presenter::presentImage(
           uint64_t                frameId,
+          uint64_t                latencyFrameId,
           uint32_t                rectCount,
     const VkRectLayerKHR*         rects) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
@@ -277,8 +278,14 @@ namespace dxvk {
     if (m_hasIncrementalPresent && !m_presentRepaint && m_acquireStatus == VK_SUCCESS && rectCount)
       regionInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &regionInfo));
 
+    if (latencyFrameId)
+      setLatencyMarker(latencyFrameId, VK_LATENCY_MARKER_PRESENT_START_NV);
+
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
+
+    if (latencyFrameId)
+      setLatencyMarker(latencyFrameId, VK_LATENCY_MARKER_PRESENT_END_NV);
 
     // Maintain valid state if presentation succeeded, even if we want to
     // recreate the swapchain. Spec says that 'queue' operations, i.e. the

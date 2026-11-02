@@ -915,7 +915,7 @@ namespace dxvk {
         ctx->synchronizeWsi(cSync);
         ctx->flushCommandList(nullptr, 0u);
 
-        cDevice->presentImage(cPresenter, cFrameId, 0, nullptr, 0);
+        cDevice->presentImage(cPresenter, cFrameId, 0, 0, nullptr);
       });
 
       m_parent->FlushCsChunk();
