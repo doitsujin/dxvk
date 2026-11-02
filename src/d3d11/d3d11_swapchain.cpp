@@ -82,6 +82,8 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
+    m_dxgiDevice->GetReflexDevice()->UnregisterSwapChain(this);
+
     m_presenter->destroyResources();
     
     DestroyFrameLatencyEvent();
@@ -374,6 +376,51 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D11SwapChain::LatencySleep() {
+    m_presenter->latencySleep();
+    return S_OK;
+  }
+
+
+  HRESULT D3D11SwapChain::SetLatencySleepMode(
+    const VkLatencySleepModeInfoNV& pSleepMode) {
+    m_presenter->setLatencySleepMode(pSleepMode);
+    return S_OK;
+  }
+
+
+  HRESULT D3D11SwapChain::SetLatencyMarker(
+          uint64_t                  FrameId,
+          VkLatencyMarkerNV         Marker) {
+    switch (Marker) {
+      case VK_LATENCY_MARKER_PRESENT_START_NV: {
+        // We actually need to defer present markers until
+        // the present happens on the queue thread.
+        m_nextLatencyFrameId.store(FrameId);
+      } break;
+
+      case VK_LATENCY_MARKER_PRESENT_END_NV: {
+        // Reset frame ID in case presentation fails
+        m_nextLatencyFrameId.store(0);
+      } break;
+
+      default: {
+        // Forward all unrelated markers immediately.
+        m_presenter->setLatencyMarker(FrameId, Marker);
+      } break;
+    }
+
+    return S_OK;
+  }
+
+
+  size_t D3D11SwapChain::GetLatencyInfo(
+          uint32_t                  ReportCount,
+          VkLatencyTimingsFrameReportNV* pFrameReports) {
+    return m_presenter->getLatencyTimings(ReportCount, pFrameReports);
+  }
+
+
   Rc<DxvkImageView> D3D11SwapChain::GetBackBufferView() {
     Rc<DxvkImage> image = GetCommonTexture(m_backBuffers[0].ptr())->GetImage();
 
@@ -460,6 +507,10 @@ namespace dxvk {
 
     m_frameId += 1;
 
+    // Latch latency frame ID for Reflex markers and replace it
+    // with zero in order to avoid submitting any marker twice.
+    uint64_t latencyFrameId = m_nextLatencyFrameId.exchange(0u);
+
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     DxvkImageViewKey viewInfo = { };
@@ -482,6 +533,7 @@ namespace dxvk {
       cPresenter      = m_presenter,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId,
+      cLatencyFrameId = latencyFrameId,
       cDirtyRects     = std::move(dirtyRects),
       cClearColor     = m_clearColor,
       cSrcRect        = srcRect,
@@ -509,7 +561,7 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr, 0u);
 
-      cDevice->presentImage(cPresenter, cFrameId, 0,
+      cDevice->presentImage(cPresenter, cFrameId, cLatencyFrameId,
         cDirtyRects.size(), cDirtyRects.data());
     });
 
@@ -568,7 +620,7 @@ namespace dxvk {
     m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
 
-    // TODO add Reflex device.
+    m_dxgiDevice->GetReflexDevice()->RegisterSwapChain(this);
   }
 
 
