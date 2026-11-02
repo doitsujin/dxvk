@@ -580,17 +580,18 @@ namespace dxvk {
   void DxvkDevice::presentImage(
     const Rc<Presenter>&            presenter,
           uint64_t                  frameId,
+          uint64_t                  latencyFrameId,
           uint32_t                  rectCount,
-    const VkRectLayerKHR*           rects,
-          uint64_t                  submissionId) {
+    const VkRectLayerKHR*           rects) {
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
     presentInfo.frameId = frameId;
+    presentInfo.latencyFrameId = latencyFrameId;
 
     for (uint32_t i = 0u; i < rectCount; i++)
       presentInfo.rects.push_back(rects[i]);
 
-    m_submissionQueue.present(presentInfo, submissionId);
+    m_submissionQueue.present(presentInfo);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);

@@ -34,8 +34,9 @@ namespace dxvk {
    * a swap chain image on the device.
    */
   struct DxvkPresentInfo {
-    Rc<Presenter>       presenter = nullptr;
-    uint64_t            frameId   = 0u;
+    Rc<Presenter> presenter = nullptr;
+    uint64_t frameId        = 0u;
+    uint64_t latencyFrameId = 0u;
     small_vector<VkRectLayerKHR, 4u> rects;
   };
 
@@ -110,8 +111,7 @@ namespace dxvk {
      * \param [out] status Submission feedback
      */
     void present(
-            DxvkPresentInfo     presentInfo,
-            uint64_t            submissionId);
+            DxvkPresentInfo     presentInfo);
     
     /**
      * \brief Synchronizes with one queue submission

@@ -188,12 +188,14 @@ namespace dxvk {
      * 
      * Presents the last successfuly acquired image.
      * \param [in] frameId Frame number.
+     * \param [in] latencyFrameId Reflex frame ID
      * \param [in] rectCount Number of dirty rects
      * \param [in] rects Dirty rectangles
      * \returns Status of the operation
      */
     VkResult presentImage(
             uint64_t                frameId,
+            uint64_t                latencyFrameId,
             uint32_t                rectCount,
       const VkRectLayerKHR*         rects);
 

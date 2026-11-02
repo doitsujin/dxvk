@@ -63,12 +63,10 @@ namespace dxvk {
 
 
   void DxvkSubmissionQueue::present(
-          DxvkPresentInfo           presentInfo,
-          uint64_t                  submissionId) {
+          DxvkPresentInfo           presentInfo) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     DxvkSubmitEntry entry = { };
-    entry.timeline = submissionId;
     entry.present = std::move(presentInfo);
 
     m_submitQueue.push(std::move(entry));
@@ -159,7 +157,8 @@ namespace dxvk {
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
           status = entry.present.presenter->presentImage(entry.present.frameId,
-            entry.present.rects.size(), entry.present.rects.data());
+            entry.present.latencyFrameId, entry.present.rects.size(),
+            entry.present.rects.data());
         }
 
         if (m_callback)

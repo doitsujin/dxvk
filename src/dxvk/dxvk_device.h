@@ -637,18 +637,17 @@ namespace dxvk {
      * the submission thread. The status of this operation
      * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
-     * \param [in] tracker Latency tracker
      * \param [in] frameId Frame ID
+     * \param [in] latencyFrameId App-provided Reflex frame ID
      * \param [in] rectCount Number of dirty rectangles,
      * \param [in] rects Dirty rectangles
-     * \param [in] submissionId Submission timeline
      */
     void presentImage(
       const Rc<Presenter>&            presenter,
             uint64_t                  frameId,
+            uint64_t                  latencyFrameId,
             uint32_t                  rectCount,
-      const VkRectLayerKHR*           rects,
-            uint64_t                  submissionId);
+      const VkRectLayerKHR*           rects);
     
     /**
      * \brief Submits a command list
