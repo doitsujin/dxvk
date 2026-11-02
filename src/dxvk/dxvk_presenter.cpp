@@ -606,6 +606,14 @@ namespace dxvk {
   }
 
 
+  dxvk::high_resolution_clock::duration Presenter::queryFrameInterval() {
+    std::lock_guard lock(m_timingMutex);
+
+    auto ns = std::chrono::nanoseconds(m_timingMode.frameIntervalNs);
+    return std::chrono::duration_cast<dxvk::high_resolution_clock::duration>(ns);
+  }
+
+
   VkResult Presenter::recreateSwapChain() {
     VkResult vr;
 

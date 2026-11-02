@@ -339,6 +339,12 @@ namespace dxvk {
      */
     PresenterTimingFeedback queryPresentTiming();
 
+    /**
+     * \brief Queries frame interval in host time units
+     * \returns Frame interval, or 0 if unlimited.
+     */
+    dxvk::high_resolution_clock::duration queryFrameInterval();
+
   private:
 
     Rc<DxvkDevice>              m_device;
