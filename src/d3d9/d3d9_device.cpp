@@ -4519,7 +4519,7 @@ namespace dxvk {
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
-      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, false);
+      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, false, m_adapter);
       *ppSwapChain = ref(swapchain);
       m_losableResourceCounter++;
     }
@@ -8887,7 +8887,7 @@ namespace dxvk {
         return hr;
     }
     else {
-      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, true);
+      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, true, m_adapter);
       m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
     }
 

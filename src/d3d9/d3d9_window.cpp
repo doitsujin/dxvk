@@ -70,7 +70,7 @@ namespace dxvk
           D3DPRESENT_PARAMETERS params;
           RECT rect;
 
-          wsi::getDesktopCoordinates(wsi::getDefaultMonitor(), &rect);
+          wsi::getDesktopCoordinates(windowData.swapchain->GetAdapter()->GetMonitor(), &rect);
           windowData.swapchain->GetPresentParameters(&params);
           SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
                        SWP_NOACTIVATE | SWP_NOZORDER);
