@@ -16,10 +16,12 @@ namespace dxvk {
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
-    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode)
+    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
+          D3D9Adapter*           pAdapter)
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
+    , m_adapter          (pAdapter)
     , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
@@ -603,7 +605,7 @@ namespace dxvk {
 
       wsi::WsiMode devMode = { };
 
-      if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &devMode)) {
+      if (!wsi::getCurrentDisplayMode(m_adapter->GetMonitor(), &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
@@ -828,7 +830,7 @@ namespace dxvk {
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
     else {
-      wsi::getMonitorClientSize(wsi::getDefaultMonitor(),
+      wsi::getMonitorClientSize(m_adapter->GetMonitor(),
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
@@ -1207,7 +1209,7 @@ namespace dxvk {
 
     D3D9WindowMessageFilter filter(m_window);
     
-    m_monitor = wsi::getDefaultMonitor();
+    m_monitor = m_adapter->GetMonitor();
 
     wsi::saveWindowState(m_window, &m_windowState, true);
 
@@ -1263,7 +1265,7 @@ namespace dxvk {
 
     wsi::WsiMode wsiMode = ConvertDisplayMode(mode);
     
-    HMONITOR monitor = wsi::getDefaultMonitor();
+    HMONITOR monitor = m_adapter->GetMonitor();
 
     if (!wsi::setWindowMode(monitor, m_window, &m_windowState, wsiMode))
       return D3DERR_NOTAVAILABLE;

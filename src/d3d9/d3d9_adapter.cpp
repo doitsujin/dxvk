@@ -69,7 +69,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     WCHAR wideDisplayName[32] = { };
-    if (!wsi::getDisplayName(wsi::getDefaultMonitor(), wideDisplayName)) {
+    if (!wsi::getDisplayName(GetMonitor(), wideDisplayName)) {
       Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
       return D3DERR_INVALIDCALL;
     }
@@ -857,7 +857,7 @@ namespace dxvk {
 
     wsi::WsiMode mode = { };
 
-    if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &mode)) {
+    if (!wsi::getCurrentDisplayMode(GetMonitor(), &mode)) {
       Logger::err("D3D9Adapter::GetAdapterDisplayModeEx: Failed to enum display settings");
       return D3DERR_INVALIDCALL;
     }
@@ -980,11 +980,13 @@ namespace dxvk {
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
+    HMONITOR monitor = GetMonitor();
+
     wsi::WsiMode currentMode = { };
     wsi::WsiMode currentCompatibleMode = { };
 
     if (options.modeCountCompatibility) {
-      wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
+      wsi::getDesktopDisplayMode(monitor, &currentMode);
 
       if (likely(currentMode.width)) {
         // Skip checking the compabilitiy refresh rate (60 Hz),
@@ -1005,7 +1007,7 @@ namespace dxvk {
 
     uint32_t modeIndex = 0;
 
-    while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
+    while (wsi::getDisplayMode(monitor, modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.interlaced)
         continue;
