@@ -758,4 +758,35 @@ namespace dxvk::hud {
 
   };
 
+
+  class HudLatencyItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudLatencyItem();
+    ~HudLatencyItem();
+
+    void update(
+            Presenter&                              presenter,
+            dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+      const Rc<DxvkCommandList>&ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
+
+  private:
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
+
+    std::string m_sleep;
+    std::string m_latency;
+
+    PresenterLatencyInfo m_stats = {};
+
+  };
+
 }
