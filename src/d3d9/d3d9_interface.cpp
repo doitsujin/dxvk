@@ -33,9 +33,25 @@ namespace dxvk {
       DISPLAY_DEVICEA device = { };
       device.cb = sizeof(device);
 
+      uint32_t primary = 0;
+
+      // D3DADAPTER_DEFAULT must be the primary display, so enumerate it first.
+      if (m_d3d9Options.adapterGroups) {
+        while (::EnumDisplayDevicesA(nullptr, primary, &device, 0)
+            && !(device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE))
+          primary++;
+
+        if (!::EnumDisplayDevicesA(nullptr, primary, &device, 0))
+          primary = 0;
+      }
+
+      auto displayIndex = [primary] (uint32_t n) {
+        return n == 0 ? primary : (n <= primary ? n - 1 : n);
+      };
+
       uint32_t adapterOrdinal = 0;
       uint32_t i = 0;
-      while (::EnumDisplayDevicesA(nullptr, i++, &device, 0)) {
+      while (::EnumDisplayDevicesA(nullptr, displayIndex(i++), &device, 0)) {
         // If we aren't attached, skip over.
         if (!(device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP))
           continue;
@@ -50,7 +66,21 @@ namespace dxvk {
 
         if (adapter != nullptr) {
           const auto* d3d9On12Args = Find9On12Args(adapter, pOverrideList, OverrideCount);
-          m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, adapter, adapterOrdinal++, i - 1));
+          m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, adapter, adapterOrdinal++, displayIndex(i - 1),
+            m_d3d9Options.adapterGroups ? device.DeviceName : nullptr));
+        }
+      }
+
+      if (m_d3d9Options.adapterGroups) {
+        for (const auto& adapter : m_adapters) {
+          std::vector<D3D9Adapter*> group;
+
+          for (const auto& member : m_adapters) {
+            if (member->GetDXVKAdapter() == adapter->GetDXVKAdapter())
+              group.push_back(member.ptr());
+          }
+
+          adapter->SetAdapterGroup(std::move(group));
         }
       }
     }
@@ -62,7 +92,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < adapterCount; i++) {
         const auto* d3d9On12Args = Find9On12Args(m_instance->enumAdapters(i), pOverrideList, OverrideCount);
-        m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, m_instance->enumAdapters(i), i, 0));
+        m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, m_instance->enumAdapters(i), i, 0, nullptr));
       }
     }
 
