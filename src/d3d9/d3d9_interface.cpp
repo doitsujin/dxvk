@@ -406,6 +406,24 @@ namespace dxvk {
     if (adapter == nullptr)
       return D3DERR_INVALIDCALL;
 
+    if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE) {
+      const auto& group = adapter->GetAdapterGroup();
+
+      // Adapter group devices can only be created on the master adapter.
+      if (unlikely(!group.empty() && group.front() != adapter))
+        return D3DERR_INVALIDCALL;
+
+      if (group.size() > 1) {
+        if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
+          hr = ValidateAdapterGroupParameters(hFocusWindow, pPresentationParameters, group.size());
+          if (unlikely(FAILED(hr)))
+            return hr;
+        }
+
+        Logger::info(str::format("D3D9InterfaceEx::CreateDeviceEx: Creating adapter group device with ", group.size(), " heads"));
+      }
+    }
+
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     try {
@@ -525,6 +543,55 @@ namespace dxvk {
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
       return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9InterfaceEx::ValidateAdapterGroupParameters(
+          HWND                   hFocusWindow,
+    const D3DPRESENT_PARAMETERS* pPresentationParameters,
+          UINT                   HeadCount) {
+    // Head 0 falls back to the focus window, like the implicit swapchain does.
+    auto getHeadWindow = [&] (UINT Head) {
+      HWND window = pPresentationParameters[Head].hDeviceWindow;
+      return (window || Head) ? window : hFocusWindow;
+    };
+
+    for (UINT i = 0; i < HeadCount; i++) {
+      HRESULT hr = ValidatePresentationParameters(&pPresentationParameters[i]);
+      if (unlikely(FAILED(hr)))
+        return hr;
+
+      // Adapter group devices are fullscreen only.
+      if (unlikely(pPresentationParameters[i].Windowed))
+        return D3DERR_INVALIDCALL;
+
+      // Every head needs its own device window.
+      HWND window = getHeadWindow(i);
+
+      if (unlikely(!window))
+        return D3DERR_INVALIDCALL;
+
+      for (UINT j = 0; j < i; j++) {
+        if (unlikely(getHeadWindow(j) == window))
+          return D3DERR_INVALIDCALL;
+      }
+
+      // Auto depth stencils must match head 0, including the back buffer size and format.
+      const D3DPRESENT_PARAMETERS& head = pPresentationParameters[i];
+      const D3DPRESENT_PARAMETERS& head0 = pPresentationParameters[0];
+
+      if (unlikely(head.EnableAutoDepthStencil != head0.EnableAutoDepthStencil))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(head.EnableAutoDepthStencil
+                && (head.AutoDepthStencilFormat != head0.AutoDepthStencilFormat
+                 || head.BackBufferWidth        != head0.BackBufferWidth
+                 || head.BackBufferHeight       != head0.BackBufferHeight
+                 || head.BackBufferFormat       != head0.BackBufferFormat)))
+        return D3DERR_INVALIDCALL;
+    }
 
     return D3D_OK;
   }
