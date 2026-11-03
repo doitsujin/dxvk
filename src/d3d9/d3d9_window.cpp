@@ -72,6 +72,16 @@ namespace dxvk
 
           wsi::getDesktopCoordinates(windowData.swapchain->GetAdapter()->GetMonitor(), &rect);
           windowData.swapchain->GetPresentParameters(&params);
+
+          // The user only activates one head's window, so restore the others here.
+          if (device->GetNumberOfSwapChains() > 1 && IsIconic(window))
+            ShowWindow(window, SW_SHOWNOACTIVATE);
+
+          // Subordinate heads keep the desktop mode, so cover their monitor.
+          if (windowData.swapchain->IsGroupSubordinate()) {
+            params.BackBufferWidth  = rect.right - rect.left;
+            params.BackBufferHeight = rect.bottom - rect.top;
+          }
           SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
                        SWP_NOACTIVATE | SWP_NOZORDER);
         }

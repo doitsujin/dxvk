@@ -133,6 +133,8 @@ namespace dxvk {
 
     D3D9Adapter* GetAdapter() const { return m_adapter; }
 
+    bool IsGroupSubordinate() const;
+
     void SyncFrameLatency();
 
     void DestroyBackBuffers();
