@@ -136,6 +136,17 @@ namespace dxvk {
   };
 
   /**
+   * \brief Latency stats
+   *
+   * Used for informational purposes only.
+   */
+  struct PresenterLatencyInfo {
+    uint64_t frameLatencyUs = 0u;
+    uint64_t sleepDurationUs = 0u;
+    uint64_t sleepCount = 0u;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -332,6 +343,12 @@ namespace dxvk {
      */
     PresenterTimingFeedback queryPresentTiming();
 
+    /**
+     * \brief Queries latency statistics
+     * \returns Latency statistics
+     */
+    PresenterLatencyInfo queryLatencyStats();
+
   private:
 
     Rc<DxvkDevice>              m_device;
@@ -385,6 +402,7 @@ namespace dxvk {
     std::optional<VkLatencySleepModeInfoNV> m_latencySleepMode;
     VkSemaphore                 m_latencySemaphore = VK_NULL_HANDLE;
     uint64_t                    m_latencySleepCounter = 0u;
+    uint64_t                    m_latencySleepDurationUs = 0u;
 
     bool                        m_latencySleepModeDirty = false;
     bool                        m_latencySleepSupported = false;
