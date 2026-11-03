@@ -555,7 +555,10 @@ namespace dxvk {
     }
 
     // Reflex is broken on 32-bit
-    if (env::is32BitHostPlatform())
+    bool enableReflex = !env::is32BitHostPlatform();
+    applyTristate(enableReflex, instance.options().enableNvLowLatency2);
+
+    if (!enableReflex)
       m_featuresSupported.nvLowLatency2 = VK_FALSE;
 
     // EXT_multi_draw is broken on proprietary qcom on some devices
