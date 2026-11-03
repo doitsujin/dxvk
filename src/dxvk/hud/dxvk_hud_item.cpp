@@ -1419,4 +1419,56 @@ namespace dxvk::hud {
          / (uint32_t(m_tasksTotal - m_offset));
   }
 
+
+
+
+  HudLatencyItem::HudLatencyItem() { }
+  HudLatencyItem::~HudLatencyItem() { }
+
+
+  void HudLatencyItem::update(
+          Presenter&                              presenter,
+          dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      m_lastUpdate = time;
+
+      auto newStats = presenter.queryLatencyStats();
+      auto oldStats = std::exchange(m_stats, newStats);
+
+      if (!newStats.sleepCount)
+        return;
+
+      uint64_t latency = newStats.frameLatencyUs / 100u;
+      uint64_t sleepTime = (newStats.sleepDurationUs - oldStats.sleepDurationUs) /
+        (100u * std::max(newStats.sleepCount - oldStats.sleepCount, uint64_t(1u)));
+
+      m_sleep = str::format(sleepTime / 10u, ".", sleepTime % 10, " ms");
+      m_latency = str::format(latency / 10u, ".", latency % 10, " ms");
+    }
+  }
+
+
+  HudPos HudLatencyItem::render(
+    const Rc<DxvkCommandList>&ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    if (!m_latency.empty()) {
+      position.y += 16;
+      renderer.drawText(16, position, 0xffff60a0u, "Latency:");
+      renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_latency);
+
+      position.y += 16;
+      renderer.drawText(16, position, 0xffff60a0u, "Sleep:");
+      renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_sleep);
+
+      position.y += 8;
+    }
+
+    return position;
+  }
+
 }
