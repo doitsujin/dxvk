@@ -67,6 +67,8 @@ namespace dxvk {
 
     HMONITOR GetMonitor();
 
+    const std::vector<D3D9Adapter*>& GetAdapterGroup() const { return m_adapterGroup; }
+
     UINT GetAdapterModeCountEx(const D3DDISPLAYMODEFILTER* pFilter);
 
     HRESULT EnumAdapterModesEx(
@@ -157,6 +159,8 @@ namespace dxvk {
 
     UINT                          m_ordinal;
     UINT                          m_displayIndex;
+
+    std::vector<D3D9Adapter*>     m_adapterGroup;
 
     GUID                          m_deviceGuid;
     uint32_t                      m_vendorId;

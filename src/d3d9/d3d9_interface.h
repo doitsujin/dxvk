@@ -131,6 +131,11 @@ namespace dxvk {
     HRESULT ValidatePresentationParameters(
         const D3DPRESENT_PARAMETERS* pPresentationParameters);
 
+    HRESULT ValidateAdapterGroupParameters(
+              HWND                   hFocusWindow,
+        const D3DPRESENT_PARAMETERS* pPresentationParameters,
+              UINT                   HeadCount);
+
     const D3D9Options& GetOptions() const { return m_d3d9Options; }
 
     D3D9Adapter* GetAdapter(UINT Ordinal) {
