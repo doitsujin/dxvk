@@ -492,7 +492,7 @@ namespace dxvk {
 
     VkLatencySleepInfoNV info = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV };
     info.signalSemaphore = m_latencySemaphore;
-    info.value = ++m_latencySleepCounter;
+    info.value = m_latencySleepCounter + 1u;
 
     m_vkd->vkLatencySleepNV(m_vkd->device(), m_swapchain, &info);
 
@@ -503,7 +503,14 @@ namespace dxvk {
     waitInfo.pSemaphores = &info.signalSemaphore;
     waitInfo.pValues = &info.value;
 
+    auto t0 = dxvk::high_resolution_clock::now();
     m_vkd->vkWaitSemaphores(m_vkd->device(), &waitInfo, ~0ull);
+    auto t1 = dxvk::high_resolution_clock::now();
+
+    lock.lock();
+
+    m_latencySleepCounter += 1u;
+    m_latencySleepDurationUs += std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
   }
 
 
@@ -597,6 +604,23 @@ namespace dxvk {
 
   PresenterTimingFeedback Presenter::queryPresentTiming() {
     return updatePresentTimingFeedback(0u, 0u);
+  }
+
+
+  PresenterLatencyInfo Presenter::queryLatencyStats() {
+    if (!m_device->features().nvLowLatency2)
+      return PresenterLatencyInfo();
+
+    VkLatencyTimingsFrameReportNV report = { VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV };
+    getLatencyTimings(1, &report);
+
+    std::lock_guard lock(m_surfaceMutex);
+
+    PresenterLatencyInfo result = {};
+    result.frameLatencyUs = report.gpuRenderEndTimeUs - (report.inputSampleTimeUs ? report.inputSampleTimeUs : report.simStartTimeUs);
+    result.sleepCount = m_latencySleepCounter;
+    result.sleepDurationUs = m_latencySleepDurationUs;
+    return result;
   }
 
 
