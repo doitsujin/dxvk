@@ -48,7 +48,7 @@ namespace dxvk {
 
     /// Disable VK_NV_low_latency2. This extension
     /// appears to be all sorts of broken on 32-bit.
-    Tristate disableNvLowLatency2 = Tristate::Auto;
+    Tristate enableNvLowLatency2 = Tristate::Auto;
 
     // Hides integrated GPUs if dedicated GPUs are
     // present. May be necessary for some games that
