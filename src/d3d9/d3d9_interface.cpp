@@ -33,9 +33,25 @@ namespace dxvk {
       DISPLAY_DEVICEA device = { };
       device.cb = sizeof(device);
 
+      uint32_t primary = 0;
+
+      // D3DADAPTER_DEFAULT must be the primary display, so enumerate it first.
+      if (m_d3d9Options.adapterGroups) {
+        while (::EnumDisplayDevicesA(nullptr, primary, &device, 0)
+            && !(device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE))
+          primary++;
+
+        if (!::EnumDisplayDevicesA(nullptr, primary, &device, 0))
+          primary = 0;
+      }
+
+      auto displayIndex = [primary] (uint32_t n) {
+        return n == 0 ? primary : (n <= primary ? n - 1 : n);
+      };
+
       uint32_t adapterOrdinal = 0;
       uint32_t i = 0;
-      while (::EnumDisplayDevicesA(nullptr, i++, &device, 0)) {
+      while (::EnumDisplayDevicesA(nullptr, displayIndex(i++), &device, 0)) {
         // If we aren't attached, skip over.
         if (!(device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP))
           continue;
@@ -50,7 +66,21 @@ namespace dxvk {
 
         if (adapter != nullptr) {
           const auto* d3d9On12Args = Find9On12Args(adapter, pOverrideList, OverrideCount);
-          m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, adapter, adapterOrdinal++, i - 1));
+          m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, adapter, adapterOrdinal++, displayIndex(i - 1),
+            m_d3d9Options.adapterGroups ? device.DeviceName : nullptr));
+        }
+      }
+
+      if (m_d3d9Options.adapterGroups) {
+        for (const auto& adapter : m_adapters) {
+          std::vector<D3D9Adapter*> group;
+
+          for (const auto& member : m_adapters) {
+            if (member->GetDXVKAdapter() == adapter->GetDXVKAdapter())
+              group.push_back(member.ptr());
+          }
+
+          adapter->SetAdapterGroup(std::move(group));
         }
       }
     }
@@ -62,7 +92,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < adapterCount; i++) {
         const auto* d3d9On12Args = Find9On12Args(m_instance->enumAdapters(i), pOverrideList, OverrideCount);
-        m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, m_instance->enumAdapters(i), i, 0));
+        m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, m_instance->enumAdapters(i), i, 0, nullptr));
       }
     }
 
@@ -406,6 +436,24 @@ namespace dxvk {
     if (adapter == nullptr)
       return D3DERR_INVALIDCALL;
 
+    if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE) {
+      const auto& group = adapter->GetAdapterGroup();
+
+      // Adapter group devices can only be created on the master adapter.
+      if (unlikely(!group.empty() && group.front() != adapter))
+        return D3DERR_INVALIDCALL;
+
+      if (group.size() > 1) {
+        if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
+          hr = ValidateAdapterGroupParameters(hFocusWindow, pPresentationParameters, group.size());
+          if (unlikely(FAILED(hr)))
+            return hr;
+        }
+
+        Logger::info(str::format("D3D9InterfaceEx::CreateDeviceEx: Creating adapter group device with ", group.size(), " heads"));
+      }
+    }
+
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     try {
@@ -525,6 +573,55 @@ namespace dxvk {
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
       return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9InterfaceEx::ValidateAdapterGroupParameters(
+          HWND                   hFocusWindow,
+    const D3DPRESENT_PARAMETERS* pPresentationParameters,
+          UINT                   HeadCount) {
+    // Head 0 falls back to the focus window, like the implicit swapchain does.
+    auto getHeadWindow = [&] (UINT Head) {
+      HWND window = pPresentationParameters[Head].hDeviceWindow;
+      return (window || Head) ? window : hFocusWindow;
+    };
+
+    for (UINT i = 0; i < HeadCount; i++) {
+      HRESULT hr = ValidatePresentationParameters(&pPresentationParameters[i]);
+      if (unlikely(FAILED(hr)))
+        return hr;
+
+      // Adapter group devices are fullscreen only.
+      if (unlikely(pPresentationParameters[i].Windowed))
+        return D3DERR_INVALIDCALL;
+
+      // Every head needs its own device window.
+      HWND window = getHeadWindow(i);
+
+      if (unlikely(!window))
+        return D3DERR_INVALIDCALL;
+
+      for (UINT j = 0; j < i; j++) {
+        if (unlikely(getHeadWindow(j) == window))
+          return D3DERR_INVALIDCALL;
+      }
+
+      // Auto depth stencils must match head 0, including the back buffer size and format.
+      const D3DPRESENT_PARAMETERS& head = pPresentationParameters[i];
+      const D3DPRESENT_PARAMETERS& head0 = pPresentationParameters[0];
+
+      if (unlikely(head.EnableAutoDepthStencil != head0.EnableAutoDepthStencil))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(head.EnableAutoDepthStencil
+                && (head.AutoDepthStencilFormat != head0.AutoDepthStencilFormat
+                 || head.BackBufferWidth        != head0.BackBufferWidth
+                 || head.BackBufferHeight       != head0.BackBufferHeight
+                 || head.BackBufferFormat       != head0.BackBufferFormat)))
+        return D3DERR_INVALIDCALL;
+    }
 
     return D3D_OK;
   }

@@ -39,7 +39,8 @@ namespace dxvk {
           Rc<DxvkInstance> Instance,
           Rc<DxvkAdapter>  Adapter,
           UINT             Ordinal,
-          UINT             DisplayIndex)
+          UINT             DisplayIndex,
+    const char*            pDisplayName)
   : m_parent          (pParent),
     m_adapter         (Adapter),
     m_caps            (*Instance, Adapter->handle(), nullptr),
@@ -53,6 +54,9 @@ namespace dxvk {
 
     if (p9On12Args)
       m_9On12Args = *p9On12Args;
+
+    if (pDisplayName)
+      m_displayName = pDisplayName;
   }
 
 
@@ -69,7 +73,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     WCHAR wideDisplayName[32] = { };
-    if (!wsi::getDisplayName(wsi::getDefaultMonitor(), wideDisplayName)) {
+    if (!wsi::getDisplayName(GetMonitor(), wideDisplayName)) {
       Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
       return D3DERR_INVALIDCALL;
     }
@@ -724,6 +728,16 @@ namespace dxvk {
     pCaps->AdapterOrdinalInGroup      = 0;
     // Number of adapters in current group
     pCaps->NumberOfAdaptersInGroup    = 1;
+
+    if (!m_adapterGroup.empty()) {
+      UINT ordinalInGroup = std::find(m_adapterGroup.begin(), m_adapterGroup.end(), this) - m_adapterGroup.begin();
+
+      pCaps->MasterAdapterOrdinal     = m_adapterGroup.front()->GetOrdinal();
+      pCaps->AdapterOrdinalInGroup    = ordinalInGroup;
+      // Subordinate adapters report 0
+      pCaps->NumberOfAdaptersInGroup  = ordinalInGroup ? 0 : m_adapterGroup.size();
+    }
+
     // Decl Type Caps
     pCaps->DeclTypes                  = D3DDTCAPS_UBYTE4
                                       | D3DDTCAPS_UBYTE4N
@@ -793,6 +807,26 @@ namespace dxvk {
 
 
   HMONITOR D3D9Adapter::GetMonitor() {
+    if (m_displayName.empty())
+      return wsi::getDefaultMonitor();
+
+    for (uint32_t i = 0; ; i++) {
+      HMONITOR monitor = wsi::enumMonitors(i);
+
+      if (!monitor)
+        break;
+
+      WCHAR displayName[32] = { };
+
+      if (wsi::getDisplayName(monitor, displayName) && str::fromws(displayName) == m_displayName)
+        return monitor;
+    }
+
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn(str::format("D3D9Adapter::GetMonitor: No monitor found for ", m_displayName, ", using default monitor"));
+
     return wsi::getDefaultMonitor();
   }
 
@@ -857,7 +891,7 @@ namespace dxvk {
 
     wsi::WsiMode mode = { };
 
-    if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &mode)) {
+    if (!wsi::getCurrentDisplayMode(GetMonitor(), &mode)) {
       Logger::err("D3D9Adapter::GetAdapterDisplayModeEx: Failed to enum display settings");
       return D3DERR_INVALIDCALL;
     }
@@ -980,11 +1014,13 @@ namespace dxvk {
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
+    HMONITOR monitor = GetMonitor();
+
     wsi::WsiMode currentMode = { };
     wsi::WsiMode currentCompatibleMode = { };
 
     if (options.modeCountCompatibility) {
-      wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
+      wsi::getDesktopDisplayMode(monitor, &currentMode);
 
       if (likely(currentMode.width)) {
         // Skip checking the compabilitiy refresh rate (60 Hz),
@@ -1005,7 +1041,7 @@ namespace dxvk {
 
     uint32_t modeIndex = 0;
 
-    while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
+    while (wsi::getDisplayMode(monitor, modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.interlaced)
         continue;

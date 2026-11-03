@@ -285,10 +285,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->GetDisplayMode(pMode);
+    return GetHeadSwapChain(iSwapChain)->GetDisplayMode(pMode);
   }
 
 
@@ -434,21 +434,21 @@ namespace dxvk {
     if (unlikely(pSwapChain == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // This only returns the implicit swapchain...
+    // This only returns the implicit head swapchains...
 
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    *pSwapChain = static_cast<IDirect3DSwapChain9*>(m_implicitSwapchain.ref());
+    *pSwapChain = ref(GetHeadSwapChain(iSwapChain));
 
     return D3D_OK;
   }
 
 
   UINT STDMETHODCALLTYPE D3D9DeviceEx::GetNumberOfSwapChains() {
-    // This only counts the implicit swapchain...
+    // This only counts the implicit head swapchains...
 
-    return 1;
+    return 1 + m_groupHeads.size();
   }
 
 
@@ -461,6 +461,8 @@ namespace dxvk {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
       ResetState(pPresentationParameters);
       m_implicitSwapchain->DestroyBackBuffers();
+      for (auto& head : m_groupHeads)
+        head->DestroyBackBuffers();
       m_autoDepthStencil = nullptr;
 
       // Unbind all buffers that were still bound to the backend to avoid leaks.
@@ -500,6 +502,10 @@ namespace dxvk {
     // expects reset to work despite passing invalid parameters.
     if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
       hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
+
+      if (SUCCEEDED(hr) && GetHeadCount() > 1)
+        hr = m_parent->ValidateAdapterGroupParameters(m_window, pPresentationParameters, GetHeadCount());
+
       if (unlikely(FAILED(hr))) {
         if (!isExtended)
           m_deviceLostState = D3D9DeviceLostState::NotReset;
@@ -563,18 +569,18 @@ namespace dxvk {
           IDirect3DSurface9** ppBackBuffer) {
     InitReturnPtr(ppBackBuffer);
 
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
+    return GetHeadSwapChain(iSwapChain)->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->GetRasterStatus(pRasterStatus);
+    return GetHeadSwapChain(iSwapChain)->GetRasterStatus(pRasterStatus);
   }
 
 
@@ -587,18 +593,18 @@ namespace dxvk {
           UINT          iSwapChain,
           DWORD         Flags,
     const D3DGAMMARAMP* pRamp) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return;
 
-    m_implicitSwapchain->SetGammaRamp(Flags, pRamp);
+    GetHeadSwapChain(iSwapChain)->SetGammaRamp(Flags, pRamp);
   }
 
 
   void    STDMETHODCALLTYPE D3D9DeviceEx::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return;
 
-    m_implicitSwapchain->GetGammaRamp(pRamp);
+    GetHeadSwapChain(iSwapChain)->GetGammaRamp(pRamp);
   }
 
 
@@ -1207,10 +1213,13 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(iSwapChain != 0))
+      return GetHeadSwapChain(iSwapChain)->GetFrontBufferData(pDestSurface);
 
     // In windowed mode, GetFrontBufferData takes a screenshot of the entire screen.
     // We use the last used swapchain as a workaround.
@@ -4172,10 +4181,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::WaitForVBlank(UINT iSwapChain) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->WaitForVBlank();
+    return GetHeadSwapChain(iSwapChain)->WaitForVBlank();
   }
 
 
@@ -4260,12 +4269,24 @@ namespace dxvk {
       }
     }
 
-    return m_implicitSwapchain->Present(
+    // Head 0 presents last since it paces the whole adapter group.
+    HRESULT hr = D3D_OK;
+
+    for (auto& head : m_groupHeads) {
+      HRESULT headHr = head->Present(nullptr, nullptr, nullptr, nullptr, dwFlags);
+
+      if (FAILED(headHr) && SUCCEEDED(hr))
+        hr = headHr;
+    }
+
+    HRESULT implicitHr = m_implicitSwapchain->Present(
       pSourceRect,
       pDestRect,
       hDestWindowOverride,
       pDirtyRegion,
       dwFlags);
+
+    return FAILED(hr) ? hr : implicitHr;
   }
 
 
@@ -4470,6 +4491,10 @@ namespace dxvk {
     HRESULT hr;
     if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
       hr = m_parent->ValidatePresentationParametersEx(pPresentationParameters, pFullscreenDisplayMode);
+
+      if (SUCCEEDED(hr) && GetHeadCount() > 1)
+        hr = m_parent->ValidateAdapterGroupParameters(m_window, pPresentationParameters, GetHeadCount());
+
       if (unlikely(FAILED(hr)))
         return hr;
     }
@@ -4486,10 +4511,10 @@ namespace dxvk {
           UINT                iSwapChain,
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
-    if (unlikely(iSwapChain != 0))
+    if (unlikely(iSwapChain > m_groupHeads.size()))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->GetDisplayModeEx(pMode, pRotation);
+    return GetHeadSwapChain(iSwapChain)->GetDisplayModeEx(pMode, pRotation);
   }
 
 
@@ -4519,7 +4544,7 @@ namespace dxvk {
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
-      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, false);
+      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, false, m_adapter);
       *ppSwapChain = ref(swapchain);
       m_losableResourceCounter++;
     }
@@ -8881,13 +8906,42 @@ namespace dxvk {
       }
     }
 
+    const auto& adapterGroup = m_adapter->GetAdapterGroup();
+    const uint32_t headCount = GetHeadCount();
+
+    // Check subordinate heads by the same rules before head 0 is touched.
+    for (uint32_t i = 1; i < headCount; i++) {
+      const D3DPRESENT_PARAMETERS& headParams = pPresentationParameters[i];
+      D3D9Format headFmt = EnumerateFormat(headParams.BackBufferFormat);
+
+      if (likely(m_deviceType != D3DDEVTYPE_NULLREF) &&
+          unlikely(!headParams.Windowed &&
+                   (headParams.BackBufferWidth  == 0
+                 || headParams.BackBufferHeight == 0))) {
+        return D3DERR_INVALIDCALL;
+      }
+
+      if (headFmt != D3D9Format::Unknown && !unlockedFormats && !IsSupportedBackBufferFormat(headFmt))
+        return D3DERR_INVALIDCALL;
+
+      HMONITOR monitor = adapterGroup[i]->GetMonitor();
+
+      for (uint32_t j = 0; j < i; j++) {
+        if (unlikely(adapterGroup[j]->GetMonitor() == monitor)) {
+          Logger::err(str::format("D3D9DeviceEx::ResetSwapChain: Adapters ", adapterGroup[j]->GetOrdinal(),
+            " and ", adapterGroup[i]->GetOrdinal(), " resolve to the same monitor"));
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+    }
+
     if (m_implicitSwapchain != nullptr) {
       HRESULT hr = m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
       if (FAILED(hr))
         return hr;
     }
     else {
-      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, true);
+      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode, true, m_adapter);
       m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
     }
 
@@ -8936,7 +8990,35 @@ namespace dxvk {
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();
 
+    // Subordinate heads come last so that head 0 stays bound if one fails.
+    // Heads with an auto depth stencil match head 0's size and format, so they share it.
+    for (uint32_t i = 1; i < headCount; i++) {
+      D3DPRESENT_PARAMETERS* headParams = &pPresentationParameters[i];
+      D3DDISPLAYMODEEX* headMode = pFullscreenDisplayMode ? &pFullscreenDisplayMode[i] : nullptr;
+
+      if (i <= m_groupHeads.size()) {
+        HRESULT hr = m_groupHeads[i - 1]->Reset(headParams, headMode);
+        if (FAILED(hr))
+          return hr;
+      } else {
+        m_groupHeads.emplace_back(new D3D9SwapChainEx(this, headParams, headMode, false, adapterGroup[i]));
+      }
+    }
+
     return D3D_OK;
+  }
+
+
+  D3D9SwapChainEx* D3D9DeviceEx::GetHeadSwapChain(UINT iSwapChain) const {
+    return iSwapChain ? m_groupHeads[iSwapChain - 1].ptr() : m_implicitSwapchain.ptr();
+  }
+
+
+  uint32_t D3D9DeviceEx::GetHeadCount() const {
+    if (!(m_behaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE))
+      return 1u;
+
+    return std::max<uint32_t>(m_adapter->GetAdapterGroup().size(), 1u);
   }
 
 

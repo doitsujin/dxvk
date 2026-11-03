@@ -70,7 +70,8 @@ namespace dxvk {
             D3D9DeviceEx*          pDevice,
             D3DPRESENT_PARAMETERS* pPresentParams,
       const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
-            bool                   EnableLatencyTracking);
+            bool                   EnableLatencyTracking,
+            D3D9Adapter*           pAdapter);
 
     ~D3D9SwapChainEx();
 
@@ -130,6 +131,10 @@ namespace dxvk {
 
     const D3DPRESENT_PARAMETERS* GetPresentParams() const { return &m_presentParams; }
 
+    D3D9Adapter* GetAdapter() const { return m_adapter; }
+
+    bool IsGroupSubordinate() const;
+
     void SyncFrameLatency();
 
     void DestroyBackBuffers();
@@ -168,6 +173,8 @@ namespace dxvk {
 
     HWND                      m_window   = nullptr;
     HMONITOR                  m_monitor  = nullptr;
+
+    D3D9Adapter*              m_adapter  = nullptr;
 
     wsi::DxvkWindowState      m_windowState;
 

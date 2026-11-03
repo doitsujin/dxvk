@@ -24,7 +24,8 @@ namespace dxvk {
             Rc<DxvkInstance> Instance,
             Rc<DxvkAdapter>  Adapter,
             UINT             Ordinal,
-            UINT             DisplayIndex);
+            UINT             DisplayIndex,
+      const char*            pDisplayName);
 
     HRESULT GetAdapterIdentifier(
             DWORD                   Flags,
@@ -66,6 +67,10 @@ namespace dxvk {
             D3DCAPS9*  pCaps);
 
     HMONITOR GetMonitor();
+
+    const std::vector<D3D9Adapter*>& GetAdapterGroup() const { return m_adapterGroup; }
+
+    void SetAdapterGroup(std::vector<D3D9Adapter*>&& Group) { m_adapterGroup = std::move(Group); }
 
     UINT GetAdapterModeCountEx(const D3DDISPLAYMODEFILTER* pFilter);
 
@@ -157,6 +162,9 @@ namespace dxvk {
 
     UINT                          m_ordinal;
     UINT                          m_displayIndex;
+    std::string                   m_displayName;
+
+    std::vector<D3D9Adapter*>     m_adapterGroup;
 
     GUID                          m_deviceGuid;
     uint32_t                      m_vendorId;

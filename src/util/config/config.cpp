@@ -778,9 +778,11 @@ namespace dxvk {
       { "d3d9.cachedWriteOnlyBuffers",      "True" },
       { "d3d9.countLosableResources",      "False" },
     }} },
-    /* Supreme Commander & Forged Alliance Forever */
+    /* Supreme Commander & Forged Alliance Forever *
+     * Dual screen support needs adapter groups    */
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
+      { "d3d9.adapterGroups",               "True" },
     }} },
     /* Bionic Commando                            *
      * Physics break at high fps                  */

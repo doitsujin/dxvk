@@ -119,6 +119,9 @@ namespace dxvk {
     /// Enumerate adapters by displays
     bool enumerateByDisplays;
 
+    /// Report displays on the same Vulkan device as one adapter group
+    bool adapterGroups;
+
     /// Cached dynamic buffers: Maps all buffers in cached memory.
     bool cachedWriteOnlyBuffers;
 
