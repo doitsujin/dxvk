@@ -3571,6 +3571,8 @@ namespace dxvk {
     if (!m_reflexEnabled)
       return DXGI_ERROR_INVALID_CALL;
 
+    std::lock_guard lock(m_mutex);
+
     if (!m_swapChain)
       return S_OK;
 
