@@ -404,7 +404,7 @@ namespace dxvk {
     uint64_t                    m_latencySleepCounter = 0u;
     uint64_t                    m_latencySleepDurationUs = 0u;
 
-    bool                        m_latencySleepModeDirty = false;
+    std::atomic<bool>           m_latencySleepModeDirty = { false };
     bool                        m_latencySleepSupported = false;
 
     alignas(CACHE_LINE_SIZE)

@@ -150,12 +150,20 @@ namespace dxvk {
     }
 
     // Apply latency sleep mode if the swapchain supports it
-    if (m_latencySleepModeDirty && m_latencySleepMode) {
-      m_latencySleepModeDirty = false;
-
+    if (m_latencySleepMode
+     && m_latencySleepModeDirty.load()
+     && m_latencySleepModeDirty.exchange(false)) {
       if (m_latencySleepSupported) {
-        m_vkd->vkSetLatencySleepModeNV(m_vkd->device(),
-          m_swapchain, &(*m_latencySleepMode));
+        auto sleepMode = m_latencySleepMode.value();
+
+        if (sleepMode.lowLatencyMode) {
+          std::unique_lock lock(m_timingMutex);
+
+          sleepMode.minimumIntervalUs = std::max(sleepMode.minimumIntervalUs,
+            uint32_t(m_timingMode.frameIntervalNs / 1000u));
+        }
+
+        m_vkd->vkSetLatencySleepModeNV(m_vkd->device(), m_swapchain, &sleepMode);
       }
     }
 
@@ -443,12 +451,11 @@ namespace dxvk {
 
     m_dirtySwapchain |= !m_latencySleepMode;
 
-    if (m_latencySleepMode) {
-      m_latencySleepModeDirty |=
-        m_latencySleepMode->lowLatencyMode != sleepMode.lowLatencyMode ||
-        m_latencySleepMode->lowLatencyBoost != sleepMode.lowLatencyBoost ||
-        m_latencySleepMode->minimumIntervalUs != sleepMode.minimumIntervalUs;
-    }
+    if (m_latencySleepMode
+     && (m_latencySleepMode->lowLatencyMode != sleepMode.lowLatencyMode
+      || m_latencySleepMode->lowLatencyBoost != sleepMode.lowLatencyBoost
+      || m_latencySleepMode->minimumIntervalUs != sleepMode.minimumIntervalUs))
+      m_latencySleepModeDirty.store(true);
 
     m_latencySleepMode = sleepMode;
     m_latencySleepMode->pNext = nullptr;
@@ -560,6 +567,8 @@ namespace dxvk {
 
       m_frameRateLimit = frameRate;
       updateTimingMode();
+
+      m_latencySleepModeDirty.store(true, std::memory_order_release);
     }
   }
 
