@@ -30,6 +30,9 @@ namespace dxvk::wsi {
 #if defined(DXVK_WSI_GLFW)
     // Nothing to store
 #endif
+#if defined(DXVK_WSI_EXTERNAL)
+    // Nothing to store
+#endif
   };
 
   /**
