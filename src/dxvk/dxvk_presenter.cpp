@@ -2164,7 +2164,7 @@ namespace dxvk {
       bool isFifoMode = frame.mode == VK_PRESENT_MODE_FIFO_KHR
                      || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
-      if (isFifoMode && frame.result >= 0 && m_hasPresentWait) {
+      if (!waited && isFifoMode && frame.result >= 0 && m_hasPresentWait) {
         VkResult vr;
 
         if (m_device->features().khrPresentWait2.presentWait2) {
