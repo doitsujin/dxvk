@@ -144,7 +144,10 @@ namespace dxvk {
       if (!mask)
         return -1;
       
-      return BitCount * intId + bit::tzcnt(mask);
+      // uintptr_t is not uint64_t on every LP64 target (macOS: unsigned long
+      // vs unsigned long long), so pick the bit::tzcnt overload by width.
+      using TzcntType = std::conditional_t<sizeof(MaskType) == 8, uint64_t, uint32_t>;
+      return BitCount * intId + bit::tzcnt(TzcntType(mask));
     }
 
     bool operator == (const DxvkBindingSet& other) const {
