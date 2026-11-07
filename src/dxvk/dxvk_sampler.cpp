@@ -173,13 +173,12 @@ namespace dxvk {
           DxvkDevice*               device,
           uint32_t                  size)
   : m_device(device), m_descriptorCount(size) {
-    if (!device->canUseDescriptorHeap())
-      initDescriptorLayout();
-
-    if (device->canUseDescriptorHeap() || device->canUseDescriptorBuffer())
+    if (device->canUseDescriptorHeap()) {
       initDescriptorHeap();
-    else
+    } else {
+      initDescriptorLayout();
       initDescriptorPool();
+    }
   }
 
 
@@ -264,13 +263,6 @@ namespace dxvk {
         freeBorderColor(index);
         throw DxvkError(str::format("Failed to write Vulkan sampler descriptor: ", vr));
       }
-    } else if (m_device->canUseDescriptorBuffer()) {
-      VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-      info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-      info.data.pSampler = &descriptor.samplerObject;
-
-      vk->vkGetDescriptorEXT(vk->device(), &info, m_heap.descriptorSize,
-        m_heap.buffer->mapPtr(m_heap.descriptorOffset + m_heap.descriptorSize * index));
     } else {
       VkDescriptorImageInfo samplerInfo = { };
       samplerInfo.sampler = descriptor.samplerObject;
@@ -308,22 +300,16 @@ namespace dxvk {
     binding.descriptorCount = m_descriptorCount;
     binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
 
-    VkDescriptorBindingFlags bindingFlags = 0u;
-
-    if (!m_device->canUseDescriptorBuffer()) {
-      bindingFlags |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
-                   |  VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
-                   |  VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
-    }
+    VkDescriptorBindingFlags bindingFlags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+                                          | VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
+                                          | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
 
     VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
     layoutFlags.bindingCount = 1u;
     layoutFlags.pBindingFlags = &bindingFlags;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, &layoutFlags };
-    layoutInfo.flags = m_device->canUseDescriptorBuffer()
-      ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
-      : VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
     layoutInfo.bindingCount = 1u;
     layoutInfo.pBindings = &binding;
 
@@ -364,29 +350,17 @@ namespace dxvk {
 
   void DxvkSamplerDescriptorHeap::initDescriptorHeap() {
     auto vk = m_device->vkd();
+    const auto& properties = m_device->properties().extDescriptorHeap;
+
+    // Descriptor size may be smaller than the required alignment, be sure to pad
+    m_heap.descriptorSize = align(properties.samplerDescriptorSize, properties.samplerDescriptorAlignment);
+    m_heap.reservedSize = properties.minSamplerHeapReservedRange;
 
     DxvkBufferCreateInfo bufferInfo = { };
-    bufferInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                     | VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT;
+    bufferInfo.size = m_heap.reservedSize + m_heap.descriptorSize * m_descriptorCount;
     bufferInfo.debugName = "Sampler heap";
-
-    if (m_device->canUseDescriptorHeap()) {
-      const auto& properties = m_device->properties().extDescriptorHeap;
-
-      // Descriptor size may be smaller than the required alignment, be sure to pad
-      m_heap.descriptorSize = align(properties.samplerDescriptorSize, properties.samplerDescriptorAlignment);
-      m_heap.reservedSize = properties.minSamplerHeapReservedRange;
-
-      bufferInfo.usage |= VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT;
-      bufferInfo.size = m_heap.reservedSize + m_heap.descriptorSize * m_descriptorCount;
-    } else {
-      const auto& properties = m_device->properties().extDescriptorBuffer;
-      m_heap.descriptorSize = properties.samplerDescriptorSize;
-
-      bufferInfo.usage |= VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
-
-      vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.setLayout, &bufferInfo.size);
-      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.setLayout, 0u, &m_heap.descriptorOffset);
-    }
 
     Logger::info(str::format("Creating sampler descriptor heap (", bufferInfo.size >> 10u, " kB)"));
 

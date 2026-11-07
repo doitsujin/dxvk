@@ -50,14 +50,10 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkDescriptorSetLayoutKey& key)
   : m_device(device), m_bindingCount(key.getBindingCount()) {
-    if (device->canUseDescriptorHeap()) {
+    if (device->canUseDescriptorHeap())
       initDescriptorHeapLayout(key);
-    } else {
+    else
       initSetLayout(key);
-
-      if (m_device->canUseDescriptorBuffer())
-        initDescriptorBufferUpdate(key);
-    }
   }
 
 
@@ -111,13 +107,10 @@ namespace dxvk {
     layoutInfo.bindingCount = bindingInfos.size();
     layoutInfo.pBindings = bindingInfos.data();
 
-    if (m_device->canUseDescriptorBuffer())
-      layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
-
     if (vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.layout))
       throw DxvkError("DxvkDescriptorSetLayout: Failed to create descriptor set layout");
 
-    if (layoutInfo.bindingCount && !m_device->canUseDescriptorBuffer()) {
+    if (layoutInfo.bindingCount) {
       VkDescriptorUpdateTemplateCreateInfo templateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
       templateInfo.descriptorUpdateEntryCount = templateInfos.size();
       templateInfo.pDescriptorUpdateEntries = templateInfos.data();
@@ -127,36 +120,6 @@ namespace dxvk {
       if (vk->vkCreateDescriptorUpdateTemplate(vk->device(), &templateInfo, nullptr, &m_legacy.updateTemplate))
         throw DxvkError("DxvkDescriptorSetLayout: Failed to create descriptor update template");
     }
-  }
-
-
-  void DxvkDescriptorSetLayout::initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key) {
-    auto vk = m_device->vkd();
-
-    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.layout, &m_heap.memorySize);
-    m_heap.memorySize = align(m_heap.memorySize, m_device->getDescriptorProperties().getDescriptorSetAlignment());
-
-    small_vector<DxvkDescriptorUpdateInfo, 32u> descriptors;
-
-    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
-      const auto& binding = key.getBinding(i);
-
-      VkDeviceSize offset = 0u;
-      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.layout, i, &offset);
-
-      auto& info = m_heap.bindingLayouts.emplace_back();
-      info.descriptorType = binding.getDescriptorType();
-      info.offset = uint32_t(offset);
-
-      for (uint32_t j = 0u; j < binding.getDescriptorCount(); j++) {
-        auto& e = descriptors.emplace_back();
-        e.descriptorType = binding.getDescriptorType();
-        e.offset = uint32_t(offset) + j * m_device->getDescriptorProperties().getDescriptorTypeInfo(e.descriptorType).size;
-      }
-    }
-
-    m_heap.update = DxvkDescriptorUpdateList(m_device,
-      m_heap.memorySize, descriptors.size(), descriptors.data());
   }
 
 
@@ -308,19 +271,6 @@ namespace dxvk {
 
     if (m_device->canUseDescriptorHeap())
       return std::make_pair(align(sizeof(DxvkScInfo), alignment), 0u);
-
-    if (m_device->canUseDescriptorBuffer()) {
-      auto vk = m_device->vkd();
-
-      VkDeviceSize size = 0u;
-      VkDeviceSize offset = 0u;
-
-      VkDescriptorSetLayout layout = m_device->getSpecDataSetLayout();
-      vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), layout, &size);
-      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), layout, 0u, &offset);
-
-      return std::make_pair(align(size, alignment), offset);
-    }
 
     // On the legacy path, we use a plain uniform buffer.
     alignment = std::max<VkDeviceSize>(CACHE_LINE_SIZE, m_device->properties().core.properties.limits.minUniformBufferOffsetAlignment);

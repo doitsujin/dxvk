@@ -326,8 +326,6 @@ namespace dxvk {
   DxvkDescriptorProperties::DxvkDescriptorProperties(DxvkDevice* device) {
     if (device->canUseDescriptorHeap())
       initDescriptorHeapProperties(device);
-    else if (device->canUseDescriptorBuffer())
-      initDescriptorBufferProperties(device);
   }
 
 
@@ -380,44 +378,6 @@ namespace dxvk {
 
     // Pad to full cache lines for better write patterns
     m_setAlignment = std::max<VkDeviceSize>(m_setAlignment, CACHE_LINE_SIZE);
-
-    logDescriptorProperties();
-  }
-
-
-  void DxvkDescriptorProperties::initDescriptorBufferProperties(const DxvkDevice* device) {
-    auto vk = device->vkd();
-    auto properties = device->properties().extDescriptorBuffer;
-
-    std::array<std::pair<VkDescriptorType, size_t>, 8u> sizes = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,               properties.samplerDescriptorSize                  },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,        properties.robustUniformBufferDescriptorSize      },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,        properties.robustStorageBufferDescriptorSize      },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,  properties.robustUniformTexelBufferDescriptorSize },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,  properties.robustStorageTexelBufferDescriptorSize },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,         properties.sampledImageDescriptorSize             },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,         properties.storageImageDescriptorSize             },
-      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,      properties.inputAttachmentDescriptorSize          },
-    }};
-
-    for (const auto& s : sizes) {
-      auto type = uint32_t(s.first);
-
-      // We don't get alignments from this extension
-      auto& info = m_descriptorTypes[type];
-      info.size       = s.second;
-      info.alignment  = 1u;
-
-      if (s.first != VK_DESCRIPTOR_TYPE_SAMPLER && s.first != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {
-        VkDescriptorGetInfoEXT nullInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-        nullInfo.type = s.first;
-
-        vk->vkGetDescriptorEXT(vk->device(),
-          &nullInfo, s.second, m_nullDescriptors[type].descriptor.data());
-      }
-    }
-
-    m_setAlignment = std::max<uint32_t>(CACHE_LINE_SIZE, properties.descriptorBufferOffsetAlignment);
 
     logDescriptorProperties();
   }
