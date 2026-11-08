@@ -80,6 +80,22 @@ namespace dxvk {
     iaInfo.topology               = state.ia.primitiveTopology();
     iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
 
+    /* KosmicKrisp/Metal cannot disable primitive restart for strip/fan topologies
+       (Metal always treats the max index as a restart). Force it on for those so
+       pipeline creation doesn't fail with VK_ERROR_FEATURE_NOT_PRESENT ->
+       VK_ERROR_DEVICE_LOST. The restart index is unused by D3D, so this is safe. */
+    switch (iaInfo.topology) {
+      case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+      case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+      case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+      case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+      case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+        iaInfo.primitiveRestartEnable = VK_TRUE;
+        break;
+      default:
+        break;
+    }
+
     uint32_t attrMask = shaders.vs->metadata().inputs.computeMask();
     uint32_t bindingMask = 0;
 

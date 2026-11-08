@@ -7049,7 +7049,18 @@ namespace dxvk {
     state.setCullMode(DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE])));
     state.setDepthClip(true);
     state.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
-    state.setPolygonMode(DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE])));
+    /* patches/dxvk/0001 relaxed fillModeNonSolid from required to optional so a
+     * driver without it can still create a device -- but relaxing the
+     * requirement does not remove the use. KosmicKrisp reports
+     * fillModeNonSolid = 0, so a title setting D3DRS_FILLMODE to WIREFRAME or
+     * POINT (debug views, some effect passes) would build a pipeline with a
+     * polygon mode the device cannot do: invalid usage, and device loss on
+     * some drivers. Fall back to solid fill. */
+    VkPolygonMode polygonMode = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
+    if (polygonMode != VK_POLYGON_MODE_FILL &&
+        !m_dxvkDevice->features().core.features.fillModeNonSolid)
+      polygonMode = VK_POLYGON_MODE_FILL;
+    state.setPolygonMode(polygonMode);
     state.setFlatShading(m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT);
     state.setSampleCount(m_state.renderStates[D3DRS_MULTISAMPLEANTIALIAS]
       ? VkSampleCountFlags(0u)

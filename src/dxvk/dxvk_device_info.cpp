@@ -850,7 +850,7 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, depthClamp, true),
       ENABLE_FEATURE(core.features, drawIndirectFirstInstance, false),
       ENABLE_FEATURE(core.features, dualSrcBlend, true),
-      ENABLE_FEATURE(core.features, fillModeNonSolid, true),
+      ENABLE_FEATURE(core.features, fillModeNonSolid, false),
       ENABLE_FEATURE(core.features, fragmentStoresAndAtomics, true),
       ENABLE_FEATURE(core.features, fullDrawIndexUint32, true),
       ENABLE_FEATURE(core.features, geometryShader, true),

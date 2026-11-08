@@ -7842,7 +7842,11 @@ namespace dxvk {
     std::array<VkDeviceSize, MaxNumVertexBindings> strides;
     
     bool oldDynamicStrides = m_flags.test(DxvkContextFlag::GpDynamicVertexStrides);
-    bool newDynamicStrides = true;
+    /* KosmicKrisp/Metal validates dynamic vertex-buffer strides strictly
+       (setVertexBufferOffset:attributeStride:) and loses the device on D3D9
+       vertex buffers, which have no VK_EXT_robustness2 to bound them. Force
+       static strides so the real stride is baked into the pipeline instead. */
+    bool newDynamicStrides = false;
 
     // Set buffer handles and offsets for active bindings
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
@@ -7870,9 +7874,13 @@ namespace dxvk {
 
         m_cmd->track(m_state.vi.vertexBuffers[binding].buffer(), DxvkAccess::Read);
       } else {
-        buffers[i] = VK_NULL_HANDLE;
-        offsets[i] = 0;
-        lengths[i] = 0;
+        /* KosmicKrisp had no nullDescriptor when this was written: binding an unbound vertex stream as
+           VK_NULL_HANDLE makes Metal fail "missing buffer binding" and lose the
+           device. Bind the zero-filled dummy buffer (stride 0) instead. */
+        auto dummy = m_common->dummyResources().bufferInfo();
+        buffers[i] = dummy.buffer;
+        offsets[i] = dummy.offset;
+        lengths[i] = dummy.size;
         strides[i] = 0;
       }
     }
