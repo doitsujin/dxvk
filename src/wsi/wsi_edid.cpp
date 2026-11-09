@@ -1,7 +1,6 @@
 extern "C" {
 #include "libdisplay-info/info.h"
 #include "libdisplay-info/edid.h"
-#include "libdisplay-info/cta.h"
 }
 
 #include "wsi_edid.h"
@@ -25,24 +24,9 @@ namespace dxvk::wsi {
     const di_edid* edid = di_info_get_edid(info);
 
     const di_edid_chromaticity_coords* chroma = di_edid_get_chromaticity_coords(edid);
-    const di_cta_hdr_static_metadata_block* hdr_static_metadata = nullptr;
-    const di_cta_colorimetry_block* colorimetry = nullptr;
 
-    const di_edid_cta* cta = nullptr;
-
-    for (auto exts = di_edid_get_extensions(edid); *exts != nullptr; exts++) {
-      if ((cta = di_edid_ext_get_cta(*exts)))
-        break;
-    }
-
-    if (cta) {
-      for (auto blocks = di_edid_cta_get_data_blocks(cta); *blocks != nullptr; blocks++) {
-        if (!hdr_static_metadata && (hdr_static_metadata = di_cta_data_block_get_hdr_static_metadata(*blocks)))
-          continue;
-        if (!colorimetry && (colorimetry = di_cta_data_block_get_colorimetry(*blocks)))
-          continue;
-      }
-    }
+    const di_hdr_static_metadata* hdr_static_metadata = di_info_get_hdr_static_metadata(info);
+    const di_supported_signal_colorimetry* colorimetry = di_info_get_supported_signal_colorimetry(info);
 
     if (chroma) {
       metadata.redPrimary[0]   = chroma->red_x;
@@ -55,14 +39,11 @@ namespace dxvk::wsi {
       metadata.whitePoint[1]   = chroma->white_y;
     }
 
-    if (hdr_static_metadata) {
-      metadata.maxFullFrameLuminance = hdr_static_metadata->desired_content_max_frame_avg_luminance;
-      metadata.minLuminance          = hdr_static_metadata->desired_content_min_luminance;
-      metadata.maxLuminance          = hdr_static_metadata->desired_content_max_luminance;
-    }
+    metadata.maxFullFrameLuminance = hdr_static_metadata->desired_content_max_frame_avg_luminance;
+    metadata.minLuminance          = hdr_static_metadata->desired_content_min_luminance;
+    metadata.maxLuminance          = hdr_static_metadata->desired_content_max_luminance;
 
-    metadata.supportsST2084 = chroma && colorimetry && colorimetry->bt2020_rgb &&
-      hdr_static_metadata && hdr_static_metadata->eotfs && hdr_static_metadata->eotfs->pq;
+    metadata.supportsST2084 = chroma && colorimetry->bt2020_rgb && hdr_static_metadata->pq;
 
     di_info_destroy(info);
     return metadata;
