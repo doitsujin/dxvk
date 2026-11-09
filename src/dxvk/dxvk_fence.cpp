@@ -30,8 +30,11 @@ namespace dxvk {
 
       if (externalFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT)
         typeInfo.pNext = &exportInfo;
-      else
+      else {
         Logger::warn(str::format("Exporting semaphores of type ", info.sharedType, " not supported by device"));
+        // Without export there is no handle to give out later
+        m_info.sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+      }
     }
 
     VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
@@ -57,7 +60,7 @@ namespace dxvk {
       }
     }
 
-    if (info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
+    if (m_info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
       initKmtHandles();
   }
 
