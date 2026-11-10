@@ -298,6 +298,14 @@ namespace dxvk {
     bool canUseSampleLocations(VkSampleCountFlags samples) const;
 
     /**
+     * \brief Checks whether to use mixed sample counts for the pipeline
+     *
+     * \param [in] shader Fragment shader
+     * \returns \c true if rasterizer and render target sample counts may mismatch
+     */
+    bool canUseMixedSamples(const Rc<DxvkShader>& shader) const;
+
+    /**
      * \brief Checks whether pipelines should be tracked
      * \returns \c true if pipelines need to be tracked
      */
