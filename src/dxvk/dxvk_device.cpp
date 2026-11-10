@@ -128,6 +128,15 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::canUseMixedSamples(const Rc<DxvkShader>& shader) const {
+    if (!shader || !(shader->metadata().flags.test(DxvkShaderFlag::UsesSampleMask)))
+      return false;
+
+    return m_features.amdMixedAttachmentSamples
+        || m_features.nvFramebufferMixedSamples;
+  }
+
+
   bool DxvkDevice::mustTrackPipelineLifetime() const {
     switch (m_options.trackPipelineLifetime) {
       case Tristate::True:

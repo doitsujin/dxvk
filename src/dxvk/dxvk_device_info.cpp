@@ -72,7 +72,9 @@ namespace dxvk {
     HANDLE_EXT(khrUnifiedImageLayouts);            \
     HANDLE_EXT(khrWin32KeyedMutex);                \
     HANDLE_EXT(amdBufferMarker);                   \
+    HANDLE_EXT(amdMixedAttachmentSamples);         \
     HANDLE_EXT(nvDeviceDiagnosticCheckpoints);     \
+    HANDLE_EXT(nvFramebufferMixedSamples);         \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
     HANDLE_EXT(nvxBinaryImport);                   \
@@ -606,6 +608,12 @@ namespace dxvk {
     if (!instance.options().enableNvRawAccessChains)
       m_featuresSupported.nvRawAccessChains.shaderRawAccessChains = VK_FALSE;
 
+    // If a device magically supports both the AMD and Nvidia extensions for
+    // mixed attachment samples, prefer the Nvidia one since that matches the
+    // desired behaviour. The AMD extension is more of a crutch here.
+    if (m_featuresSupported.nvFramebufferMixedSamples)
+      m_featuresSupported.amdMixedAttachmentSamples = VK_FALSE;
+
     // Disable somewhat broken present_id2 on older Nvidia drivers.
     if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
      && m_properties.driverVersion < Version(595u, 0u, 0u))
@@ -1107,8 +1115,14 @@ namespace dxvk {
       /* Hang debugging on AMD */
       ENABLE_EXT(amdBufferMarker, false),
 
+      /* Not-so-great target-independent raster on AMD */
+      ENABLE_EXT(amdMixedAttachmentSamples, false),
+
       /* Hang debugging on Nvidia */
       ENABLE_EXT(nvDeviceDiagnosticCheckpoints, false),
+
+      /* Target-independent raster on Nvidia */
+      ENABLE_EXT(nvFramebufferMixedSamples, false),
 
       /* Reflex support */
       ENABLE_EXT(nvLowLatency2, false),
