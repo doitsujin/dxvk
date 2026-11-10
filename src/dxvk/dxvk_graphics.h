@@ -112,6 +112,7 @@ namespace dxvk {
     VkPipelineRenderingCreateInfo                   rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     VkPipelineColorBlendStateCreateInfo             cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     VkPipelineMultisampleStateCreateInfo            msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    VkAttachmentSampleCountInfoNV                   rtSamples = { VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_NV };
 
     VkSampleMask                                    msSampleMask               = 0u;
     VkBool32                                        cbUseDynamicBlendConstants = VK_FALSE;
@@ -119,6 +120,7 @@ namespace dxvk {
 
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments  = { };
     std::array<VkFormat,                            MaxNumRenderTargets> rtColorFormats = { };
+    std::array<VkSampleCountFlagBits,               MaxNumRenderTargets> rtSampleCounts = { };
 
     VkImageAspectFlags                              feedbackLoop = 0u;
 

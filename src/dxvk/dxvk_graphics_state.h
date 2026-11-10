@@ -712,6 +712,23 @@ namespace dxvk {
       return rtFormat != VK_FORMAT_UNDEFINED;
     }
 
+    VkSampleCountFlagBits determineRasterSamples(bool allowOverride) const {
+      auto msCount = ms.sampleCount();
+      auto rsCount = rs.sampleCount();
+
+      // If there are any render targets bound, we generally want to use that
+      // sample count. If the device supports it, we may potentially use more
+      // rasterization samples.
+      if (msCount && (msCount >= rsCount || !allowOverride))
+        return VkSampleCountFlagBits(msCount);
+
+      if (rsCount)
+        return VkSampleCountFlagBits(rsCount);
+
+      // Fallback if both are 0 for whatever reason.
+      return VK_SAMPLE_COUNT_1_BIT;
+    }
+
 
     DxvkIaInfo              ia;
     DxvkIlInfo              il;

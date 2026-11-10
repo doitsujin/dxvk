@@ -2911,10 +2911,8 @@ namespace dxvk {
     }
 
     if (unlikely(rs.sampleCount() != m_state.gp.state.rs.sampleCount())) {
-      m_flags.set(DxvkContextFlag::GpDirtySampleLocations);
-
-      if (!m_state.gp.state.ms.sampleCount())
-        m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
+      m_flags.set(DxvkContextFlag::GpDirtySampleLocations,
+                  DxvkContextFlag::GpDirtyMultisampleState);
 
       if (!m_features.test(DxvkContextFeature::VariableMultisampleRate))
         m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
@@ -7968,16 +7966,9 @@ namespace dxvk {
 
       // Infer actual sample count from both the multisample state
       // and rasterizer state, just like during pipeline creation
-      VkSampleCountFlagBits sampleCount = VkSampleCountFlagBits(m_state.gp.state.ms.sampleCount());
-
-      if (!sampleCount) {
-        sampleCount = m_state.gp.state.rs.sampleCount()
-          ? VkSampleCountFlagBits(m_state.gp.state.rs.sampleCount())
-          : VK_SAMPLE_COUNT_1_BIT;
-      }
-
-      VkSampleMask sampleMask = m_state.gp.state.ms.sampleMask() & ((1u << sampleCount) - 1u);
-      m_cmd->cmdSetMultisampleState(sampleCount, sampleMask);
+      auto sampleCount = m_state.gp.state.determineRasterSamples(m_device->canUseMixedSamples(m_state.gp.shaders.fs));
+      auto sampleMask = m_state.gp.state.ms.sampleMask() & ((1u << uint32_t(sampleCount)) - 1u);
+      m_cmd->cmdSetMultisampleState(sampleCount, VkSampleMask(sampleMask));
 
       if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable
        && !m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
@@ -7996,21 +7987,17 @@ namespace dxvk {
       // render most of its content with regular sample positions and only draw a small portion
       // with centered positions, so we would want the default interpretation to use default
       // sample positions anyway, e.g. for the purpose of copies or resolves.
-      VkSampleCountFlagBits msSampleCount = VkSampleCountFlagBits(m_state.gp.state.ms.sampleCount());
-      VkSampleCountFlagBits rsSampleCount = VkSampleCountFlagBits(m_state.gp.state.rs.sampleCount());
-
-      if (!msSampleCount)
-        msSampleCount = rsSampleCount ? rsSampleCount : VK_SAMPLE_COUNT_1_BIT;
+      auto sampleCount = m_state.gp.state.determineRasterSamples(m_device->canUseMixedSamples(m_state.gp.shaders.fs));
 
       bool center = m_state.gp.state.useSampleLocations();
-      bool enable = m_device->canUseSampleLocations(msSampleCount);
+      bool enable = m_device->canUseSampleLocations(sampleCount);
 
       if (enable && m_state.om.renderTargets.depth.view) {
         auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
         enable = bool(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
       }
 
-      VkSampleLocationsInfoEXT locations = util::setupSampleLocations(msSampleCount, center);
+      VkSampleLocationsInfoEXT locations = util::setupSampleLocations(sampleCount, center);
       m_cmd->cmdSetSampleLocations(enable && center, &locations);
     }
 
