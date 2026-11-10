@@ -617,8 +617,18 @@ namespace dxvk {
 
       auto builtIn = dxbc_spv::ir::BuiltIn(op->getOperand(op->getFirstLiteralOperandIndex()));
 
-      if (builtIn == dxbc_spv::ir::BuiltIn::eIsFullyCovered)
-        m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
+      switch (builtIn) {
+        case dxbc_spv::ir::BuiltIn::eIsFullyCovered: {
+          m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
+        } break;
+
+        case dxbc_spv::ir::BuiltIn::eSampleMask: {
+          m_metadata.flags.set(DxvkShaderFlag::UsesSampleMask);
+        } break;
+
+        default:
+          break;
+      }
 
       return ++op;
     }
