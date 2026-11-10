@@ -162,6 +162,7 @@ namespace dxvk {
     ExportsViewport,
     ExportsStencilRef,
     ExportsSampleMask,
+    UsesSampleMask,
     UsesFragmentCoverage,
     UsesSparseResidency,
     TessellationPoints,
