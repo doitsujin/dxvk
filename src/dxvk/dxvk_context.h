@@ -307,6 +307,7 @@ namespace dxvk {
 
         case VK_SHADER_STAGE_FRAGMENT_BIT:
           m_state.gp.shaders.fs = std::move(shader);
+          m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
           break;
 
         case VK_SHADER_STAGE_COMPUTE_BIT:
