@@ -50,7 +50,7 @@ endif
 
 dep_displayinfo = dependency('libdisplay-info',
   fallback:         ['libdisplay-info', 'di_dep'],
-  default_options:  ['default_library=static', 'pnp-ids=auto'])
+  default_options:  ['default_library=static', 'pnp-ids=auto', 'tools=disabled'])
 
 if platform == 'windows'
   dxvk_so_version = {'name_prefix': ''}
