@@ -77,7 +77,7 @@ function build_arch {
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
-  ninja install
+  meson install --skip-subprojects
 
   if [ $opt_devbuild -eq 0 ]; then
     # get rid of some useless .a files
