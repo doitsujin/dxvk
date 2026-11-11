@@ -131,7 +131,7 @@ In order to preserve the build directories for development, pass `--dev-build` t
 ```
 # change to build.32 for 32-bit
 cd /your/target/directory/build.64
-ninja install
+meson install --skip-subprojects
 ```
 
 #### Compiling manually
