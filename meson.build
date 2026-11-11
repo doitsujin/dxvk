@@ -48,12 +48,9 @@ elif not cpp.check_header('spirv/unified1/spirv.hpp')
   error('Missing SPIRV-Headers')
 endif
 
-dep_displayinfo = dependency(
-  'libdisplay-info',
-  version: ['>= 0.0.0', '< 0.2.0'],
-  fallback: ['libdisplay-info', 'di_dep'],
-  default_options: ['default_library=static'],
-)
+dep_displayinfo = dependency('libdisplay-info',
+  fallback:         ['libdisplay-info', 'di_dep'],
+  default_options:  ['default_library=static', 'pnp-ids=auto'])
 
 if platform == 'windows'
   dxvk_so_version = {'name_prefix': ''}

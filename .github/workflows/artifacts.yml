@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: Setup container
       run: |
-        pacman -Syu --needed --noconfirm git meson mingw-w64-gcc glslang
+        pacman -Syu --needed --noconfirm git meson mingw-w64-gcc glslang hwdata
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
     
     - name: Checkout code
