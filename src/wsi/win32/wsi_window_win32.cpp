@@ -108,10 +108,25 @@ namespace dxvk::wsi {
         uint32_t* pHeight) {
     RECT rect = { };
     ::GetClientRect(hWindow, &rect);
-    
+
+    const LONG style = ::GetWindowLongW(hWindow, GWL_STYLE);
+    // A child window can't have a menu, and ::GetMenu
+    // returns are undefined in these cases, apparently
+    if (!(style & WS_CHILD) && ::GetMenu(hWindow)) {
+      const LONG exStyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE);
+      RECT rectNoMenu = { };
+      ::AdjustWindowRectEx(&rectNoMenu, style, FALSE, exStyle);
+      // If we have a menu attached to the window, yet no rect adjustments
+      // are made to account for its absence, then the menu is not
+      // currently drawn, but still reserves height in ::GetClientRect
+      if (!rectNoMenu.bottom && !rectNoMenu.right &&
+          !rectNoMenu.top    && !rectNoMenu.left)
+        ::AdjustWindowRectEx(&rect, style, TRUE, exStyle);
+    }
+
     if (pWidth)
       *pWidth = rect.right - rect.left;
-    
+
     if (pHeight)
       *pHeight = rect.bottom - rect.top;
   }
@@ -125,14 +140,14 @@ namespace dxvk::wsi {
     // Adjust window position and size
     RECT newRect = { 0, 0, 0, 0 };
     RECT oldRect = { 0, 0, 0, 0 };
-    
+
     ::GetWindowRect(hWindow, &oldRect);
     ::SetRect(&newRect, 0, 0, width, height);
     ::AdjustWindowRectEx(&newRect,
       ::GetWindowLongW(hWindow, GWL_STYLE), FALSE,
       ::GetWindowLongW(hWindow, GWL_EXSTYLE));
     ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
-    ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
+    ::OffsetRect(&newRect, oldRect.left, oldRect.top);
     ::MoveWindow(hWindow, newRect.left, newRect.top,
         newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
   }
@@ -181,24 +196,24 @@ namespace dxvk::wsi {
       Logger::err("Win32 WSI: setWindowMode: Failed to query monitor info");
       return false;
     }
-    
+
     DEVMODEW devMode = { };
     devMode.dmSize       = sizeof(devMode);
     devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
     devMode.dmPelsWidth  = mode.width;
     devMode.dmPelsHeight = mode.height;
     devMode.dmBitsPerPel = mode.bitsPerPixel;
-    
+
     if (mode.refreshRate.numerator != 0)  {
       devMode.dmFields |= DM_DISPLAYFREQUENCY;
       devMode.dmDisplayFrequency = mode.refreshRate.numerator
                                  / mode.refreshRate.denominator;
     }
-    
+
     Logger::info(str::format("Setting display mode: ",
       devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
       devMode.dmDisplayFrequency));
-    
+
     return setMonitorDisplayMode(hMonitor, &devMode);
   }
 
@@ -225,10 +240,10 @@ namespace dxvk::wsi {
     // Change the window flags to remove the decoration etc.
     LONG style   = ::GetWindowLongW(hWindow, GWL_STYLE);
     LONG exstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE);
-    
+
     style   &= ~WS_OVERLAPPEDWINDOW;
     exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
-    
+
     ::SetWindowLongW(hWindow, GWL_STYLE, style);
     ::SetWindowLongW(hWindow, GWL_EXSTYLE, exstyle);
 
@@ -280,7 +295,7 @@ namespace dxvk::wsi {
   HMONITOR Win32WsiDriver::getWindowMonitor(HWND hWindow) {
     RECT windowRect = { 0, 0, 0, 0 };
     ::GetWindowRect(hWindow, &windowRect);
-    
+
     HMONITOR monitor = ::MonitorFromPoint(
       { (windowRect.left + windowRect.right) / 2,
         (windowRect.top + windowRect.bottom) / 2 },
@@ -355,7 +370,7 @@ namespace dxvk::wsi {
     VkWin32SurfaceCreateInfoKHR info = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
     info.hinstance  = hInstance;
     info.hwnd       = hWindow;
-    
+
     return (*pfnVkCreateWin32SurfaceKHR)(instance, &info, nullptr, pSurface);
   }
 
