@@ -1050,13 +1050,15 @@ namespace dxvk {
    */
   struct DxvkRelocationEntry {
     DxvkRelocationEntry() = default;
-    DxvkRelocationEntry(Rc<DxvkPagedResource>&& r, DxvkAllocationModes m)
-    : resource(std::move(r)), mode(m) { }
+    DxvkRelocationEntry(Rc<DxvkPagedResource>&& r, DxvkAllocationModes m, bool c)
+    : resource(std::move(r)), mode(m), changesResidency(c) { }
 
     /// Resource to relocate
     Rc<DxvkPagedResource> resource;
     /// Resource to relocate
     DxvkAllocationModes mode = 0u;
+    /// Relocation request changes resource residency
+    bool changesResidency = false;
   };
 
 
@@ -1090,14 +1092,21 @@ namespace dxvk {
     /**
      * \brief Adds relocation entry to the list
      *
+     * If a resource is already queued for relocation,
+     * the previous entry will be overwritten.
      * \param [in] resource Resource to add
      * \param [in] allocation Resource storage
      * \param [in] mode Allocation mode
+     * \param [in] changesResidency Set to \c true if the relocation
+     *    request is done to alter the resource residency status.
+     * \returns \c true if the request was added, and
+     *    \c false if a stronger request already exists.
      */
-    void addResource(
+    bool addResource(
             Rc<DxvkPagedResource>&&     resource,
       const DxvkResourceAllocation*     allocation,
-            DxvkAllocationModes         mode);
+            DxvkAllocationModes         mode,
+            bool                        changesResidency);
 
     /**
      * \brief Clears list
@@ -1130,6 +1139,11 @@ namespace dxvk {
       DxvkResourceMemoryInfo,
       DxvkRelocationEntry,
       RelocationOrdering>       m_entries;
+
+    std::unordered_map<
+      Rc<DxvkPagedResource>,
+      DxvkResourceMemoryInfo,
+      RcHash>                   m_resources;
 
     DxvkResourceMemoryInfo      m_lastKey = {};
 
