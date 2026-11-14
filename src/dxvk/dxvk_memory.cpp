@@ -2713,6 +2713,9 @@ namespace dxvk {
 
     std::optional<uint32_t> evictedChunk;
 
+    // requestEviction() succeeds on a second call, so ask once per resource.
+    std::unordered_map<uint64_t, bool> evictable;
+
     for (auto chunkIndex : chunkIndices) {
       if (chunkIndex >= pool.chunks.size())
         continue;
@@ -2739,7 +2742,12 @@ namespace dxvk {
         if (!resource)
           continue;
 
-        if (resource->requestEviction()) {
+        auto verdict = evictable.find(a->m_resourceCookie);
+
+        if (verdict == evictable.end())
+          verdict = evictable.emplace(a->m_resourceCookie, resource->requestEviction()).first;
+
+        if (verdict->second) {
           m_relocations.addResource(std::move(resource), a, DxvkAllocationMode::NoDeviceMemory);
           memoryEvicted += a->getMemoryInfo().size;
         }
