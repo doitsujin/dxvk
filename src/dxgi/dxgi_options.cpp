@@ -1,5 +1,6 @@
 #include "dxgi_options.h"
 
+#include <cstring>
 #include <unordered_map>
 
 namespace dxvk {
@@ -40,19 +41,27 @@ namespace dxvk {
   }
 
   /* Some XeSS versions crash on Proton for Intel due to missing Intel
-   * interfaces. Avoid crash by pretending to be non-Intel if the libxess.dll
-   * module is loaded by an application. */
-  static bool isXessVendorWaNeeded() {
+   * interfaces. Avoid the crash by pretending to be non-Intel once such
+   * a libxess.dll module is loaded by the application. Applications may
+   * load XeSS late, e.g. the Unreal Engine plugin loads it only after the
+   * D3D12 device is created, so this can't be decided up front. */
+  static XessVendorWa getXessVendorWa() {
     #ifdef _WIN32
     HMODULE libxess = nullptr;
 
     // Use Ex variant here to keep the library loaded while we use the handle
     if (!GetModuleHandleExA(0u, "libxess", &libxess)
      && !GetModuleHandleExA(0u, "libxess_dx11", &libxess))
-      return false;
+      return XessVendorWa::Unknown;
 
     if (!libxess)
-      return false;
+      return XessVendorWa::Unknown;
+
+    // Wine builtin XeSS (e.g. Proton forwarding to a native libxess.so)
+    // doesn't use the Intel path that needs the workaround.
+    static const char builtinSignature[] = "Wine builtin DLL";
+    bool isBuiltin = !std::memcmp(reinterpret_cast<const char*>(libxess) + 0x40,
+      builtinSignature, sizeof(builtinSignature));
 
     // For some reason it seems to be impossible to just query
     // the length, need to pre-allocate for the worst case
@@ -63,9 +72,12 @@ namespace dxvk {
     // on the actual file from now on
     FreeLibrary(libxess);
 
+    if (isBuiltin)
+      return XessVendorWa::NotNeeded;
+
     if (!nameLen) {
       Logger::warn("DXGI: Failed to get file name for XeSS module");
-      return true;
+      return XessVendorWa::Needed;
     }
 
     // Query version info blob size...
@@ -73,7 +85,7 @@ namespace dxvk {
 
     if (!fiSize) {
       Logger::warn("DXGI: Failed to get XeSS version info size");
-      return true;
+      return XessVendorWa::Needed;
     }
 
     // Retrieve actual version info blob
@@ -81,7 +93,7 @@ namespace dxvk {
 
     if (!GetFileVersionInfoA(fileName.data(), 0u, fiSize, fiData.data())) {
       Logger::warn("DXGI: Failed to get XeSS version info");
-      return true;
+      return XessVendorWa::Needed;
     }
 
     void* fiBlock = nullptr;
@@ -89,35 +101,60 @@ namespace dxvk {
 
     if (!VerQueryValueA(fiData.data(), "\\", &fiBlock, &fiBlockSize)) {
       Logger::warn("DXGI: Failed to get XeSS version info block");
-      return true;
+      return XessVendorWa::Needed;
     }
 
     auto fiBlockTyped = reinterpret_cast<const VS_FIXEDFILEINFO*>(fiBlock);
 
     if (!fiBlockTyped || fiBlockSize < sizeof(*fiBlockTyped)) {
       Logger::warn("DXGI: Invalid XeSS version info block");
-      return true;
+      return XessVendorWa::Needed;
     }
-
-    const uint32_t major = fiBlockTyped->dwProductVersionMS >> 16;
-    const uint32_t minor = fiBlockTyped->dwProductVersionMS & 0xffffu;
-    const uint32_t patch = fiBlockTyped->dwProductVersionLS >> 16;
-    const uint32_t build = fiBlockTyped->dwProductVersionLS & 0xffffu;
 
     // Some early 2.0 builds are still affected, keep the workaround enabled
     // until at least 2.0.2.68.
-    const bool isKnownGood = isVersionAtLeast(
-      major, minor, patch, build,
+    bool isKnownGood = isVersionAtLeast(
+      fiBlockTyped->dwProductVersionMS >> 16,
+      fiBlockTyped->dwProductVersionMS & 0xffffu,
+      fiBlockTyped->dwProductVersionLS >> 16,
+      fiBlockTyped->dwProductVersionLS & 0xffffu,
       2u, 0u, 2u, 68u);
 
-    return !isKnownGood;
+    return isKnownGood ? XessVendorWa::NotNeeded : XessVendorWa::Needed;
     #else
-    return false;
+    return XessVendorWa::NotNeeded;
     #endif
   }
 
   static bool isNvapiEnabled() {
     return env::getEnvVar("DXVK_ENABLE_NVAPI") == "1";
+  }
+
+
+  bool DxgiOptions::shouldHideIntelGpu() const {
+    if (this->hideIntelGpu)
+      return true;
+
+    XessVendorWa wa = m_xessVendorWa.load();
+
+    // Keep checking until XeSS is loaded, then stick with the decision
+    // so the reported vendor doesn't change again.
+    if (wa == XessVendorWa::Unknown) {
+      wa = getXessVendorWa();
+
+      if (wa != XessVendorWa::Unknown) {
+        XessVendorWa expected = XessVendorWa::Unknown;
+
+        if (m_xessVendorWa.compare_exchange_strong(expected, wa)) {
+          if (wa == XessVendorWa::Needed)
+            Logger::info("DXGI: Detected XeSS usage, hiding Intel GPU Vendor");
+        } else {
+          wa = expected;
+        }
+      }
+    }
+
+    return wa == XessVendorWa::Needed;
   }
 
 
@@ -186,11 +223,6 @@ namespace dxvk {
     // logic to Nvidia later, if necessary.
     this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
     this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
-
-    if (isXessVendorWaNeeded()) {
-      Logger::info(str::format("XeSS: hiding Intel GPU Vendor ID"));
-      this->hideIntelGpu = true;
-    }
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
 
