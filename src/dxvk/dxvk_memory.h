@@ -1541,6 +1541,12 @@ namespace dxvk {
     void logMemoryError(
       const VkMemoryRequirements& req) const;
 
+    void logResourceInfo(
+      const VkBufferCreateInfo&   info) const;
+
+    void logResourceInfo(
+      const VkImageCreateInfo&    info) const;
+
     void logMemoryStats() const;
 
     uint32_t getMemoryTypeMask(

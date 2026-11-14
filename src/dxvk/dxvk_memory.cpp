@@ -1041,6 +1041,7 @@ namespace dxvk {
           if (!allocation) {
             if (allocationInfo.mode.isClear()) {
               logMemoryError(memoryRequirements);
+              logResourceInfo(createInfo);
               logMemoryStats();
             }
 
@@ -1110,6 +1111,7 @@ namespace dxvk {
 
       if (!allocation && allocationInfo.mode.isClear()) {
         logMemoryError(requirements.memoryRequirements);
+        logResourceInfo(createInfo);
         logMemoryStats();
       }
     } else {
@@ -1270,6 +1272,7 @@ namespace dxvk {
 
       if (allocationInfo.mode.isClear()) {
         logMemoryError(requirements.memoryRequirements);
+        logResourceInfo(createInfo);
         logMemoryStats();
       }
 
@@ -2433,6 +2436,60 @@ namespace dxvk {
       else
         sstr << std::endl;
     }
+
+    Logger::err(sstr.str());
+  }
+
+
+  void DxvkMemoryAllocator::logResourceInfo(
+    const VkBufferCreateInfo& info) const {
+    VkBufferUsageFlags2 usage = info.usage;
+
+    auto next = info.pNext;
+
+    while (next) {
+      VkBaseInStructure inStruct = {};
+      std::memcpy(&inStruct, next, sizeof(inStruct));
+
+      if (inStruct.sType == VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO)
+        usage = reinterpret_cast<const VkBufferUsageFlags2CreateInfo*>(next)->usage;
+
+      next = inStruct.pNext;
+    }
+
+    std::stringstream sstr;
+    sstr << "DxvkMemoryAllocator: Buffer properties:" << std::endl
+         << "  Size:      " << info.size << std::endl
+         << "  Flags:     " << std::hex << info.flags << std::endl
+         << "  Usage:     " << std::hex << usage << std::dec << std::endl;
+
+    Logger::err(sstr.str());
+  }
+
+
+  void DxvkMemoryAllocator::logResourceInfo(
+    const VkImageCreateInfo& info) const {
+    VkExternalMemoryHandleTypeFlags handleTypes = 0u;
+
+    auto next = info.pNext;
+
+    while (next) {
+      VkBaseInStructure inStruct = {};
+      std::memcpy(&inStruct, next, sizeof(inStruct));
+
+      if (inStruct.sType == VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO)
+        handleTypes = reinterpret_cast<const VkExternalMemoryImageCreateInfo*>(next)->handleTypes;
+
+      next = inStruct.pNext;
+    }
+
+    std::stringstream sstr;
+    sstr << "DxvkMemoryAllocator: Image properties:" << std::endl
+         << "  Size:      " << info.extent.width << "x" << info.extent.height << "x" << info.extent.depth << std::endl
+         << "  Flags:     " << std::hex << info.flags << std::dec << std::endl
+         << "  Format:    " << info.format << std::endl
+         << "  Usage:     " << info.usage << std::endl
+         << "  Handles:   " << std::hex << handleTypes << std::endl;
 
     Logger::err(sstr.str());
   }
