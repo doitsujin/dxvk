@@ -2747,6 +2747,7 @@ namespace dxvk {
       if (chunkIndex >= pool.chunks.size())
         continue;
 
+      std::unique_lock lock(m_resourceMutex);
       auto& chunk = pool.chunks[chunkIndex];
 
       // Scan resources and mark everything for eviction. If a demoted
