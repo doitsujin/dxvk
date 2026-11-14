@@ -175,8 +175,17 @@ namespace dxvk {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
 
-    if (pDesc->Width > caps::MaxTextureDimension || pDesc->Height > caps::MaxTextureDimension || pDesc->Depth > caps::MaxTextureDimension)
+    // Surfaces as well as 2D and cube textures are validated against MaxTextureDimension
+    if (ResourceType != D3DRTYPE_VOLUMETEXTURE) {
+      if (pDesc->Width  > caps::MaxTextureDimension
+       || pDesc->Height > caps::MaxTextureDimension)
+        return D3DERR_INVALIDCALL;
+    // Volume textures are validated against MaxVolumeExtent
+    } else if (pDesc->Width  > caps::MaxVolumeExtent
+            || pDesc->Height > caps::MaxVolumeExtent
+            || pDesc->Depth  > caps::MaxVolumeExtent) {
       return D3DERR_INVALIDCALL;
+    }
 
     // Native drivers won't allow the creation of DXT format
     // textures that aren't aligned to block dimensions.

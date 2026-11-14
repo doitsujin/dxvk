@@ -22,8 +22,13 @@ namespace dxvk::caps {
   constexpr uint32_t InputRegisterCount           = 16;
 
   constexpr uint32_t MaxTextureDimension          = 16384;
+  constexpr uint32_t MaxVolumeExtent              = 8192;
   constexpr uint32_t MaxMipLevels                 = 15;
   constexpr uint32_t MaxSubresources              = 15 * 6;
+
+  constexpr uint32_t MaxPrimitiveCount            = 5592405;  // 0x00555555
+  constexpr uint32_t MaxVertexIndex               = 16777215; // 0x00FFFFFF
+  constexpr uint32_t MaxStreamStride              = 508; // bytes
 
   constexpr uint32_t MaxTransforms                = 10 + 256;
 
