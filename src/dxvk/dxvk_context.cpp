@@ -8958,15 +8958,15 @@ namespace dxvk {
         planeCount = vk::getPlaneCount(formatInfo->aspectMask);
 
       for (uint32_t p = 0; p < planeCount; p++) {
-        for (uint32_t m = 0; m < info.image->info().mipLevels; m++) {
+        for (uint32_t m = 0; m < availableSubresources.levelCount; m++) {
           VkImageSubresourceRange subresourceRange = availableSubresources;
           subresourceRange.baseMipLevel = m;
           subresourceRange.levelCount = 1u;
 
           uint32_t layerStep = info.image->isInitialized(subresourceRange)
-            ? subresourceRange.layerCount : 1u;
+            ? availableSubresources.layerCount : 1u;
 
-          for (uint32_t l = 0; l < subresourceRange.layerCount; l += layerStep) {
+          for (uint32_t l = 0; l < availableSubresources.layerCount; l += layerStep) {
             subresourceRange.baseArrayLayer = l;
             subresourceRange.layerCount = layerStep;
 
