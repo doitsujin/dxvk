@@ -68,6 +68,38 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkBuffer::assignStorage(Rc<DxvkResourceAllocation>&& slice) {
+    Rc<DxvkResourceAllocation> old = std::move(m_storage);
+
+    m_storage = std::move(slice);
+
+    if (likely(m_storage != old)) {
+      m_storage->assignResource(cookie());
+
+      if (likely(old))
+        old->assignResource(0u);
+    }
+
+    m_bufferInfo = m_storage->getBufferInfo();
+
+    if (unlikely(m_info.debugName))
+      updateDebugName();
+
+    // If this is a device-local buffer, update residency
+    if (!(m_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+      auto common = m_properties & m_storage->getMemoryProperties();
+
+      updateResidencyStatus((common & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        ? DxvkResourceResidency::Resident
+        : DxvkResourceResidency::Evicted);
+    }
+
+    // Implicitly invalidate views
+    m_version += 1u;
+    return old;
+  }
+
+
   bool DxvkBuffer::canRelocate() const {
     return !m_bufferInfo.mapPtr && !m_stableAddress
         && !(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT);

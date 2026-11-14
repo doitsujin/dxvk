@@ -363,10 +363,16 @@ namespace dxvk {
     // Self-assignment is possible here if we
     // just update the image properties
     bool invalidateViews = false;
-    m_storage = std::move(resource);
 
-    if (m_storage != old) {
+    m_storage = std::move(resource);
+    m_storage->assignResource(cookie());
+
+    if (likely(m_storage != old)) {
       m_imageInfo = m_storage->getImageInfo();
+      m_storage->assignResource(cookie());
+
+      if (likely(old))
+        old->assignResource(0u);
 
       if (unlikely(m_info.debugName))
         updateDebugName();

@@ -2639,7 +2639,7 @@ namespace dxvk {
       // If we can't find the resource by its cookie, it has probably
       // already been destroyed. This is fine since the allocation will
       // likely get freed soon anyway.
-      auto entry = m_resourceMap.find(a->m_resourceCookie);
+      auto entry = m_resourceMap.find(a->m_resourceCookie.load(std::memory_order_relaxed));
 
       if (entry == m_resourceMap.end())
         continue;
@@ -2816,7 +2816,7 @@ namespace dxvk {
           continue;
 
         // Look up resource by its cookie
-        auto entry = m_resourceMap.find(a->m_resourceCookie);
+        auto entry = m_resourceMap.find(a->m_resourceCookie.load(std::memory_order_relaxed));
 
         if (entry == m_resourceMap.end())
           continue;

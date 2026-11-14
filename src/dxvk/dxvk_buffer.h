@@ -300,28 +300,7 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer allocation
      */
-    Rc<DxvkResourceAllocation> assignStorage(Rc<DxvkResourceAllocation>&& slice) {
-      Rc<DxvkResourceAllocation> result = std::move(m_storage);
-
-      m_storage = std::move(slice);
-      m_bufferInfo = m_storage->getBufferInfo();
-
-      if (unlikely(m_info.debugName))
-        updateDebugName();
-
-      // If this is a device-local buffer, update residency
-      if (!(m_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
-        auto common = m_properties & m_storage->getMemoryProperties();
-
-        updateResidencyStatus((common & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-          ? DxvkResourceResidency::Resident
-          : DxvkResourceResidency::Evicted);
-      }
-
-      // Implicitly invalidate views
-      m_version += 1u;
-      return result;
-    }
+    Rc<DxvkResourceAllocation> assignStorage(Rc<DxvkResourceAllocation>&& slice);
 
     /**
      * \brief Retrieves current backing storage

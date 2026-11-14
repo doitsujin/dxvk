@@ -653,6 +653,23 @@ namespace dxvk {
     }
 
     /**
+     * \brief Assigns resource cookie
+     *
+     * Used to rotate storage between resources. We still
+     * need to assign cookies on allocation regardless, or
+     * otherwise resource relocation will get confused.
+     *
+     * There is a small chance that requesting relocation
+     * for a rotating resource will hit the wrong resource,
+     * but that does not lead to correctness issues since we
+     * allocate new storage for the resource on demand anyway.
+     * \param [in] cookie Resource cookie
+     */
+    void assignResource(uint64_t cookie) {
+      m_resourceCookie.store(cookie, std::memory_order_relaxed);
+    }
+
+    /**
      * \brief Creates buffer view
      *
      * \param [in] key View properties
@@ -675,7 +692,7 @@ namespace dxvk {
     std::atomic<uint32_t>       m_useCount = { 0u };
     DxvkAllocationFlags         m_flags = 0u;
 
-    uint64_t                    m_resourceCookie = 0u;
+    std::atomic<uint64_t>       m_resourceCookie = { 0u };
 
     VkDeviceMemory              m_memory = VK_NULL_HANDLE;
     VkDeviceSize                m_address = 0u;
