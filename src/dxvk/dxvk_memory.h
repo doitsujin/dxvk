@@ -1078,7 +1078,7 @@ namespace dxvk {
      * \brief Retrieves list of resources to move
      *
      * Removes items from the internally stored list.
-     * Any duplicate entries will be removed.
+     * The same resource may be returned more than once.
      * \param [in] count Number of entries to return
      * \param [in] size Maximum total resource size
      * \returns List of resources to move

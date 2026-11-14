@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <unordered_set>
 #include <vector>
 #include <utility>
 
@@ -9058,16 +9059,24 @@ namespace dxvk {
     std::vector<DxvkRelocateBufferInfo> bufferInfos;
     std::vector<DxvkRelocateImageInfo> imageInfos;
 
+    // Copies within one batch are not synchronized, so move each resource once.
+    std::unordered_set<const DxvkPagedResource*> movedResources;
+
     // Iterate over resource list and try to create and assign new allocations
     // for them based on the mode selected by the allocator. Failures here are
     // not fatal, but may lead to weird behaviour down the line - ignore for now.
     for (const auto& e : resourceList) {
+      if (movedResources.find(e.resource.ptr()) != movedResources.end())
+        continue;
+
       auto storage = e.resource->relocateStorage(e.mode);
 
       if (!storage) {
         e.resource->revertResidency();
         continue;
       }
+
+      movedResources.insert(e.resource.ptr());
 
       Rc<DxvkImage> image = dynamic_cast<DxvkImage*>(e.resource.ptr());
       Rc<DxvkBuffer> buffer = dynamic_cast<DxvkBuffer*>(e.resource.ptr());
