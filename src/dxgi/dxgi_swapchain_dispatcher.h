@@ -16,6 +16,7 @@ namespace dxvk {
     virtual ~DxgiSwapChainDispatcher() {
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     ULONG STDMETHODCALLTYPE AddRef() {
       if (likely(m_dispatch != nullptr))
         return m_dispatch->AddRef();
@@ -23,6 +24,7 @@ namespace dxvk {
       return 0;
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     ULONG STDMETHODCALLTYPE Release() {
       if (likely(m_dispatch != nullptr)) {
         ULONG refCount = m_dispatch->Release();
@@ -41,6 +43,7 @@ namespace dxvk {
       return ~0u;
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
             void**                    ppvObject) final {
@@ -69,6 +72,7 @@ namespace dxvk {
       return m_dispatch->QueryInterface(riid, ppvObject);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetPrivateData(
             REFGUID       Name,
             UINT*         pDataSize,
@@ -76,6 +80,7 @@ namespace dxvk {
       return m_dispatch->GetPrivateData(Name, pDataSize, pData);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetPrivateData(
             REFGUID       Name,
             UINT          DataSize,
@@ -83,24 +88,28 @@ namespace dxvk {
       return m_dispatch->SetPrivateData(Name, DataSize, pData);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
             REFGUID       Name,
       const IUnknown*     pUnknown) final {
       return m_dispatch->SetPrivateDataInterface(Name, pUnknown);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetParent(
             REFIID                    riid,
             void**                    ppParent) final {
       return m_dispatch->GetParent(riid, ppParent);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetDevice(
             REFIID                    riid,
             void**                    ppDevice) final {
       return m_dispatch->GetDevice(riid, ppDevice);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetBuffer(
             UINT                      Buffer,
             REFIID                    riid,
@@ -108,25 +117,30 @@ namespace dxvk {
       return m_dispatch->GetBuffer(Buffer, riid, ppSurface);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     UINT STDMETHODCALLTYPE GetCurrentBackBufferIndex() final {
       return m_dispatch->GetCurrentBackBufferIndex();
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetContainingOutput(
             IDXGIOutput**             ppOutput) final {
       return m_dispatch->GetContainingOutput(ppOutput);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_SWAP_CHAIN_DESC*     pDesc) final {
       return m_dispatch->GetDesc(pDesc);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetDesc1(
             DXGI_SWAP_CHAIN_DESC1*    pDesc) final {
       return m_dispatch->GetDesc1(pDesc);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetFullscreenState(
             BOOL*                     pFullscreen,
             IDXGIOutput**             ppTarget) final {
@@ -142,57 +156,69 @@ namespace dxvk {
       return S_OK;
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetFullscreenDesc(
             DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) final {
       return m_dispatch->GetFullscreenDesc(pDesc);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetHwnd(
             HWND*                     pHwnd) final {
       return m_dispatch->GetHwnd(pHwnd);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetCoreWindow(
             REFIID                    refiid,
             void**                    ppUnk) final {
       return m_dispatch->GetCoreWindow(refiid, ppUnk);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetBackgroundColor(
             DXGI_RGBA*                pColor) final {
       return m_dispatch->GetBackgroundColor(pColor);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetRotation(
             DXGI_MODE_ROTATION*       pRotation) final {
       return m_dispatch->GetRotation(pRotation);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetRestrictToOutput(
             IDXGIOutput**             ppRestrictToOutput) final {
       return m_dispatch->GetRestrictToOutput(ppRestrictToOutput);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetFrameStatistics(
             DXGI_FRAME_STATISTICS*    pStats) final {
       return m_dispatch->GetFrameStatistics(pStats);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetLastPresentCount(
             UINT*                     pLastPresentCount) final {
       return m_dispatch->GetLastPresentCount(pLastPresentCount);
     }
 
+
+    DXVK_HOTPATCHABLE_ARM64EC
     BOOL STDMETHODCALLTYPE IsTemporaryMonoSupported() final {
       return m_dispatch->IsTemporaryMonoSupported();
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE Present(
             UINT                      SyncInterval,
             UINT                      Flags) final {
       return m_dispatch->Present(SyncInterval, Flags);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE Present1(
             UINT                      SyncInterval,
             UINT                      PresentFlags,
@@ -200,6 +226,7 @@ namespace dxvk {
       return m_dispatch->Present1(SyncInterval, PresentFlags, pPresentParameters);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE ResizeBuffers(
             UINT                      BufferCount,
             UINT                      Width,
@@ -209,6 +236,7 @@ namespace dxvk {
       return m_dispatch->ResizeBuffers(BufferCount, Width, Height, NewFormat, SwapChainFlags);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE ResizeBuffers1(
             UINT                      BufferCount,
             UINT                      Width,
@@ -220,11 +248,13 @@ namespace dxvk {
       return m_dispatch->ResizeBuffers1(BufferCount, Width, Height, Format, SwapChainFlags, pCreationNodeMask, ppPresentQueue);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE ResizeTarget(
       const DXGI_MODE_DESC*           pNewTargetParameters) final {
       return m_dispatch->ResizeTarget(pNewTargetParameters);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetFullscreenState(
             BOOL                      Fullscreen,
             IDXGIOutput*              pTarget) final {
@@ -233,64 +263,75 @@ namespace dxvk {
       return S_OK;
     }
 
-
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetBackgroundColor(
       const DXGI_RGBA*                pColor) final {
       return m_dispatch->SetBackgroundColor(pColor);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetRotation(
             DXGI_MODE_ROTATION        Rotation) final {
       return m_dispatch->SetRotation(Rotation);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HANDLE STDMETHODCALLTYPE GetFrameLatencyWaitableObject() final {
       return m_dispatch->GetFrameLatencyWaitableObject();
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetMatrixTransform(
             DXGI_MATRIX_3X2_F*        pMatrix) final {
       return m_dispatch->GetMatrixTransform(pMatrix);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(
             UINT*                     pMaxLatency) final {
       return m_dispatch->GetMaximumFrameLatency(pMaxLatency);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE GetSourceSize(
             UINT*                     pWidth,
             UINT*                     pHeight) final {
       return m_dispatch->GetSourceSize(pWidth, pHeight);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetMatrixTransform(
       const DXGI_MATRIX_3X2_F*        pMatrix) final {
       return m_dispatch->SetMatrixTransform(pMatrix);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(
             UINT                      MaxLatency) final {
       return m_dispatch->SetMaximumFrameLatency(MaxLatency);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetSourceSize(
             UINT                      Width,
             UINT                      Height) final {
       return m_dispatch->SetSourceSize(Width, Height);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE CheckColorSpaceSupport(
             DXGI_COLOR_SPACE_TYPE     ColorSpace,
             UINT*                     pColorSpaceSupport) final {
       return m_dispatch->CheckColorSpaceSupport(ColorSpace, pColorSpaceSupport);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetColorSpace1(
             DXGI_COLOR_SPACE_TYPE     ColorSpace) final {
       return m_dispatch->SetColorSpace1(ColorSpace);
     }
 
+    DXVK_HOTPATCHABLE_ARM64EC
     HRESULT STDMETHODCALLTYPE SetHDRMetaData(
             DXGI_HDR_METADATA_TYPE    Type,
             UINT                      Size,
