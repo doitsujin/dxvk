@@ -149,6 +149,11 @@ namespace dxvk {
     { R"(\\iw6sp64_ship\.exe$)", {{
       { "dxvk.zeroShaderScratchMemory",     "True" },
     }} },
+    /* Call of Duty Black Ops 4: Re-binds SRV pointers *
+     * after releasing them, causing use-after-free    */
+    { R"(\\BlackOps4\.exe$)", {{
+      { "d3d11.srvQuarantine",              "True" },
+    }} },
     /* Need for Speed 2015                        */
     { R"(\\NFS16\.exe$)", {{
       { "dxgi.hideNvidiaGpu",              "False" },

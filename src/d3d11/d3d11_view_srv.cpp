@@ -1,3 +1,8 @@
+#include <array>
+#include <atomic>
+
+#include "../util/thread.h"
+
 #include "d3d11_device.h"
 #include "d3d11_buffer.h"
 #include "d3d11_resource.h"
@@ -5,7 +10,50 @@
 #include "d3d11_view_srv.h"
 
 namespace dxvk {
-  
+
+  constexpr size_t SrvQuarantineCount = 4096;
+
+  static std::atomic<bool> s_srvQuarantineEnabled = { false };
+
+
+  void D3D11ShaderResourceView::SetQuarantineEnabled(bool enabled) {
+    s_srvQuarantineEnabled.store(enabled, std::memory_order_relaxed);
+  }
+
+
+  // Call of Duty: Black Ops 4 re-binds SRV pointers after releasing
+  // them. Quarantining destroyed views keeps the dead refcount marker
+  // intact so stale binds cannot reach a recycled object's vtable
+  void D3D11ShaderResourceView::operator delete(void* ptr) {
+    if (!ptr)
+      return;
+
+    if (!s_srvQuarantineEnabled.load(std::memory_order_relaxed)) {
+      ::operator delete(ptr);
+      return;
+    }
+
+    static dxvk::mutex s_mutex;
+    static std::array<void*, SrvQuarantineCount> s_objects = { };
+    static size_t s_index = 0;
+
+    std::lock_guard<dxvk::mutex> lock(s_mutex);
+    void*& slot = s_objects[s_index];
+    s_index = (s_index + 1) % SrvQuarantineCount;
+
+    if (slot) {
+      auto view = static_cast<D3D11ShaderResourceView*>(slot);
+
+      // Still bound: leak it instead of freeing, so the context's later
+      // private release lands on allocated memory
+      if (!(view->GetPrivateRefCount() & 0x7FFFFFFF))
+        ::operator delete(slot);
+    }
+
+    slot = ptr;
+  }
+
+
   D3D11ShaderResourceView::D3D11ShaderResourceView(
           D3D11Device*                      pDevice,
           ID3D11Resource*                   pResource,

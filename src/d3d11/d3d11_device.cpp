@@ -57,6 +57,8 @@ namespace dxvk {
     if (m_d3d11Options.reproducibleCommandStream)
       m_dxvkDevice->setSubmissionTimeout(-1ull);
 
+    D3D11ShaderResourceView::SetQuarantineEnabled(m_d3d11Options.srvQuarantine);
+
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());

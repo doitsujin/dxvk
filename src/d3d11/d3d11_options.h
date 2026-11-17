@@ -88,6 +88,13 @@ namespace dxvk {
     /// race conditions.
     bool enableContextLock = false;
 
+    /// Quarantine destroyed shader resource views
+    ///
+    /// Workaround for games that bind SRV pointers again after
+    /// releasing them. Keeps a bounded number of destroyed views
+    /// allocated so that stale binds cannot hit unrelated objects.
+    bool srvQuarantine = false;
+
     /// Whether to expose the driver command list feature. Enabled by
     /// default and generally beneficial, but some games may assume that
     /// this is not supported when running on an AMD GPU.

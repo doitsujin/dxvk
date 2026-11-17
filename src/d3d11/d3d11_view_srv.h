@@ -24,7 +24,11 @@ namespace dxvk {
       const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc);
     
     ~D3D11ShaderResourceView();
-    
+
+    static void SetQuarantineEnabled(bool enabled);
+
+    void operator delete(void* ptr);
+
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final;
     
     void STDMETHODCALLTYPE GetResource(ID3D11Resource** ppResource) final;
