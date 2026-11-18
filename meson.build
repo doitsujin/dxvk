@@ -161,7 +161,12 @@ else
   if lib_glfw.found()
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
-  compiler_args += ['-DDXVK_WSI_EXTERNAL']
+  if get_option('native_xcb').allowed()
+    compiler_args += ['-DDXVK_WSI_XCB']
+  endif
+  if get_option('native_wayland').allowed()
+    compiler_args += ['-DDXVK_WSI_WAYLAND']
+  endif
   
   dxvk_name_prefix = 'dxvk_'
   dxvk_pkg_prefix = 'dxvk-'

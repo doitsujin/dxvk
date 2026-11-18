@@ -8,8 +8,14 @@
 #include "wsi/native_sdl2.h"
 #elif DXVK_WSI_GLFW
 #include "wsi/native_glfw.h"
-#elif DXVK_WSI_EXTERNAL
-#include "wsi/native_external_wsi.h"
+#elif DXVK_WSI_XCB || DXVK_WSI_WAYLAND
+#include <windows.h>
+#if DXVK_WSI_XCB
+#include "wsi/native_xcb.h"
+#endif
+#if DXVK_WSI_WAYLAND
+#include "wsi/native_wayland.h"
+#endif
 #else
 #error Unknown wsi!
 #endif
