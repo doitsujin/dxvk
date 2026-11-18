@@ -21,8 +21,11 @@ namespace dxvk::wsi {
 #if defined(DXVK_WSI_GLFW)
     &GlfwWSI,
 #endif
-#if defined(DXVK_WSI_EXTERNAL)
-    &ExternalWSI,
+#if defined(DXVK_WSI_XCB)
+    &XcbWSI,
+#endif
+#if defined(DXVK_WSI_WAYLAND)
+    &WaylandWSI,
 #endif
   };
 

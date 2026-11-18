@@ -4,7 +4,7 @@
 
 namespace dxvk::wsi {
 
-  class ExternalWsiDriver : public WsiDriver {
+  class XcbWsiDriver : public WsiDriver {
 
   public:
 
