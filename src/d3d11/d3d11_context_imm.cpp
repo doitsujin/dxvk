@@ -873,10 +873,6 @@ namespace dxvk {
     // done in ExecuteFlush because command recording itself might
     // flush, so no state changes are allowed to happen there.
     SetDrawBuffers(nullptr, nullptr);
-
-    EmitCs<false>([] (DxvkContext* ctx) {
-      ctx->endFrame();
-    });
   }
 
 
