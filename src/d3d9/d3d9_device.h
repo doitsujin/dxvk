@@ -926,8 +926,6 @@ namespace dxvk {
     void Flush();
     void FlushAndSync9On12();
 
-    void EndFrame();
-
     template <uint32_t Index>
     void UpdateAnyColorWrites();
 

@@ -6172,15 +6172,6 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::EndFrame() {
-    D3D9DeviceLock lock = LockDevice();
-
-    EmitCs<false>([] (DxvkContext* ctx) {
-      ctx->endFrame();
-    });
-  }
-
-
   template <uint32_t Index>
   inline void D3D9DeviceEx::UpdateAnyColorWrites() {
     // Writes to a render target have been enabled => check for hazards

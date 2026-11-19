@@ -205,7 +205,10 @@ namespace dxvk {
   #define DCX_USESTYLE 0x00010000
 
   HRESULT D3D9SwapChainEx::PresentImageGDI(HWND Window) {
-    m_parent->EndFrame();
+    m_parent->EmitCs([] (DxvkContext* ctx) {
+      ctx->endFrame();
+    });
+
     m_parent->Flush();
 
     if (!std::exchange(m_warnedAboutGDIFallback, true))
@@ -846,7 +849,6 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
-    m_parent->EndFrame();
     m_parent->Flush();
 
     // Retrieve the image and image view to present
@@ -916,6 +918,7 @@ namespace dxvk {
           cDstView, cDstRect, cSrcView, cSrcRect);
 
         // Submit command list and present
+        ctx->endFrame();
         ctx->synchronizeWsi(cSync);
         ctx->flushCommandList(nullptr, 0u);
 
