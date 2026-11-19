@@ -1313,6 +1313,8 @@ namespace dxvk {
     DxvkObjects*            m_common;
 
     uint64_t                m_frameCount = 0u;
+    bool                    m_frameCaptureActive = false;
+
     std::pair<uint64_t, uint64_t> m_framesToCapture = {};
 
     uint64_t                m_trackingId = 0u;
