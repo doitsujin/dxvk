@@ -103,6 +103,9 @@ namespace dxvk {
     m_trackingId += 1u;
 
     this->beginCurrentCommands();
+
+    if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
+      beginFrameCapture();
   }
   
   
@@ -128,14 +131,9 @@ namespace dxvk {
     this->endRenderPass(true);
 
     m_renderPassIndex = 0u;
-
-    if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
-      endFrameCapture();
-
     m_frameCount += 1u;
 
-    if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
-      beginFrameCapture();
+    endFrameCapture();
   }
 
 
@@ -10690,17 +10688,19 @@ namespace dxvk {
 
 
   void DxvkContext::beginFrameCapture() {
-    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+    if (m_features.test(DxvkContextFeature::DebugUtils) && !m_frameCaptureActive) {
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::SdmaBarriers,
         vk::makeLabel(0, "capture-marker,begin_capture"));
+      m_frameCaptureActive = true;
     }
   }
 
 
   void DxvkContext::endFrameCapture() {
-    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+    if (m_features.test(DxvkContextFeature::DebugUtils) && m_frameCaptureActive) {
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0, "capture-marker,end_capture"));
+      m_frameCaptureActive = false;
     }
   }
 
