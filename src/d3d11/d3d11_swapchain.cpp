@@ -558,6 +558,7 @@ namespace dxvk {
         cBackBuffer, cDstRect, cSwapImage, cSrcRect);
 
       // Submit current command list and present
+      ctx->endFrame();
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr, 0u);
 
