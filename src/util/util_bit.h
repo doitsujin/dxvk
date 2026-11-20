@@ -28,6 +28,11 @@
   #endif
 #endif
 
+#if defined(DXVK_ARCH_ARM64) && (defined(__GNUC__) || defined(__clang__))
+  #define DXVK_ARCH_ARM64_NEON
+  #include <arm_neon.h>
+#endif
+
 #include "util_likely.h"
 #include "util_math.h"
 
@@ -247,6 +252,17 @@ namespace dxvk::bit {
       _mm_stream_si128(ptr + 2u, zero);
       _mm_stream_si128(ptr + 3u, zero);
     }
+    #elif defined(DXVK_ARCH_ARM64_NEON)
+    // Non-temporal store pairs are the AArch64 counterpart of the streaming stores above
+    auto ptr = reinterpret_cast<char*>(mem);
+    uint8x16_t zero = vdupq_n_u8(0u);
+
+    for (size_t i = 0; i < size; i += 64u) {
+      __asm__ __volatile__ (
+        "stnp %q1, %q1, [%0]\n\t"
+        "stnp %q1, %q1, [%0, #32]\n\t"
+        :: "r" (ptr + i), "w" (zero) : "memory");
+    }
     #else
     std::memset(mem, 0, size);
     #endif
@@ -300,6 +316,31 @@ namespace dxvk::bit {
     }
 
     return true;
+    #elif defined(DXVK_ARCH_ARM64_NEON)
+    auto ai = reinterpret_cast<const uint8_t*>(a);
+    auto bi = reinterpret_cast<const uint8_t*>(b);
+
+    size_t i = 0;
+
+    for ( ; i + 64u <= sizeof(T); i += 64u) {
+      uint8x16_t d0 = veorq_u8(vld1q_u8(ai + i +  0u), vld1q_u8(bi + i +  0u));
+      uint8x16_t d1 = veorq_u8(vld1q_u8(ai + i + 16u), vld1q_u8(bi + i + 16u));
+      uint8x16_t d2 = veorq_u8(vld1q_u8(ai + i + 32u), vld1q_u8(bi + i + 32u));
+      uint8x16_t d3 = veorq_u8(vld1q_u8(ai + i + 48u), vld1q_u8(bi + i + 48u));
+      uint8x16_t d = vorrq_u8(vorrq_u8(d0, d1), vorrq_u8(d2, d3));
+
+      if (vmaxvq_u32(vreinterpretq_u32_u8(d)))
+        return false;
+    }
+
+    for ( ; i < sizeof(T); i += 16u) {
+      uint8x16_t d = veorq_u8(vld1q_u8(ai + i), vld1q_u8(bi + i));
+
+      if (vmaxvq_u32(vreinterpretq_u32_u8(d)))
+        return false;
+    }
+
+    return true;
     #else
     return !std::memcmp(a, b, sizeof(T));
     #endif
@@ -333,6 +374,24 @@ namespace dxvk::bit {
       mask |= (_mm_movemask_ps(_mm_castsi128_ps(eqMask)) ^ 0xf) << index;
 
       _mm_storeu_si128(dst, srcData);
+
+      index += 4u;
+    }
+    #elif defined(DXVK_ARCH_ARM64_NEON)
+    static const uint32_t laneBits[4] = { 1u, 2u, 4u, 8u };
+    uint32x4_t bits = vld1q_u32(laneBits);
+
+    while (index + 4u <= count) {
+      auto src = reinterpret_cast<const uint32_t*>(srcPtr + index * sizeof(uint32_t));
+      auto dst = reinterpret_cast<      uint32_t*>(dstPtr + index * sizeof(uint32_t));
+
+      uint32x4_t srcData = vld1q_u32(src);
+      uint32x4_t dstData = vld1q_u32(dst);
+
+      uint32x4_t neMask = vmvnq_u32(vceqq_u32(dstData, srcData));
+      mask |= vaddvq_u32(vandq_u32(neMask, bits)) << index;
+
+      vst1q_u32(dst, srcData);
 
       index += 4u;
     }
