@@ -27,8 +27,10 @@ opt_devbuild=0
 opt_buildid=false
 opt_64_only=0
 opt_32_only=0
+opt_arm64x_only=0
+opt_build_arm64x=0
 
-crossfile="build-win"
+crossfile="build-"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -47,6 +49,12 @@ while [ $# -gt 0 ]; do
     ;;
   "--32-only")
     opt_32_only=1
+    ;;
+  "--arm64x-only")
+    opt_arm64x_only=1
+    ;;
+  "--build-arm64x")
+    opt_build_arm64x=1
     ;;
   *)
     echo "Unrecognized option: $1" >&2
@@ -70,8 +78,8 @@ function build_arch {
         --buildtype "release"                               \
         --prefix "$DXVK_BUILD_DIR"                          \
         $opt_strip                                          \
-        --bindir "x$1"                                      \
-        --libdir "x$1"                                      \
+        --bindir "$2"                                      \
+        --libdir "$2"                                      \
         -Db_ndebug=if-release                               \
         -Dbuild_id=$opt_buildid                             \
         "$DXVK_BUILD_DIR/build.$1"
@@ -81,7 +89,7 @@ function build_arch {
 
   if [ $opt_devbuild -eq 0 ]; then
     # get rid of some useless .a files
-    rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
+    rm "$DXVK_BUILD_DIR/$2/"*.!(dll)
     rm -R "$DXVK_BUILD_DIR/build.$1"
   fi
 }
@@ -92,11 +100,14 @@ function package {
   rm -R "dxvk-$DXVK_VERSION"
 }
 
-if [ $opt_32_only -eq 0 ]; then
-  build_arch 64
+if [ $opt_32_only -eq 0 -a $opt_arm64x_only -eq 0 ]; then
+  build_arch win64 x86
 fi
-if [ $opt_64_only -eq 0 ]; then
-  build_arch 32
+if [ $opt_64_only -eq 0 -a $opt_arm64x_only -eq 0 ]; then
+  build_arch win32 x32
+fi
+if [ $opt_build_arm64x -eq 1 -o $opt_arm64x_only -eq 1 ]; then
+  build_arch arm64x arm64x
 fi
 
 if [ $opt_nopackage -eq 0 ]; then
