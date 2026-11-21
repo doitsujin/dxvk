@@ -101,7 +101,7 @@ function package {
 }
 
 if [ $opt_32_only -eq 0 -a $opt_arm64x_only -eq 0 ]; then
-  build_arch win64 x86
+  build_arch win64 x64
 fi
 if [ $opt_64_only -eq 0 -a $opt_arm64x_only -eq 0 ]; then
   build_arch win32 x32
