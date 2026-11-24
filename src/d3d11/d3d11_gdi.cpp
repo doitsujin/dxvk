@@ -35,6 +35,8 @@ namespace dxvk {
     if (D3DKMTCreateDCFromMemory(&desc))
       Logger::err(str::format("D3D11: Failed to create GDI DC"));
     
+    DeleteDC(desc.hDeviceDc);
+
     m_hdc     = desc.hDc;
     m_hbitmap = desc.hBitmap;
   }
