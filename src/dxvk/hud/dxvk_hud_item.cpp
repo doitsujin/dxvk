@@ -435,7 +435,7 @@ namespace dxvk::hud {
                       | VK_ACCESS_SHADER_WRITE_BIT;
     bufferInfo.debugName = "HUD frame time data";
 
-    m_gpuBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
+    m_gpuBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     DxvkBufferViewKey textViewInfo = { };
     textViewInfo.format = VK_FORMAT_R8_UINT;
@@ -1115,7 +1115,7 @@ namespace dxvk::hud {
       bufferInfo.debugName = "HUD memory data";
 
       m_dataBuffer = m_device->createBuffer(bufferInfo,
-        VK_MEMORY_HEAP_DEVICE_LOCAL_BIT |
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     } else {
