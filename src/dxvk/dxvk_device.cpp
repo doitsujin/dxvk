@@ -712,11 +712,10 @@ namespace dxvk {
     hints.preferCachedMemory = tilerMode;
 
     // Compute-based mip generation has some potential for performance
-    // regressions or driver issues. Just enable it on Nvidia and RADV
-    // (GFX10+) for now, where it is proven to work.
-    hints.preferComputeMipGen = (m_adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR)
-                             || (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
-                              && m_properties.vk13.minSubgroupSize == 32u));
+    // regressions or driver issues. Just enable it on RADV (GFX10+) for
+    // now, where it is proven to work.
+    hints.preferComputeMipGen = (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+                              && m_properties.vk13.minSubgroupSize == 32u);
 
     // On AMD we can expect it to be optimal to simply pass the heap offset
     // to descriptor memory through as-is to avoid some ALU. Some other

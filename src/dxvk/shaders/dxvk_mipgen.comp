@@ -1206,8 +1206,10 @@ bool finalize_group(uvec2 mip0_size) {
 
 void main() [[subgroup_uniform_control_flow]] {
   /* There will be LDS sync at some point so this is fine */
-  g_subgroups_done = 0u;
-  g_workgroups_done = 0u;
+  if (gl_LocalInvocationIndex == 0u) {
+    g_subgroups_done = 0u;
+    g_workgroups_done = 0u;
+  }
 
   /* Handle first set of mips */
   uvec2 mip0_size = uvec2(textureSize(s_base_mip, 0).xy);
