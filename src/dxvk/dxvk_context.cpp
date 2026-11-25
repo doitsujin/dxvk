@@ -5358,7 +5358,8 @@ namespace dxvk {
     uint32_t counterDwordCount = layerCount * (requiresPrepass ? 2u : 1u);
 
     DxvkResourceBufferInfo counterMemory = allocateScratchMemory(
-      sizeof(uint32_t), sizeof(uint32_t) * counterDwordCount);
+      m_device->properties().core.properties.limits.minStorageBufferOffsetAlignment,
+      sizeof(uint32_t) * counterDwordCount);
 
     m_cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
       counterMemory.buffer, counterMemory.offset, counterMemory.size, 0u);
