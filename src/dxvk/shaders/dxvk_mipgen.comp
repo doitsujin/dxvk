@@ -708,39 +708,31 @@ pixel_t load_pixel_from_lds(uvec2 coord, uvec2 ofs) {
     }
 
     case VK_FORMAT_R16_UNORM: {
-      float data = float(unpack16(px.x).x) / float(65535.0f);
-      return px_set_f32(vec4(data, 0.0f.xxx));
+      return px_set_f32(vec4(unpackUnorm2x16(px.x).x, 0.0f.xxx));
     }
 
     case VK_FORMAT_R16_SNORM: {
-      float data = float(unpack16(int(px.x))) / float(32767.0f);
-      return px_set_f32(vec4(data, 0.0f.xxx));
+      return px_set_f32(vec4(unpackSnorm2x16(px.x).x, 0.0f.xxx));
     }
 
     case VK_FORMAT_R16G16_UNORM: {
-      vec2 data = vec2(unpack16(px.x)) / float(65535.0f);
-      return px_set_f32(vec4(data, 0.0f.xx));
+      return px_set_f32(vec4(unpackUnorm2x16(px.x), 0.0f.xx));
     }
 
     case VK_FORMAT_R16G16_SNORM: {
-      vec2 data = vec2(unpack16(int(px.x))) / float(32767.0f);
-      return px_set_f32(vec4(data, 0.0f.xx));
+      return px_set_f32(vec4(unpackSnorm2x16(px.x), 0.0f.xx));
     }
 
     case VK_FORMAT_R16G16B16A16_UNORM: {
-      uvec2 xy = unpack16(px.x);
-      uvec2 zw = unpack16(px.y);
-
-      vec4 data = vec4(xy, zw) / float(65535.0f);
-      return px_set_f32(vec4(data));
+      return px_set_f32(vec4(
+        unpackUnorm2x16(px.x),
+        unpackUnorm2x16(px.y)));
     }
 
     case VK_FORMAT_R16G16B16A16_SNORM: {
-      uvec2 xy = unpack16(px.x);
-      uvec2 zw = unpack16(px.y);
-
-      vec4 data = vec4(xy, zw) / float(32767.0f);
-      return px_set_f32(vec4(data));
+      return px_set_f32(vec4(
+        unpackSnorm2x16(px.x),
+        unpackSnorm2x16(px.y)));
     }
 
     case VK_FORMAT_R32_SFLOAT: {
