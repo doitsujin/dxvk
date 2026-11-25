@@ -361,19 +361,25 @@ namespace dxvk {
           VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
+    // Check whether the shader configuration supports rasterization.
+    // Behaviour must be consistent with monolithic pipelines.
+    bool rasterizerDiscard = m_shaders.hasRasterizerDiscard();
+
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
     small_vector<VkDynamicState, 16> dynamicStates;
 
-    dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
-    dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
-    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
-    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE);
-    dynamicStates.push_back(VK_DYNAMIC_STATE_CULL_MODE);
-    dynamicStates.push_back(VK_DYNAMIC_STATE_FRONT_FACE);
+    if (!rasterizerDiscard) {
+      dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_CULL_MODE);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_FRONT_FACE);
 
-    if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
-      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT);
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
+        dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT);
+    }
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount  = dynamicStates.size();
@@ -396,7 +402,7 @@ namespace dxvk {
 
     VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsInfo.depthClampEnable   = VK_TRUE;
-    rsInfo.rasterizerDiscardEnable = VK_FALSE;
+    rsInfo.rasterizerDiscardEnable = rasterizerDiscard;
     rsInfo.polygonMode        = VK_POLYGON_MODE_FILL;
     rsInfo.lineWidth          = 1.0f;
 
@@ -754,16 +760,6 @@ namespace dxvk {
     // Tessellation control shaders must define a valid vertex count
     if (metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
       && (metadata.patchVertexCount < 1 || metadata.patchVertexCount > 32))
-      return false;
-
-    // We don't support GPL with transform feedback right now
-    if (metadata.flags.test(DxvkShaderFlag::HasTransformFeedback))
-      return false;
-
-    // Pre-raster pipelines must export vertex position to be useful. This
-    // stops us from compiling vertex shader libraries that are only used
-    // as input for tessellation or geometry shaers.
-    if (needsPosition && !metadata.flags.test(DxvkShaderFlag::ExportsPosition))
       return false;
 
     // Dynamic spec constants are only supported in graphics
