@@ -6767,12 +6767,16 @@ namespace dxvk {
 
     DxvkGraphicsPipelineFlags oldFlags = m_state.gp.flags;
     DxvkGraphicsPipelineFlags newFlags = newPipeline->flags();
-    DxvkGraphicsPipelineFlags diffFlags = oldFlags ^ newFlags;
 
     m_state.gp.flags = newFlags;
 
-    if (diffFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
+    if (oldFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport)
+     != newFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
       m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
+
+    if (newFlags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)
+     != oldFlags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
+      m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
@@ -7605,22 +7609,26 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyRenderTargets)) {
       m_flags.clr(DxvkContextFlag::GpDirtyRenderTargets);
 
+      // Do not bind any render targets if rasterizer discard is enabled. This may
+      // in some cases fix oversynchronization and reduce pipeline permutations.
+      static const DxvkRenderTargets s_noAttachments = {};
+
+      const auto& attachments = m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)
+        ? s_noAttachments : m_state.om.renderTargets;
+
       if (m_flags.test(DxvkContextFlag::GpRenderPassActive) && !m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
         // Only interrupt an active render pass if the render targets have actually
         // changed since the last update. There are cases where client APIs cannot
         // know in advance that consecutive draws use the same set of render targets.
-        if (m_state.om.renderTargets == m_state.om.framebufferInfo.attachments())
+        if (attachments == m_state.om.framebufferInfo.attachments())
           return;
       }
 
       // End active render pass and reset load/store ops for the new render targets.
-      DxvkFramebufferInfo fbInfo = makeFramebufferInfo(m_state.om.renderTargets);
+      DxvkFramebufferInfo fbInfo = makeFramebufferInfo(attachments);
 
       this->endCurrentPass(true);
-
-      this->resetRenderPassOps(
-        m_state.om.renderTargets,
-        m_state.om.renderPassOps);
+      this->resetRenderPassOps(attachments, m_state.om.renderPassOps);
 
       // Update relevant graphics pipeline state
       m_state.gp.state.ms.setSampleCount(fbInfo.getSampleCount());
