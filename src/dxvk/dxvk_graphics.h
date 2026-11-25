@@ -222,7 +222,7 @@ namespace dxvk {
     DxvkGraphicsPipelineDynamicState(
       const DxvkDevice*                     device,
       const DxvkGraphicsPipelineStateInfo&  state,
-            DxvkGraphicsPipelineFlags       flags);
+      const DxvkGraphicsPipelineShaders&    shaders);
 
     VkPipelineDynamicStateCreateInfo  dyInfo    = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     std::array<VkDynamicState, 20>    dyStates  = { };
@@ -330,6 +330,27 @@ namespace dxvk {
           && validateShaderType(fs, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
+    DxvkShader* getLastPreRaster() const {
+      if (gs)  return gs.ptr();
+      if (tes) return tes.ptr();
+      return vs.ptr();
+    }
+
+    bool hasRasterizerDiscard() const {
+      auto last = getLastPreRaster();
+
+      if (last) {
+        if (!last->metadata().flags.test(DxvkShaderFlag::ExportsPosition))
+          return true;
+
+        if (last->metadata().stage == VK_SHADER_STAGE_GEOMETRY_BIT
+         && last->metadata().rasterizedStream < 0)
+          return true;
+      }
+
+      return false;
+    }
+
     static bool validateShaderType(const Rc<DxvkShader>& shader, VkShaderStageFlagBits stage) {
       return shader == nullptr || shader->metadata().stage == stage;
     }
@@ -412,8 +433,8 @@ namespace dxvk {
 
     size_t hash() const {
       DxvkHashState hash;
-      hash.add(size_t(viLibrary));
-      hash.add(size_t(foLibrary));
+      hash.add(reinterpret_cast<uintptr_t>(viLibrary));
+      hash.add(reinterpret_cast<uintptr_t>(foLibrary));
       return hash;
     }
   };
@@ -432,10 +453,9 @@ namespace dxvk {
             DxvkDevice*                       device,
       const DxvkGraphicsPipelineShaders&      shaders,
       const DxvkGraphicsPipelineStateInfo&    state,
-            DxvkGraphicsPipelineFlags         flags,
             uint32_t                          specConstantMask)
     : shState(shaders, state),
-      dyState(device, state, flags),
+      dyState(device, state, shaders),
       viState(device, state, shaders),
       prState(device, state, shaders),
       fsState(device, state),
@@ -619,7 +639,7 @@ namespace dxvk {
     DxvkGraphicsPipelineShaders m_shaders;
     DxvkPipelineBindings        m_layout;
     DxvkGlobalPipelineBarrier   m_barrier;
-    DxvkGraphicsPipelineFlags   m_flags;
+    DxvkGraphicsPipelineFlags   m_flags = {};
 
     DxvkShaderPipelineLibrary*  m_vsLibrary;
     DxvkShaderPipelineLibrary*  m_fsLibrary;
@@ -670,8 +690,6 @@ namespace dxvk {
 
     std::pair<VkResult, VkPipeline> createOptimizedPipeline(
       const DxvkGraphicsPipelineFastInstanceKey& key) const;
-
-    DxvkShader& getLastPreRasterStage();
 
     void destroyBasePipelines();
 
