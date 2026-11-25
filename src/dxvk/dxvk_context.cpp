@@ -6340,7 +6340,7 @@ namespace dxvk {
     // Same for MSAA. This is actually necessary for correctness as well
     // since handling render pass resolves gets all sorts of problematic,
     // and those cases are currently not handled.
-    if (m_state.gp.state.ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT)
+    if (m_state.gp.state.ms.sampleCount() > VK_SAMPLE_COUNT_1_BIT)
       return false;
 
     // Otherwise, we are probably good. Post-processing and UI passes don't
