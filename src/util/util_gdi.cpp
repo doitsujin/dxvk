@@ -74,6 +74,11 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS WINAPI D3DKMTOpenNtHandleFromName(D3DKMT_OPENNTHANDLEFROMNAME *desc) {
+    Logger::warn("D3DKMTOpenNtHandleFromName: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTOpenResourceFromNtHandle(D3DKMT_OPENRESOURCEFROMNTHANDLE *desc) {
     Logger::warn("D3DKMTOpenResourceFromNtHandle: Not available on this platform.");
     return -1;
@@ -131,6 +136,19 @@ namespace dxvk {
     if (!func) {
       InterlockedCompareExchangePointer((void **)&func, (void *)GetProcAddress(GetModuleHandle("gdi32"), "D3DKMTReleaseKeyedMutex"), NULL);
       InterlockedCompareExchangePointer((void **)&func, (void *)NoD3DKMTReleaseKeyedMutex, NULL);
+    }
+    return func(desc);
+  }
+
+  static NTSTATUS WINAPI NoD3DKMTOpenNtHandleFromName(D3DKMT_OPENNTHANDLEFROMNAME *desc) {
+    return -1;
+  }
+
+  NTSTATUS WINAPI D3DKMTOpenNtHandleFromName(D3DKMT_OPENNTHANDLEFROMNAME *desc) {
+    static decltype(D3DKMTOpenNtHandleFromName) *func;
+    if (!func) {
+      InterlockedCompareExchangePointer((void **)&func, (void *)GetProcAddress(GetModuleHandle("gdi32"), "D3DKMTOpenNtHandleFromName"), NULL);
+      InterlockedCompareExchangePointer((void **)&func, (void *)NoD3DKMTOpenNtHandleFromName, NULL);
     }
     return func(desc);
   }

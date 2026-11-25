@@ -32,6 +32,7 @@
 #include "../wsi/wsi_window.h"
 
 #include "../util/util_shared_res.h"
+#include "../util/util_win32_compat.h"
 
 namespace dxvk {
   
@@ -1631,9 +1632,48 @@ namespace dxvk {
           REFIID      returnedInterface, 
           void**      ppResource) {
     InitReturnPtr(ppResource);
-    
-    Logger::err("D3D11Device::OpenSharedResourceByName: Not implemented");
-    return E_NOTIMPL;
+
+    if (lpName == nullptr)
+      return E_INVALIDARG;
+
+    if (ppResource == nullptr)
+      return S_FALSE;
+
+    /* Named shared resources live in the session namespace, see
+     * D3D11DXGIResource::CreateSharedHandle. */
+    WCHAR buffer[MAX_PATH];
+    DWORD session = 0, nameLen = wcslen(lpName);
+    ProcessIdToSessionId(GetCurrentProcessId(), &session);
+    int len = swprintf(buffer, ARRAYSIZE(buffer), L"\\Sessions\\%u\\BaseNamedObjects\\", session);
+
+    if (len < 0 || len + nameLen >= ARRAYSIZE(buffer))
+      return E_INVALIDARG;
+
+    memcpy(buffer + len, lpName, (nameLen + 1) * sizeof(WCHAR));
+
+    UNICODE_STRING nameStr;
+    nameStr.Length = (len + nameLen) * sizeof(WCHAR);
+    nameStr.MaximumLength = nameStr.Length + sizeof(WCHAR);
+    nameStr.Buffer = buffer;
+
+    OBJECT_ATTRIBUTES attr = { };
+    attr.Length = sizeof(attr);
+    attr.ObjectName = &nameStr;
+    attr.Attributes = OBJ_CASE_INSENSITIVE;
+
+    D3DKMT_OPENNTHANDLEFROMNAME open = { };
+    open.dwDesiredAccess = dwDesiredAccess;
+    open.pObjAttrib = &attr;
+
+    if (D3DKMTOpenNtHandleFromName(&open) || !open.hNtHandle) {
+      Logger::warn(str::format("D3D11Device::OpenSharedResourceByName: Failed to open ", str::fromws(lpName)));
+      return E_INVALIDARG;
+    }
+
+    /* Importing does not take ownership of the handle */
+    HRESULT hr = OpenSharedResource1(open.hNtHandle, returnedInterface, ppResource);
+    CloseHandle(open.hNtHandle);
+    return hr;
   }
 
 
