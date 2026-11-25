@@ -1362,12 +1362,14 @@ namespace dxvk {
 
   VkPipeline DxvkGraphicsPipeline::getBasePipeline(
     const DxvkGraphicsPipelineStateInfo& state) {
-    DxvkGraphicsPipelineVertexInputState    viState(m_device, state, m_shaders);
-    DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders);
+    DxvkGraphicsPipelineBaseInstanceKey key = {};
+    key.viLibrary = m_manager->createVertexInputLibrary(
+      DxvkGraphicsPipelineVertexInputState(m_device, state, m_shaders));
 
-    DxvkGraphicsPipelineBaseInstanceKey key;
-    key.viLibrary = m_manager->createVertexInputLibrary(viState);
-    key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
+    if (!m_flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
+      key.foLibrary = m_manager->createFragmentOutputLibrary(
+        DxvkGraphicsPipelineFragmentOutputState(m_device, state, m_shaders));
+    }
 
     auto entry = m_basePipelines.find(key);
     if (entry != m_basePipelines.end())
@@ -1384,24 +1386,34 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle();
-    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
 
-    if (!vs.handle || !fs.handle)
+    if (!vs.handle)
       return VK_NULL_HANDLE;
 
-    std::array<VkPipeline, 4> libraries = {{
-      key.viLibrary->getHandle(), vs.handle, fs.handle,
-      key.foLibrary->getHandle(),
-    }};
-
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
-    flags.flags = vs.linkFlags | fs.linkFlags;
+    flags.flags = vs.linkFlags;
 
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    small_vector<VkPipeline, 4> libraries;
+    libraries.push_back(key.viLibrary->getHandle());
+    libraries.push_back(vs.handle);
+
+    if (!m_flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
+      DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
+
+      if (!fs.handle)
+        return VK_NULL_HANDLE;
+
+      libraries.push_back(fs.handle);
+      libraries.push_back(key.foLibrary->getHandle());
+
+      flags.flags |= fs.linkFlags;
+    }
 
     VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
     libInfo.libraryCount    = libraries.size();
