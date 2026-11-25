@@ -3189,12 +3189,14 @@ namespace dxvk {
   void DxvkContext::beginRenderPassDebugRegion() {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
+    const auto& attachments = m_state.om.framebufferInfo.attachments();
+
     bool hasFeedbackLoop = false;
     bool hasColorAttachments = false;
-    bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
+    bool hasDepthAttachment = attachments.depth.view != nullptr;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      hasColorAttachments |= m_state.om.renderTargets.color[i].view != nullptr;
+      hasColorAttachments |= attachments.color[i].view != nullptr;
 
     std::stringstream label;
 
@@ -3210,29 +3212,29 @@ namespace dxvk {
     hasColorAttachments = false;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_state.om.renderTargets.color[i].view) {
-        const char* imageName = m_state.om.renderTargets.color[i].view->image()->info().debugName;
+      if (attachments.color[i].view) {
+        const char* imageName = attachments.color[i].view->image()->info().debugName;
         label << (hasColorAttachments ? ", " : "") << i << ": " << (imageName ? imageName : "unknown");
 
         hasColorAttachments = true;
-        sampleCount = m_state.om.renderTargets.color[i].view->image()->info().sampleCount;
+        sampleCount = attachments.color[i].view->image()->info().sampleCount;
 
         hasFeedbackLoop = hasFeedbackLoop ||
-          (m_state.om.renderTargets.color[i].view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+          (attachments.color[i].view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       }
     }
 
-    if (m_state.om.renderTargets.depth.view) {
+    if (attachments.depth.view) {
       if (hasColorAttachments)
         label << ", ";
 
-      const char* imageName = m_state.om.renderTargets.depth.view->image()->info().debugName;
+      const char* imageName = attachments.depth.view->image()->info().debugName;
       label << "DS:" << (imageName ? imageName : "unknown");
 
-      sampleCount = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
+      sampleCount = attachments.depth.view->image()->info().sampleCount;
 
       hasFeedbackLoop = hasFeedbackLoop ||
-        (m_state.om.renderTargets.depth.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
+        (attachments.depth.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
     }
 
     if (!hasColorAttachments && !hasDepthAttachment)
@@ -6152,7 +6154,7 @@ namespace dxvk {
       // Don't discard image contents if we have
       // to spill the current render pass
       this->resetRenderPassOps(
-        m_state.om.renderTargets,
+        m_state.om.framebufferInfo.attachments(),
         m_state.om.renderPassOps);
       
       // Begin occlusion queries
@@ -7986,13 +7988,15 @@ namespace dxvk {
       // render most of its content with regular sample positions and only draw a small portion
       // with centered positions, so we would want the default interpretation to use default
       // sample positions anyway, e.g. for the purpose of copies or resolves.
+      const auto& depthAttachment = m_state.om.framebufferInfo.attachments().depth;
+
       auto sampleCount = m_state.gp.state.determineRasterSamples(m_device->canUseMixedSamples(m_state.gp.shaders.fs));
 
       bool center = m_state.gp.state.useSampleLocations();
       bool enable = m_device->canUseSampleLocations(sampleCount);
 
-      if (enable && m_state.om.renderTargets.depth.view) {
-        auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
+      if (enable && depthAttachment.view) {
+        auto flags = depthAttachment.view->image()->info().flags;
         enable = bool(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
       }
 
@@ -8259,11 +8263,13 @@ namespace dxvk {
     // If a depth-stencil image is bound used with non-default sample locations,
     // make sure that the image actually has the compat flag set.
     if (unlikely(m_state.gp.state.useSampleLocations())) {
-      if (m_state.om.renderTargets.depth.view) {
-        VkSampleCountFlagBits samples = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
+      const auto& depthAttachment = m_state.om.framebufferInfo.attachments().depth;
+
+      if (depthAttachment.view) {
+        VkSampleCountFlagBits samples = depthAttachment.view->image()->info().sampleCount;
 
         if (m_device->canUseSampleLocations(samples)) {
-          auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
+          auto flags = depthAttachment.view->image()->info().flags;
 
           if (!(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
             this->endCurrentPass(true);
@@ -8271,7 +8277,7 @@ namespace dxvk {
             DxvkImageUsageInfo usage = { };
             usage.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
 
-            ensureImageCompatibility(m_state.om.renderTargets.depth.view->image(), usage);
+            ensureImageCompatibility(depthAttachment.view->image(), usage);
           }
         }
       }
@@ -9493,7 +9499,7 @@ namespace dxvk {
       return false;
 
     if (image.info().usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-      const auto& view = m_state.om.renderTargets.depth.view;
+      const auto& view = m_state.om.framebufferInfo.attachments().depth.view;
 
       if (view && view->image() == &image) {
         VkImageSubresourceRange viewSubresources = view->imageSubresources();
@@ -9506,7 +9512,7 @@ namespace dxvk {
 
     if (image.info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       for (uint32_t i = 0u; i < MaxNumRenderTargets; i++) {
-        const auto& view = m_state.om.renderTargets.color[i].view;
+        const auto& view = m_state.om.framebufferInfo.attachments().color[i].view;
 
         if (view && view->image() == &image) {
           VkImageSubresourceRange viewSubresources = view->imageSubresources();
