@@ -238,8 +238,6 @@ namespace dxvk {
 
     void initDescriptorHeapProperties(const DxvkDevice* device);
 
-    void initDescriptorBufferProperties(const DxvkDevice* device);
-
     void logDescriptorProperties();
 
   };
