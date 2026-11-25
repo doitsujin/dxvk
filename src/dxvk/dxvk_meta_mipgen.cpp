@@ -177,7 +177,7 @@ namespace dxvk {
   bool DxvkMetaMipGenObjects::queryFormatSupport(
           VkFormat              viewFormat) const {
     // Fixed list of formats that the shader understands
-    static const std::array<VkFormat, 26> s_formats = {{
+    static const std::array<VkFormat, 27> s_formats = {{
       VK_FORMAT_R8_UNORM,
       VK_FORMAT_R8_SNORM,
       VK_FORMAT_R8G8_UNORM,
@@ -204,6 +204,7 @@ namespace dxvk {
       VK_FORMAT_R32G32_SFLOAT,
       VK_FORMAT_R16G16B16A16_UNORM,
       VK_FORMAT_R16G16B16A16_SNORM,
+      VK_FORMAT_R32G32B32A32_SFLOAT,
     }};
 
     if (!m_device->perfHints().preferComputeMipGen)
@@ -224,6 +225,13 @@ namespace dxvk {
 
     if (!(formatFeatures.optimal & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)
      || !(formatFeatures.optimal & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+      return false;
+
+    // Large formats may exceed available LDS size. Overestimate usage a little.
+    uint32_t ldsSize = (1u << (MipCount + MipCount)) * std::max<uint32_t>(1u,
+      lookupFormatInfo(viewFormat)->elementSize / sizeof(uint32_t));
+
+    if (ldsSize > m_device->properties().core.properties.limits.maxComputeSharedMemorySize)
       return false;
 
     return true;

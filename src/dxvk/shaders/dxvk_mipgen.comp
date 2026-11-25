@@ -140,6 +140,7 @@ uint determine_format_mode() {
 
     case VK_FORMAT_R16G16B16A16_UNORM:
     case VK_FORMAT_R16G16B16A16_SNORM:
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
       return FORMAT_MODE_F32x4;
   }
 
@@ -484,6 +485,7 @@ pixel_t quantize_pixel(pixel_t data) {
 
     case VK_FORMAT_R32_SFLOAT:
     case VK_FORMAT_R32G32_SFLOAT:
+    case VK_FORMAT_R32G32B32A32_SFLOAT:
       return data;
 
     default:
@@ -604,6 +606,13 @@ void store_pixel_to_lds(uvec2 coord, pixel_t px) {
       g_pixels[idx + 0u] = floatBitsToUint(px_as_f32(px).x);
       g_pixels[idx + 1u] = floatBitsToUint(px_as_f32(px).y);
     } break;
+
+    case VK_FORMAT_R32G32B32A32_SFLOAT: {
+      g_pixels[idx + 0u] = floatBitsToUint(px_as_f32(px).x);
+      g_pixels[idx + 1u] = floatBitsToUint(px_as_f32(px).y);
+      g_pixels[idx + 2u] = floatBitsToUint(px_as_f32(px).z);
+      g_pixels[idx + 3u] = floatBitsToUint(px_as_f32(px).w);
+    } break;
   }
 }
 
@@ -614,11 +623,16 @@ pixel_t load_pixel_from_lds(uvec2 coord, uvec2 ofs) {
   idx += LDS_SIZE * ofs.y + ofs.x;
   idx *= c_format_dwords;
 
-  uvec2 px = {};
+  uvec4 px = {};
   px.x = g_pixels[idx];
 
   if (c_format_dwords >= 2u)
     px.y = g_pixels[idx + 1u];
+
+  if (c_format_dwords >= 4u) {
+    px.z = g_pixels[idx + 2u];
+    px.w = g_pixels[idx + 3u];
+  }
 
   switch (c_format) {
     case VK_FORMAT_R8_UNORM: {
@@ -736,15 +750,21 @@ pixel_t load_pixel_from_lds(uvec2 coord, uvec2 ofs) {
     }
 
     case VK_FORMAT_R32_SFLOAT: {
-      return px_set_f32(vec4(
-        uintBitsToFloat(px.x), 0.0f.xxx));
+      return px_set_f32(vec4(uintBitsToFloat(px.x), 0.0f.xxx));
     }
 
     case VK_FORMAT_R32G32_SFLOAT: {
-      float x = uintBitsToFloat(px.x);
-      float y = uintBitsToFloat(px.y);
+      return px_set_f32(vec4(
+        uintBitsToFloat(px.x),
+        uintBitsToFloat(px.y), 0.0f.xx));
+    }
 
-      return px_set_f32(vec4(x, y, 0.0f.xx));
+    case VK_FORMAT_R32G32B32A32_SFLOAT: {
+      return px_set_f32(vec4(
+        uintBitsToFloat(px.x),
+        uintBitsToFloat(px.y),
+        uintBitsToFloat(px.z),
+        uintBitsToFloat(px.w)));
     }
   }
 
