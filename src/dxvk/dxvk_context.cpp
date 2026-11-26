@@ -2632,12 +2632,19 @@ namespace dxvk {
 
     // If we can prove that the app has only rendered to a portion of
     // the image, adjust the render area to the exact rendered region.
-    if (!hasClearOrResolve && m_state.om.renderAreaLo.x < m_state.om.renderAreaHi.x
-                           && m_state.om.renderAreaLo.y < m_state.om.renderAreaHi.y) {
-      renderingInfo.rendering.renderArea.offset = m_state.om.renderAreaLo;
-      renderingInfo.rendering.renderArea.extent = VkExtent2D {
-        uint32_t(m_state.om.renderAreaHi.x - m_state.om.renderAreaLo.x),
-        uint32_t(m_state.om.renderAreaHi.y - m_state.om.renderAreaLo.y) };
+    if (!hasClearOrResolve) {
+      if (m_state.om.renderAreaLo.x < m_state.om.renderAreaHi.x
+       && m_state.om.renderAreaLo.y < m_state.om.renderAreaHi.y) {
+        renderingInfo.rendering.renderArea.offset = m_state.om.renderAreaLo;
+        renderingInfo.rendering.renderArea.extent = VkExtent2D {
+          uint32_t(m_state.om.renderAreaHi.x - m_state.om.renderAreaLo.x),
+          uint32_t(m_state.om.renderAreaHi.y - m_state.om.renderAreaLo.y) };
+      } else {
+        // This can only happen in render passes without rasterization
+        // since adjustRenderArea will never be called in that case.
+        renderingInfo.rendering.renderArea.offset = VkOffset2D { 0,  0  };
+        renderingInfo.rendering.renderArea.extent = VkExtent2D { 1u, 1u };
+      }
 
       // If there are no layered clears or draws, set layer count to 1.
       // May help reduce render pass memory usage on some GPUs.
